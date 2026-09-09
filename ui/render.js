@@ -1,6 +1,10 @@
 // Renderer. Reads a snapshot and writes the DOM. It never mutates state
 // and the sim never imports this file -- that separation is what lets
 // sim.js run the same encounter headlessly in Node.
+//
+// The DOM is built once and updated in place. Rebuilding innerHTML at
+// 10Hz would destroy every button between mousedown and mouseup, which
+// silently eats clicks.
 
 const el = (id) => document.getElementById(id);
 const pct = (a, b) => `${Math.max(0, Math.min(100, (a / b) * 100))}%`;
@@ -8,60 +12,167 @@ const num = (n) => Math.round(n).toLocaleString('en-US');
 const clock = (s) => `${Math.floor(s / 60)}:${String(Math.floor(s % 60)).padStart(2, '0')}`;
 const ROLE_LETTER = { tank: 'V', healer: 'M', dps: 'S', boss: '☠', add: 's' };
 
-export function render(view, content) {
-  renderBoss(view);
-  renderFrames(view);
-  renderGrid(view);
-  renderActions(view, content);
-  renderThreat(view);
-  renderSide(view, content);
+const setText = (node, text) => {
+  if (node.textContent !== text) node.textContent = text;
+};
+const setWidth = (node, width) => {
+  if (node.style.width !== width) node.style.width = width;
+};
+const setClass = (node, name, on) => node.classList.toggle(name, !!on);
+
+let R = null;
+
+export function render(view, content, hud = {}) {
+  if (!R || R.playerId !== view.playerId) R = build(view, content);
+  paintBoss(view);
+  paintFrames(view, hud);
+  paintGrid(view);
+  paintActions(view, content, hud);
+  paintThreat(view);
+  paintSide(view);
 }
 
-function renderBoss(view) {
-  const b = view.boss;
-  const enrageHot = view.enrageIn <= 30 || view.enraged;
+export function resetRenderer() {
+  R = null;
+}
+
+/* ----------------------------------------------------------- one-time */
+
+function build(view, content) {
+  const refs = { playerId: view.playerId, frames: new Map(), tokens: new Map(), buttons: new Map() };
+
   el('bossFrame').innerHTML = `
     <div>
-      <div class="boss-name ttl">${b.name}<small>${b.title || ''}</small></div>
-      <div class="phase-tag">${view.phaseName}${view.enraged ? ' · QUAD DAMAGE ACTIVE' : ''}</div>
+      <div class="boss-name ttl"><span data-r="name"></span><small data-r="title"></small></div>
+      <div class="phase-tag" data-r="phase"></div>
       <div class="bar boss-hp" style="margin-top:5px">
-        <i style="width:${pct(b.hp, b.maxHp)}"></i>
-        <span><b>${num(b.hp)} / ${num(b.maxHp)}</b><b>${b.hpPct.toFixed(1)}%</b></span>
+        <i data-r="hpFill"></i><span><b data-r="hpText"></b><b data-r="hpPct"></b></span>
       </div>
-      ${
-        b.cast
-          ? `<div class="bar cast ${b.cast.interruptible ? 'interruptible' : ''}">
-               <i style="width:${pct(b.cast.progress, 1)}"></i>
-               <span><b>${b.cast.name}${b.cast.interruptible ? ' — INTERRUPTIBLE' : ''}</b><b>${b.cast.remaining.toFixed(1)}s</b></span>
-             </div>`
-          : `<div class="bar cast" style="opacity:.25"><span></span></div>`
-      }
+      <div class="bar cast" data-r="cast">
+        <i data-r="castFill"></i><span><b data-r="castName"></b><b data-r="castTime"></b></span>
+      </div>
     </div>
-    <div class="enrage ${enrageHot ? 'hot' : ''}">
-      <div class="phase-tag">${view.enraged ? 'Enraged' : 'Enrage in'}</div>
-      <b>${view.enraged ? '00:00' : clock(view.enrageIn)}</b>
-      <div class="phase-tag" style="margin-top:4px">pull ${clock(view.seconds)}</div>
+    <div class="enrage" data-r="enrage">
+      <div class="phase-tag" data-r="enrageLabel"></div>
+      <b data-r="enrageTime"></b>
+      <div class="phase-tag" style="margin-top:4px" data-r="pullTime"></div>
     </div>`;
+  refs.boss = collect(el('bossFrame'));
+
+  const frames = el('raidFrames');
+  frames.innerHTML = '';
+  for (const u of view.party) {
+    const node = document.createElement('div');
+    node.className = 'frame';
+    node.dataset.unit = u.id;
+    node.innerHTML = `
+      <div class="frame-top"><b data-r="name"></b><em data-r="title"></em></div>
+      <div class="bar hp"><i data-r="hpFill"></i><span><b data-r="hpText"></b><b data-r="hpPct"></b></span></div>
+      <div class="bar res"><i data-r="resFill"></i></div>
+      <div class="pips" data-r="pips"></div>
+      <div class="castline" data-r="cast"></div>`;
+    frames.appendChild(node);
+    refs.frames.set(u.id, { node, ...collect(node) });
+  }
+
+  const grid = el('grid');
+  grid.innerHTML = '';
+  refs.cells = view.cells.map((c) => {
+    const node = document.createElement('div');
+    node.className = 'cell';
+    node.dataset.cell = c.index;
+    node.innerHTML = '<div class="cd" data-r="cd"></div><div class="tag" data-r="tag"></div>';
+    grid.appendChild(node);
+    return { node, ...collect(node) };
+  });
+
+  const bar = el('actionBar');
+  bar.innerHTML = `
+    <div class="hudstrip" data-r="strip">
+      <div class="lbl" data-r="resName"></div>
+      <div class="bar"><i data-r="resFill"></i><span><b data-r="resText"></b></span></div>
+      <div class="tgt" data-r="tgt"></div>
+    </div>`;
+  refs.hud = collect(bar);
+  const player = view.party.find((u) => u.id === view.playerId);
+  (player ? player.abilities : []).forEach((id, i) => {
+    const a = content.abilities[id];
+    const btn = document.createElement('button');
+    btn.className = 'btn';
+    btn.type = 'button';
+    btn.dataset.ability = id;
+    btn.title = `${a.name} — ${a.desc || ''}`;
+    btn.innerHTML = `
+      <span class="key">${i + 1}</span>
+      <span class="ic">${a.icon || '◆'}</span>
+      <span class="nm">${a.name}</span>
+      ${a.cost ? `<span class="cost" data-r="cost">${a.cost}</span>` : ''}
+      <span class="sweep" data-r="sweep" hidden></span>`;
+    bar.appendChild(btn);
+    refs.buttons.set(id, { node: btn, ...collect(btn) });
+  });
+
+  return refs;
 }
 
-function renderFrames(view) {
-  el('raidFrames').innerHTML = view.party
-    .map((u) => {
-      const you = u.id === view.playerId;
-      return `
-      <div class="frame ${you ? 'you' : ''} ${u.id === view.playerAllyTarget ? 'target' : ''} ${u.alive ? '' : 'dead'}" data-unit="${u.id}">
-        <div class="frame-top"><b>${u.name}${you ? ' (you)' : ''}</b><em>${u.title || u.role}</em></div>
-        <div class="bar hp"><i style="width:${pct(u.hp, u.maxHp)}"></i>
-          <span><b>${u.alive ? num(u.hp) : 'DEAD'}</b><b>${u.alive ? Math.round(u.hpPct) + '%' : ''}</b></span></div>
-        <div class="bar res"><i style="width:${pct(u.resource, u.maxResource)}"></i></div>
-        <div class="pips">${u.auras.filter(visiblePip).map(pip).join('')}</div>
-        <div class="castline">${u.cast ? `▸ ${u.cast.name} ${u.cast.remaining.toFixed(1)}s` : u.moving ? '▸ moving' : ''}</div>
-      </div>`;
-    })
-    .join('');
+// Map every [data-r] descendant to a named reference.
+function collect(root) {
+  const out = {};
+  for (const node of root.querySelectorAll('[data-r]')) out[node.dataset.r] = node;
+  return out;
 }
 
-// Permanent, helpful auras are role passives -- they are flavour, not information.
+/* -------------------------------------------------------------- paint */
+
+function paintBoss(view) {
+  const b = view.boss;
+  const r = R.boss;
+  setText(r.name, b.name);
+  setText(r.title, b.title || '');
+  setText(r.phase, `${view.phaseName}${view.enraged ? ' · QUAD DAMAGE ACTIVE' : ''}`);
+  setWidth(r.hpFill, pct(b.hp, b.maxHp));
+  setText(r.hpText, `${num(b.hp)} / ${num(b.maxHp)}`);
+  setText(r.hpPct, `${b.hpPct.toFixed(1)}%`);
+
+  const cast = b.cast;
+  r.cast.style.opacity = cast ? '1' : '.25';
+  setClass(r.cast, 'interruptible', cast && cast.interruptible);
+  setWidth(r.castFill, cast ? pct(cast.progress, 1) : '0%');
+  setText(r.castName, cast ? `${cast.name}${cast.interruptible ? ' — INTERRUPTIBLE' : ''}` : '');
+  setText(r.castTime, cast ? `${cast.remaining.toFixed(1)}s` : '');
+
+  setClass(r.enrage, 'hot', view.enraged || view.enrageIn <= 30);
+  setText(r.enrageLabel, view.enraged ? 'Enraged' : 'Enrage in');
+  setText(r.enrageTime, view.enraged ? '00:00' : clock(view.enrageIn));
+  setText(r.pullTime, `pull ${clock(view.seconds)}`);
+}
+
+function paintFrames(view, hud) {
+  for (const u of view.party) {
+    const r = R.frames.get(u.id);
+    if (!r) continue;
+    setText(r.name, u.id === view.playerId ? `${u.name} (you)` : u.name);
+    setText(r.title, u.title || u.role);
+    setWidth(r.hpFill, pct(u.hp, u.maxHp));
+    setText(r.hpText, u.alive ? num(u.hp) : 'DEAD');
+    setText(r.hpPct, u.alive ? `${Math.round(u.hpPct)}%` : '');
+    setWidth(r.resFill, pct(u.resource, u.maxResource));
+    setClass(r.node, 'you', u.id === view.playerId);
+    setClass(r.node, 'dead', !u.alive);
+    setClass(r.node, 'target', u.id === view.playerAllyTarget);
+    setClass(r.node, 'auto-target', !view.playerAllyTarget && u.id === hud.autoHealTarget);
+    setText(r.cast, u.cast ? `▸ ${u.cast.name} ${u.cast.remaining.toFixed(1)}s` : u.moving ? '▸ moving' : '');
+
+    const auras = u.auras.filter(visiblePip);
+    const sig = auras.map((a) => `${a.id}${a.stacks}${Math.ceil(a.remaining ?? 0)}`).join('|');
+    if (r.pips.dataset.sig !== sig) {
+      r.pips.dataset.sig = sig;
+      r.pips.innerHTML = auras.map(pip).join('');
+    }
+  }
+}
+
+// Permanent, helpful auras are role passives -- flavour, not information.
 const visiblePip = (a) => a.harmful || a.remaining !== null;
 
 function pip(a) {
@@ -71,54 +182,61 @@ function pip(a) {
   return `<span class="pip ${cls}" title="${a.name}">${a.name.slice(0, 12)}${stacks}${time}</span>`;
 }
 
-function renderGrid(view) {
-  const units = [...view.party, ...view.enemies];
-  el('grid').innerHTML = view.cells
-    .map((c) => {
-      const h = c.hazard;
-      const occupants = units
-        .filter((u) => u.cell === c.index && u.alive)
-        .map(
-          (u) =>
-            `<div class="token ${u.role} ${u.id === view.playerId ? 'you' : ''} ${u.moving ? 'moving' : ''}"
-                  title="${u.name} — ${num(u.hp)}">${ROLE_LETTER[u.role] || '?'}</div>`
-        )
-        .join('');
-      const tag = h ? (h.kind === 'split' ? 'STACK' : h.kind === 'soak' ? `SOAK ${h.minSoakers}+` : h.name) : '';
-      return `<div class="cell ${h ? h.kind : ''}" data-cell="${c.index}">
-        ${h ? `<div class="cd">${Math.max(0, h.remaining).toFixed(1)}</div>` : ''}
-        ${occupants}
-        ${h ? `<div class="tag">${tag}</div>` : ''}
-      </div>`;
-    })
-    .join('');
+function paintGrid(view) {
+  for (const c of view.cells) {
+    const r = R.cells[c.index];
+    const h = c.hazard;
+    setClass(r.node, 'blast', h && h.kind === 'blast');
+    setClass(r.node, 'split', h && h.kind === 'split');
+    setClass(r.node, 'soak', h && h.kind === 'soak');
+    setText(r.cd, h ? Math.max(0, h.remaining).toFixed(1) : '');
+    setText(r.tag, h ? (h.kind === 'split' ? 'STACK' : h.kind === 'soak' ? `SOAK ${h.minSoakers}+` : h.name) : '');
+  }
+
+  for (const u of [...view.party, ...view.enemies]) {
+    let token = R.tokens.get(u.id);
+    if (!token) {
+      token = document.createElement('div');
+      token.className = `token ${u.role}${u.id === view.playerId ? ' you' : ''}`;
+      token.textContent = ROLE_LETTER[u.role] || '?';
+      R.tokens.set(u.id, token);
+    }
+    token.hidden = !u.alive;
+    token.title = `${u.name} — ${num(u.hp)}`;
+    setClass(token, 'moving', u.moving);
+    const cell = R.cells[u.cell].node;
+    if (token.parentNode !== cell) cell.appendChild(token);
+  }
 }
 
-function renderActions(view, content) {
+function paintActions(view, content, hud) {
   const player = view.party.find((u) => u.id === view.playerId);
   if (!player) return;
-  el('actionBar').innerHTML = player.abilities
-    .map((id, i) => {
-      const a = content.abilities[id];
-      const cd = player.cooldowns[id] || 0;
-      const gcd = player.gcdRemaining / 10;
-      const poor = player.resource < (a.cost || 0);
-      const disabled = !player.alive || cd > 0 || poor;
-      return `<button class="btn ${gcd > 0 && cd <= 0 ? 'gcd' : ''}" data-ability="${id}" ${disabled ? 'disabled' : ''}
-        title="${a.name} — ${a.desc || ''}">
-        <span class="key">${i + 1}</span>
-        <span class="ic">${a.icon || '◆'}</span>
-        <span class="nm">${a.name}</span>
-        ${a.cost ? `<span class="cost" style="${poor ? 'color:#ff6b6b' : ''}">${a.cost}</span>` : ''}
-        ${cd > 0 ? `<span class="sweep">${cd.toFixed(1)}</span>` : ''}
-      </button>`;
-    })
-    .join('');
+
+  const h = R.hud;
+  setText(h.resName, player.resourceName);
+  setText(h.resText, `${player.resource} / ${player.maxResource}`);
+  setWidth(h.resFill, pct(player.resource, player.maxResource));
+  setClass(h.strip, 'dry', player.resource < 12);
+  const ally = view.party.find((u) => u.id === view.playerAllyTarget);
+  const auto = view.party.find((u) => u.id === hud.autoHealTarget);
+  setText(h.tgt, ally ? `▸ ${ally.name}` : auto ? `▸ ${auto.name} (auto)` : '');
+
+  for (const [id, r] of R.buttons) {
+    const a = content.abilities[id];
+    const cd = player.cooldowns[id] || 0;
+    const poor = player.resource < (a.cost || 0);
+    setClass(r.node, 'off', !player.alive || cd > 0 || poor);
+    setClass(r.node, 'gcd', player.gcdRemaining > 0 && cd <= 0);
+    setClass(r.node, 'queued', hud.queued === id);
+    if (r.cost) r.cost.style.color = poor ? '#ff6b6b' : '';
+    r.sweep.hidden = cd <= 0;
+    if (cd > 0) setText(r.sweep, cd.toFixed(1));
+  }
 }
 
-function renderThreat(view) {
-  const boss = view.boss;
-  const rows = Object.entries(boss.threat || {})
+function paintThreat(view) {
+  const rows = Object.entries(view.boss.threat || {})
     .sort((a, b) => b[1] - a[1])
     .map(([id, v], i) => {
       const u = view.party.find((p) => p.id === id);
@@ -126,14 +244,20 @@ function renderThreat(view) {
       return `<div class="threat ${i === 0 ? 'lead' : ''}"><b>${i === 0 ? '◆ ' : ''}${u.name}</b><span>${num(v / 1000)}k</span></div>`;
     })
     .join('');
-  el('threatPanel').innerHTML = `<h3>Threat — ${boss.name}</h3>${rows || '<div class="threat">—</div>'}`;
+  const html = `<h3>Threat — ${view.boss.name}</h3>${rows || '<div class="threat">—</div>'}`;
+  const node = el('threatPanel');
+  if (node.dataset.sig !== html) {
+    node.dataset.sig = html;
+    node.innerHTML = html;
+  }
 }
 
-function renderSide(view, content) {
+function paintSide(view) {
   const adds = view.enemies.filter((u) => u.role === 'add' && u.alive);
-  el('sidePanel').innerHTML = `
+  const target = view.enemies.find((e) => e.id === view.playerTarget) || view.boss;
+  const html = `
     <h3>Target</h3>
-    <div class="enemy"><b>${(view.enemies.find((e) => e.id === view.playerTarget) || view.boss).name}</b></div>
+    <div class="enemy"><b>${target.name}</b> <span style="color:var(--dim)">${Math.round(target.hpPct)}%</span></div>
     <h3>Adds</h3>
     ${
       adds.length
@@ -155,12 +279,18 @@ function renderSide(view, content) {
       <div><span class="k" style="color:#8be2ff">⚡</span> Blue cast bar — interrupt it.</div>
       <div><span class="k" style="color:#9ec8ff">☣</span> Blue pip — dispel it.</div>
     </div>`;
+  const node = el('sidePanel');
+  if (node.dataset.sig !== html) {
+    node.dataset.sig = html;
+    node.innerHTML = html;
+  }
 }
 
+/* ------------------------------------------------------------- the end */
+
 export function renderEnd(view, content, stats) {
-  const card = el('endCard');
   const won = view.result === 'kill';
-  card.innerHTML = `
+  el('endCard').innerHTML = `
     <h1 style="${won ? '' : 'color:var(--blood)'}">${won ? 'Chthon Falls' : view.result === 'timeout' ? 'Out of Time' : 'Wipe'}</h1>
     <p>${
       won
@@ -172,7 +302,11 @@ export function renderEnd(view, content, stats) {
       <div><b>${num(stats.playerDamage)}</b><em>Your damage</em></div>
       <div><b>${num(stats.playerHealing)}</b><em>Your healing</em></div>
     </div>
-    <div class="keys">${stats.deaths.length ? stats.deaths.map((d) => `${d.name} — ${d.cause} at ${clock(d.tick / 10)}`).join('<br>') : 'Nobody died. Clean pull.'}</div>
+    <div class="keys">${
+      stats.deaths.length
+        ? stats.deaths.map((d) => `${d.name} — ${d.cause} at ${clock(d.tick / 10)}`).join('<br>')
+        : 'Nobody died. Clean pull.'
+    }</div>
     <button class="go" id="retryBtn" style="margin-top:16px">Pull Again</button>`;
   el('endOverlay').classList.remove('hide');
 }

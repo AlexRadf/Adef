@@ -4,7 +4,7 @@
 import { loadContent } from './content/load.js';
 import { createState } from './engine/state.js';
 import { step, snapshot } from './engine/tick.js';
-import { render, renderEnd } from './ui/render.js';
+import { render, renderEnd, resetRenderer } from './ui/render.js';
 import { createLog } from './ui/log.js';
 import { createInput } from './ui/input.js';
 
@@ -65,13 +65,23 @@ function start(playerRole) {
   document.getElementById('startOverlay').classList.add('hide');
   document.getElementById('endOverlay').classList.add('hide');
   logView.reset();
+  resetRenderer();
 
   state = createState(content, { seed: (Math.random() * 1e9) | 0, playerRole });
   view = snapshot(state, content);
-  render(view, content);
+  render(view, content, hud());
   logView.push(state.log);
 
   timer = setInterval(frame, TICK_MS);
+}
+
+// Things the renderer shows but the sim has no opinion about.
+function hud() {
+  const queued = inputQueue.find((i) => i.type === 'cast');
+  const lowest = view.party
+    .filter((u) => u.alive)
+    .sort((a, b) => a.hpPct - b.hpPct)[0];
+  return { queued: queued && queued.abilityId, autoHealTarget: lowest && lowest.id };
 }
 
 // Handy from the devtools console: __raid.state().units, __raid.content, etc.
@@ -81,7 +91,7 @@ function frame() {
   if (paused) return;
   step(state, content, inputQueue);
   view = snapshot(state, content);
-  render(view, content);
+  render(view, content, hud());
   logView.push(state.log);
   if (state.over) {
     clearInterval(timer);

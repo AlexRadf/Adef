@@ -24,7 +24,8 @@
   }
   h1,h2,h3,.ttl { font-family:Impact, "Haettenschweiler", "Arial Narrow", sans-serif;
     letter-spacing:.06em; text-transform:uppercase; margin:0; font-weight:400; }
-  .app { display:grid; grid-template-rows:auto 1fr auto; height:100vh; gap:8px; padding:8px; max-width:1240px; margin:0 auto; }
+  .app { display:grid; grid-template-rows:auto minmax(0,1fr) auto; height:100dvh; gap:8px;
+    padding:8px; max-width:1240px; margin:0 auto; overflow:hidden; }
   .panel { background:linear-gradient(180deg, var(--panel2), var(--panel));
     border:1px solid var(--edge); border-radius:3px; box-shadow:inset 0 1px 0 rgba(255,255,255,.04), 0 2px 8px rgba(0,0,0,.5); }
 
@@ -49,15 +50,20 @@
   .phase-tag { font-size:11px; color:var(--dim); letter-spacing:.14em; text-transform:uppercase; }
 
   /* ---------- middle ---------- */
-  .mid { display:grid; grid-template-columns:280px 1fr 230px; gap:8px; min-height:0; }
+  .mid { display:grid; grid-template-columns:270px minmax(0,1fr) 220px; gap:8px; min-height:0; overflow:hidden; }
   .col { display:flex; flex-direction:column; gap:8px; min-height:0; }
+  /* Panels scroll inside themselves. Nothing is allowed to grow into the row below. */
+  .stack { display:flex; flex-direction:column; min-height:0; flex:1 1 auto; }
+  .stack .frames { overflow-y:auto; min-height:0; }
+  .fixed { flex:0 0 auto; max-height:158px; overflow:auto; }
   .hdr { font-size:11px; letter-spacing:.16em; color:var(--dim); padding:6px 10px 0; }
 
   .frames { padding:8px; display:flex; flex-direction:column; gap:6px; }
   .frame { padding:5px 7px; border:1px solid var(--edge); border-radius:2px; background:#120e0c; cursor:pointer; }
   .frame:hover { border-color:var(--edge-hot); }
   .frame.you { border-color:var(--fire); box-shadow:0 0 0 1px rgba(255,122,24,.25) inset; }
-  .frame.target { outline:1px solid var(--gold); }
+  .frame.target { outline:2px solid var(--gold); }
+  .frame.auto-target { outline:1px dashed rgba(232,196,106,.55); }
   .frame.dead { opacity:.4; filter:grayscale(1); }
   .frame-top { display:flex; justify-content:space-between; align-items:baseline; margin-bottom:3px; }
   .frame-top b { font-size:13px; letter-spacing:.03em; }
@@ -72,8 +78,10 @@
   .castline { font-size:10px; color:var(--ember); margin-top:3px; height:12px; overflow:hidden; }
 
   /* ---------- grid ---------- */
-  .arena { display:flex; align-items:center; justify-content:center; padding:10px; min-height:0; }
-  .grid { display:grid; grid-template-columns:repeat(5,1fr); gap:5px; aspect-ratio:1; height:100%; max-height:100%; }
+  .arena { display:flex; align-items:center; justify-content:center; padding:10px; min-height:0; overflow:hidden; }
+  .grid { display:grid; grid-template-columns:repeat(5,1fr); grid-template-rows:repeat(5,1fr);
+    gap:5px; aspect-ratio:1; width:min(100%, calc(100cqh - 0px)); height:auto; margin:auto; }
+  .arena { container-type:size; }
   .cell { position:relative; border:1px solid #2c221b; border-radius:2px; cursor:pointer;
     background:linear-gradient(180deg,#171210,#0f0b09); display:flex; flex-wrap:wrap; align-content:center;
     justify-content:center; gap:3px; padding:3px; transition:border-color .1s; }
@@ -108,13 +116,23 @@
   .threat .lead { color:var(--gold); }
 
   /* ---------- bottom ---------- */
-  .bottom { display:grid; grid-template-columns:auto 1fr; gap:8px; }
-  .actions { padding:8px; display:flex; gap:6px; align-items:center; }
-  .btn { position:relative; width:78px; height:78px; border:1px solid var(--edge); border-radius:3px;
+  .bottom { display:grid; grid-template-columns:auto minmax(0,1fr); gap:8px;
+    height:clamp(126px, 19vh, 176px); }
+  .actions { padding:8px; display:flex; gap:8px; align-items:center; }
+  .hudstrip { width:132px; flex:0 0 auto; display:flex; flex-direction:column; gap:3px; }
+  .hudstrip .lbl { font-size:10px; letter-spacing:.14em; color:var(--dim); text-transform:uppercase; }
+  .hudstrip .bar { height:14px; }
+  .hudstrip .bar > i { background:linear-gradient(180deg,#5aa2d8,#22506f); }
+  .hudstrip .tgt { font-size:11px; color:var(--text); }
+  .hudstrip .tgt em { font-style:normal; color:var(--dim); }
+  .hudstrip.dry .lbl { color:#ff6b6b; }
+  .btn { position:relative; width:74px; height:74px; flex:0 0 auto; border:1px solid var(--edge); border-radius:3px;
     background:linear-gradient(180deg,#241b16,#140f0c); color:var(--text); cursor:pointer; overflow:hidden;
     display:flex; flex-direction:column; align-items:center; justify-content:center; gap:2px; padding:4px; }
   .btn:hover:not(:disabled) { border-color:var(--fire); }
-  .btn:disabled { opacity:.45; cursor:default; }
+  /* Unusable buttons stay clickable so the log can say why. */
+  .btn.off { opacity:.4; }
+  .btn.off .ic { filter:grayscale(1); }
   .btn .ic { font-size:20px; line-height:1; color:var(--ember); }
   .btn .nm { font-size:9px; text-align:center; letter-spacing:.02em; color:var(--text); line-height:1.1; }
   .btn .key { position:absolute; top:2px; left:4px; font:11px/1 Impact,sans-serif; color:var(--dim); }
@@ -122,8 +140,9 @@
   .btn .sweep { position:absolute; inset:0; background:rgba(0,0,0,.72); display:flex; align-items:center;
     justify-content:center; font:16px/1 Impact,sans-serif; color:#fff; }
   .btn.gcd::after { content:""; position:absolute; inset:0; background:rgba(120,140,200,.14); }
+  .btn.queued { border-color:var(--gold); box-shadow:0 0 0 1px rgba(232,196,106,.35) inset; }
 
-  .log { padding:6px 8px; overflow-y:auto; font:11px/1.5 ui-monospace,"Consolas","Courier New",monospace; height:150px; }
+  .log { padding:6px 8px; overflow-y:auto; font:11px/1.5 ui-monospace,"Consolas","Courier New",monospace; height:100%; }
   .log div { white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
   .log .t { color:#57493d; }
   .log .damage-taken { color:#ff8f6b; } .log .damage-done { color:#9fb4c9; }
@@ -131,6 +150,31 @@
   .log .death { color:#ff4d4d; } .log .interrupt { color:#8be2ff; } .log .dispel { color:#9ec8ff; }
   .log .phase, .log .enrage, .log .win { color:var(--gold); font-weight:bold; }
   .log .buff, .log .debuff, .log .taunt, .log .spawn, .log .cast { color:#a08f7e; }
+
+  /* ---------- fitting smaller windows ---------- */
+  @media (max-height: 840px) {
+    .frame { padding:4px 6px; }
+    .frame-top b { font-size:12px; }
+    .bar.hp { height:14px; }
+    .castline { display:none; }
+    .boss-name { font-size:22px; }
+    .btn { width:66px; height:66px; }
+  }
+  @media (max-height: 700px) {
+    .pips { min-height:0; }
+    .pip { font-size:9px; }
+    .btn { width:60px; height:60px; }
+    .btn .nm { font-size:8px; }
+    .btn .ic { font-size:16px; }
+  }
+  @media (max-width: 1150px) {
+    .mid { grid-template-columns:250px minmax(0,1fr); }
+    #sidePanel { display:none; }
+  }
+  @media (max-width: 900px) {
+    .mid { grid-template-columns:220px minmax(0,1fr); }
+    .btn { width:58px; height:58px; }
+  }
 
   /* ---------- overlays ---------- */
   .overlay { position:fixed; inset:0; background:rgba(6,4,3,.9); display:flex; align-items:center;
@@ -165,11 +209,11 @@
 
   <div class="mid">
     <div class="col">
-      <div class="panel" style="flex:0 0 auto"><div class="hdr">Strike Team</div><div class="frames" id="raidFrames"></div></div>
-      <div class="panel side" id="threatPanel" style="flex:1 1 auto; overflow:auto"></div>
+      <div class="panel stack"><div class="hdr">Strike Team</div><div class="frames" id="raidFrames"></div></div>
+      <div class="panel side fixed" id="threatPanel"></div>
     </div>
     <div class="panel arena"><div class="grid" id="grid"></div></div>
-    <div class="panel side col" id="sidePanel" style="overflow:auto"></div>
+    <div class="panel side" id="sidePanel" style="overflow:auto"></div>
   </div>
 
   <div class="bottom">

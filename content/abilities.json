@@ -31,14 +31,14 @@
   "stimpack": {
     "id": "stimpack", "name": "Stimpack", "icon": "✚",
     "castTicks": 0, "gcdTicks": 15, "cooldownTicks": 0, "cost": 10,
-    "targeting": "lowestAlly", "range": 5,
-    "desc": "Fast, cheap heal on whoever is lowest.",
+    "targeting": "ally", "range": 5,
+    "desc": "Fast, cheap heal. Click a raid frame to pick a target, or let it find the lowest.",
     "effects": [{ "type": "heal", "amount": 105000 }]
   },
   "medkit": {
     "id": "medkit", "name": "Medkit", "icon": "✚✚",
     "castTicks": 20, "gcdTicks": 15, "cooldownTicks": 0, "cost": 22,
-    "targeting": "lowestAlly", "range": 5,
+    "targeting": "ally", "range": 5,
     "desc": "2s cast, big heal. Moving cancels it.",
     "effects": [{ "type": "heal", "amount": 235000 }]
   },

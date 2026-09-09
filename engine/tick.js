@@ -275,19 +275,18 @@ function aiPass(state, content) {
 function playerPass(state, content, inputQueue) {
   const player = state.playerId ? unitById(state, state.playerId) : null;
   if (!player) return;
+  // Target changes are selection, not actions -- they never wait behind a
+  // queued cast, so clicking a frame always feels instant.
+  while (inputQueue.length && inputQueue[0].type.startsWith('target')) {
+    const pick = inputQueue.shift();
+    if (pick.type === 'targetEnemy') state.playerTarget = pick.unitId;
+    // Clicking your current ally target again drops back to automatic targeting.
+    else state.playerAllyTarget = state.playerAllyTarget === pick.unitId ? null : pick.unitId;
+  }
   if (!inputQueue.length) return;
 
   const input = inputQueue.shift();
   if (input.expires !== undefined && state.tick > input.expires) return;
-
-  if (input.type === 'targetEnemy') {
-    state.playerTarget = input.unitId;
-    return;
-  }
-  if (input.type === 'targetAlly') {
-    state.playerAllyTarget = input.unitId;
-    return;
-  }
   if (!player.alive) return;
 
   if (input.type === 'move') {
@@ -308,7 +307,7 @@ function playerPass(state, content, inputQueue) {
       return;
     }
     // Small input queue window, like every action game you have played.
-    if (input.expires === undefined) input.expires = state.tick + 8;
+    if (input.expires === undefined) input.expires = state.tick + 15;
     if (state.tick < input.expires) inputQueue.unshift(input);
     else log(state, castBlockedReason(state, content, player, input.abilityId, target), 'info');
   }

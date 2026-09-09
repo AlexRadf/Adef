@@ -169,8 +169,11 @@ export function resolveTarget(state, content, unit, ability, preferred = null) {
       const hit = livingParty(state).find((u) => dispellable(u, DISPEL_TYPES).length);
       return hit || preferred || unit;
     }
-    case 'ally':
-      return preferred && preferred.alive && preferred.team === 'party' ? preferred : unit;
+    case 'ally': {
+      if (preferred && preferred.alive && preferred.team === 'party') return preferred;
+      const party = livingParty(state);
+      return party.slice().sort((a, b) => a.hp / a.maxHp - b.hp / b.maxHp)[0] || unit;
+    }
     default:
       return null;
   }

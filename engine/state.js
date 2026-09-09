@@ -73,6 +73,5 @@ export function createState(content, options = {}) {
     for (const p of u.passives) applyAura(state, content, u.id, u, p, { durationTicks: 0 });
   }
 
-  state.playerAllyTarget = state.playerId;
   return state;
 }
