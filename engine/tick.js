@@ -35,10 +35,19 @@ import { pick } from './rng.js';
 import { runBot, resolveTarget, nearestTo } from './ai.js';
 import { TICKS_PER_SECOND } from './clock.js';
 
+// Tactical pause: orders are given while the world is frozen and take
+// effect when it resumes. Same phase-7 code path, no tick advance.
+export function applyOrders(state, content, inputQueue = []) {
+  if (state.over) return state;
+  playerPass(state, content, inputQueue);
+  return state;
+}
+
 export function step(state, content, inputQueue = []) {
   if (state.over) return state;
 
   state.tick++;                              // 1
+  state.events = [];
   regenResources(state);
   resolveCastsAndMoves(state, content);      // 2
   auraPass(state, content);                  // 3
@@ -324,79 +333,107 @@ function aiPass(state, content) {
 /* --------------------------------------------------------------- 7 */
 
 function playerPass(state, content, inputQueue) {
-  const player = state.playerId ? unitById(state, state.playerId) : null;
-  if (!player) return;
+  if (!state.playerIds.length) return;
 
-  // Selection is not an action. Target picks, aim and held movement keys
-  // never wait behind a queued cast, so the controls always feel live.
+  // Selection is not an action. Target picks, aim, held movement keys and
+  // switching who you are commanding never wait behind a queued cast, so
+  // the controls always feel live.
   while (inputQueue.length && SELECTION_INPUTS.has(inputQueue[0].type)) {
-    applySelection(state, player, inputQueue.shift());
+    applySelection(state, inputQueue.shift());
   }
   if (!inputQueue.length) return;
 
-  const input = inputQueue.shift();
-  if (input.expires !== undefined && state.tick > input.expires) return;
-  if (!player.alive) return;
+  // One action per controlled unit per tick. In solo that is the same
+  // single action as before; in commander it means four orders can land
+  // together instead of trickling out one tick at a time.
+  const acted = new Set();
+  const deferred = [];
 
-  if (SELECTION_INPUTS.has(input.type)) {
-    applySelection(state, player, input);
-    return;
-  }
-
-  if (input.type === 'move') {
-    orderMove(state, player, input.pos);
-    return;
-  }
-
-  if (input.type === 'cast') {
-    const ability = content.abilities[input.abilityId];
-    if (!ability) return;
-    const target = resolveTarget(state, content, player, ability, playerPreference(state, player, ability));
-    if (canUseAbility(state, content, player, input.abilityId, target)) {
-      if (target && target !== player) faceToward(player, target.pos);
-      startAbility(state, content, player, input.abilityId, target);
-      return;
+  while (inputQueue.length) {
+    const input = inputQueue.shift();
+    if (SELECTION_INPUTS.has(input.type)) {
+      applySelection(state, input);
+      continue;
     }
-    // Small input queue window, like every action game you have played.
-    if (input.expires === undefined) input.expires = state.tick + 15;
-    if (state.tick < input.expires) inputQueue.unshift(input);
-    else log(state, castBlockedReason(state, content, player, input.abilityId, target), 'info');
+    const unit = commandedUnit(state, input);
+    if (!unit) continue;
+    if (acted.has(unit.id)) {
+      deferred.push(input);
+      continue;
+    }
+    if (input.expires !== undefined && state.tick > input.expires) continue;
+    if (!unit.alive) continue;
+
+    if (input.type === 'move') {
+      orderMove(state, unit, input.pos);
+      acted.add(unit.id);
+      continue;
+    }
+
+    if (input.type === 'cast') {
+      const ability = content.abilities[input.abilityId];
+      if (!ability) continue;
+      const target = resolveTarget(state, content, unit, ability, playerPreference(state, unit, ability));
+      if (canUseAbility(state, content, unit, input.abilityId, target)) {
+        if (target && target !== unit) faceToward(unit, target.pos);
+        startAbility(state, content, unit, input.abilityId, target);
+        acted.add(unit.id);
+        continue;
+      }
+      // Small input queue window, like every action game you have played.
+      if (input.expires === undefined) input.expires = state.tick + 15;
+      if (state.tick < input.expires) deferred.push(input);
+      else log(state, castBlockedReason(state, content, unit, input.abilityId, target), 'info');
+    }
   }
+
+  for (const input of deferred) inputQueue.push(input);
 }
 
-const SELECTION_INPUTS = new Set(['targetEnemy', 'targetAlly', 'aim', 'moveDir']);
+const SELECTION_INPUTS = new Set(['targetEnemy', 'targetAlly', 'aim', 'moveDir', 'select']);
 
-function applySelection(state, player, input) {
+// Which unit an input speaks for: the one it names, else whoever is
+// currently selected.
+function commandedUnit(state, input) {
+  const id = input.unitId && state.playerIds.includes(input.unitId) ? input.unitId : state.activeId;
+  const unit = unitById(state, id);
+  return unit && state.playerIds.includes(unit.id) ? unit : null;
+}
+
+function applySelection(state, input) {
+  if (input.type === 'select') {
+    if (state.playerIds.includes(input.unitId)) state.activeId = input.unitId;
+    return;
+  }
+  const unit = commandedUnit(state, input);
+  if (!unit) return;
   switch (input.type) {
     case 'targetEnemy':
-      state.playerTarget = input.unitId;
+      unit.playerTarget = input.unitId;
       return;
     case 'targetAlly':
       // Clicking your current ally target again drops back to automatic.
-      state.playerAllyTarget = state.playerAllyTarget === input.unitId ? null : input.unitId;
+      unit.playerAllyTarget = unit.playerAllyTarget === input.unitId ? null : input.unitId;
       return;
     case 'aim':
       state.playerAim = { x: input.x, y: input.y };
-      if (player.alive) faceToward(player, state.playerAim);
+      if (unit.alive) faceToward(unit, state.playerAim);
       return;
     case 'moveDir':
-      if (player.alive) orderMoveDirection(state, player, vec(input.x, input.y));
+      if (unit.alive) orderMoveDirection(state, unit, vec(input.x, input.y));
       return;
     default:
   }
 }
 
-// Raid scheme: whatever you selected. Arena scheme: whatever the
+// Raid scheme: whatever that unit selected. Arena scheme: whatever the
 // crosshair is nearest to -- no target lock at all.
-function playerPreference(state, player, ability) {
+function playerPreference(state, unit, ability) {
   const wantsAlly = ability.targeting === 'ally' || ability.targeting === 'lowestAlly';
-  if (state.scheme.aim === 'crosshair') {
-    const pool = wantsAlly
-      ? livingParty(state).filter((u) => u.id !== player.id || true)
-      : livingEnemies(state);
-    return nearestTo(pool, state.playerAim);
+  if (state.scheme.aim === 'crosshair' && unit.id === state.activeId) {
+    return nearestTo(wantsAlly ? livingParty(state) : livingEnemies(state), state.playerAim);
   }
-  return wantsAlly ? unitById(state, state.playerAllyTarget) : unitById(state, state.playerTarget);
+  return wantsAlly ? unitById(state, unit.playerAllyTarget) : unitById(state, unit.playerTarget);
 }
 
 /* --------------------------------------------------------------- 8 */
@@ -458,9 +495,9 @@ export function snapshot(state, content) {
     phaseName: content.bosses[state.bossId].phases[Math.max(0, state.phaseIndex)].name || '',
     enraged: state.enraged,
     enrageIn: Math.max(0, (state.enrageTick - state.tick) / TICKS_PER_SECOND),
-    playerId: state.playerId,
-    playerTarget: state.playerTarget,
-    playerAllyTarget: state.playerAllyTarget,
+    playerId: state.activeId,
+    playerIds: [...state.playerIds],
+    mode: { id: state.mode.id, name: state.mode.name, control: state.mode.control },
     boss: boss ? unitView(state, content, boss) : null,
     party: state.units.filter((u) => u.team === 'party').map((u) => unitView(state, content, u)),
     enemies: state.units.filter((u) => u.team === 'enemy').map((u) => unitView(state, content, u)),
@@ -476,7 +513,10 @@ export function snapshot(state, content) {
       minSoakers: h.minSoakers,
     })),
     aim: { ...state.playerAim },
+    events: state.events.slice(),
     scheme: { id: state.scheme.id, name: state.scheme.name, aim: state.scheme.aim },
+    hideTimers: !!state.mods.hideTimers,
+    modifiers: state.modifiers.slice(),
     logLength: state.log.length,
   };
 }
@@ -496,6 +536,9 @@ function unitView(state, content, u) {
     maxResource: u.maxResource,
     resourceName: u.resourceName,
     pos: { x: u.pos.x, y: u.pos.y },
+    controlled: state.playerIds.includes(u.id),
+    targetId: u.playerTarget ?? null,
+    allyTargetId: u.playerAllyTarget ?? null,
     facing: { x: u.facing.x, y: u.facing.y },
     alive: u.alive,
     abilities: u.abilities,

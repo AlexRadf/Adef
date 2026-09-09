@@ -176,6 +176,38 @@ export const conditions = {
   enrageSoon: (state, content, unit, seconds) => state.enrageTick - state.tick <= Number(seconds) * 10,
 };
 
+// Human-facing descriptions of the registry, so the gambit editor can
+// offer the real conditions rather than a hand-maintained copy of them.
+// A test asserts these two stay in step.
+export const CONDITION_SPECS = [
+  { id: 'always', label: 'always', args: [] },
+  { id: 'selfCellUnsafe', label: 'I am standing in something', args: [] },
+  { id: 'selfBelowPct', label: 'my health is below', args: [{ suffix: '%', value: 50 }] },
+  { id: 'allyBelowPct', label: 'any ally is below', args: [{ suffix: '%', value: 70 }] },
+  { id: 'partyAvgBelowPct', label: 'the party average is below', args: [{ suffix: '%', value: 75 }] },
+  { id: 'allyHasDispellable', label: 'an ally has something dispellable', args: [] },
+  { id: 'bossCastingInterruptible', label: 'the boss is casting something interruptible', args: [] },
+  { id: 'bossCasting', label: 'the boss is casting anything', args: [] },
+  { id: 'notThreatLeader', label: 'I am not the threat leader', args: [] },
+  { id: 'hasAuraStacks', label: 'I have stacks of', args: [{ value: 'scorched' }, { prefix: '≥', value: 2 }] },
+  { id: 'selfHasAura', label: 'I have the aura', args: [{ value: 'riftMark' }] },
+  { id: 'cooldownReady', label: 'ability is off cooldown', args: [{ value: 'pentagram' }] },
+  { id: 'addAlive', label: 'an add is alive', args: [] },
+  { id: 'stackMarkerActive', label: 'a stack marker is down', args: [] },
+  { id: 'soakNeeded', label: 'a soak needs bodies', args: [] },
+  { id: 'outOfMelee', label: 'I am out of melee range', args: [] },
+  { id: 'resourceBelowPct', label: 'my resource is below', args: [{ suffix: '%', value: 30 }] },
+  { id: 'enrageSoon', label: 'enrage is within', args: [{ suffix: 's', value: 30 }] },
+];
+
+export const ACTION_SPECS = [
+  { id: 'moveToSafe', label: 'step out of the fire' },
+  { id: 'moveToStack', label: 'go to the stack marker' },
+  { id: 'moveToSoak', label: 'go soak' },
+  { id: 'moveToBoss', label: 'get into melee' },
+  { id: 'wait', label: 'do nothing' },
+];
+
 export function checkCondition(state, content, unit, expr) {
   const [name, ...args] = String(expr).split(':');
   const fn = conditions[name];

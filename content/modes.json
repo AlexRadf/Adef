@@ -1,0 +1,26 @@
+{
+  "solo": {
+    "id": "solo",
+    "name": "Solo",
+    "control": "one",
+    "tagline": "You play one character. Three bots fill the rest.",
+    "blurb": "The raid game as it is normally played: you are responsible for one job and you have to trust — or work around — the three priority lists standing next to you.",
+    "pauseOn": []
+  },
+  "commander": {
+    "id": "commander",
+    "name": "Commander",
+    "control": "all",
+    "tagline": "You drive all four. Tactical pause.",
+    "blurb": "Nobody runs a priority list — every ability of every character is yours. F1–F4 or a click switches who you are commanding, and the fight pauses itself whenever something happens that you would want to react to. Real-time-with-pause, not a raid.",
+    "pauseOn": ["telegraph", "interruptible", "death", "phase"]
+  },
+  "gambit": {
+    "id": "gambit",
+    "name": "Gambit",
+    "control": "none",
+    "tagline": "You write the priority lists, then watch.",
+    "blurb": "You do not play the fight at all — you program the four bots and press pull. The condition registry and every ability are yours to arrange, and you can run hundreds of headless pulls of a build before you watch a single one.",
+    "pauseOn": []
+  }
+}

@@ -10,7 +10,7 @@ import { createState } from './engine/state.js';
 import { step } from './engine/tick.js';
 
 function parseArgs(argv) {
-  const args = { boss: 'chthon', party: 'default', scheme: 'raid', runs: 100, seed: 1, verbose: false };
+  const args = { boss: 'chthon', party: 'default', scheme: 'raid', modifiers: '', runs: 100, seed: 1, verbose: false };
   for (let i = 0; i < argv.length; i++) {
     const a = argv[i];
     if (a === '--verbose') args.verbose = true;
@@ -18,6 +18,7 @@ function parseArgs(argv) {
   }
   args.runs = Number(args.runs);
   args.seed = Number(args.seed);
+  args.modifiers = args.modifiers ? String(args.modifiers).split(',').filter(Boolean) : [];
   return args;
 }
 
@@ -33,7 +34,12 @@ const content = applyScheme(await loadContent(), args.scheme);
 const results = [];
 const started = Date.now();
 for (let i = 0; i < args.runs; i++) {
-  const state = runOnce(content, { boss: args.boss, party: args.party, seed: args.seed + i * 7919 });
+  const state = runOnce(content, {
+    boss: args.boss,
+    party: args.party,
+    modifiers: args.modifiers,
+    seed: args.seed + i * 7919,
+  });
   const boss = state.units.find((u) => u.id === state.bossId);
   results.push({
     result: state.result,
@@ -74,7 +80,10 @@ for (const r of results) {
   }
 }
 
-console.log(`\nboss ${args.boss} · party ${args.party} · ${content.scheme.name.toLowerCase()} controls · ${args.runs} runs · ${Date.now() - started}ms`);
+console.log(
+  `\nboss ${args.boss} · party ${args.party} · ${content.scheme.name.toLowerCase()} controls` +
+    `${args.modifiers.length ? ` · ${args.modifiers.join('+')}` : ''} · ${args.runs} runs · ${Date.now() - started}ms`
+);
 console.log(`win rate ${((kills.length / results.length) * 100).toFixed(1)}%`);
 console.log(`median kill ${mmss(median(kills.map((r) => r.seconds)))}`);
 console.log(

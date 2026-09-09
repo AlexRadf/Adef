@@ -13,6 +13,8 @@ const FILES = {
   units: 'units.json',
   parties: 'parties.json',
   schemes: 'schemes.json',
+  modes: 'modes.json',
+  modifiers: 'modifiers.json',
 };
 
 const BOSSES = ['chthon'];

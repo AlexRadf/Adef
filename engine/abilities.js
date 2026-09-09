@@ -23,15 +23,21 @@ export const DEFAULT_GCD_TICKS = 15;
 // The control scheme decides the global cooldown and how fast bodies move.
 export const schemeOf = (state) => state.scheme || { gcd: 1.5, moveSpeed: 2.5, aim: 'target' };
 export const gcdTicksOf = (state) => Math.round(schemeOf(state).gcd * TICKS_PER_SECOND);
+export const telegraphScaleOf = (state) =>
+  (schemeOf(state).telegraphScale ?? 1) * (state.mods?.telegraphScale ?? 1);
 
 export const unitById = (state, id) => state.units.find((u) => u.id === id) || null;
 export const living = (state) => state.units.filter((u) => u.alive);
 export const livingParty = (state) => state.units.filter((u) => u.alive && u.team === 'party');
 export const livingEnemies = (state) => state.units.filter((u) => u.alive && u.team === 'enemy');
 
+// Events worth stopping the world for, when a mode asks for tactical pause.
+const PAUSE_WORTHY = new Set(['telegraph', 'death', 'phase', 'enrage', 'spawn', 'mechanic']);
+
 export function log(state, text, kind = 'info') {
   state.logSeq = (state.logSeq || 0) + 1;
   state.log.push({ seq: state.logSeq, tick: state.tick, text, kind });
+  if (PAUSE_WORTHY.has(kind)) state.events.push({ kind, text });
   if (state.log.length > 400) state.log.shift();
 }
 
@@ -274,7 +280,8 @@ const effectHandlers = {
     const spec = { ...e, ...(ctx.overrides || {}) };
     const taken = new Set(state.hazards.map((h) => cellOf(h)));
     const free = allCells().filter((c) => !taken.has(c));
-    const chosen = pickMany(state, free.length ? free : allCells(), spec.count || 1);
+    const wanted = (spec.count || 1) + (state.mods?.geyserExtra || 0);
+    const chosen = pickMany(state, free.length ? free : allCells(), wanted);
     for (const c of chosen) markArea(state, cellCenter(c), ctx.caster.id, spec);
     log(state, `${ctx.caster.name} — ${ctx.abilityName} — ${chosen.length} tiles begin to glow`, 'telegraph');
   },
@@ -291,11 +298,20 @@ const effectHandlers = {
   },
 
   summon(state, content, ctx, e) {
-    for (let i = 0; i < (e.count || 1); i++) {
+    const total = Math.max(1, (e.count || 1) + (state.mods?.addCountDelta || 0));
+    for (let i = 0; i < total; i++) {
       const template = content.units[e.unit];
       const id = `${e.unit}${++state.spawnCounter}`;
       const away = allCells().filter((c) => c !== cellOf(ctx.caster.pos));
-      state.units.push(makeUnit(state, content, { ...template, id, cell: pick(state, away) }));
+      const hpScale = state.mods?.addHpScale ?? 1;
+      state.units.push(
+        makeUnit(state, content, {
+          ...template,
+          id,
+          cell: pick(state, away),
+          maxHp: Math.round(template.maxHp * hpScale),
+        })
+      );
       log(state, `${template.name} joins the fight!`, 'spawn');
     }
   },
@@ -313,7 +329,7 @@ export function markArea(state, pos, sourceId, e) {
     y: pos.y,
     half: e.half ?? TILE_HALF,
     markedAt: state.tick,
-    detonatesAt: state.tick + Math.round((e.delayTicks || 30) * (schemeOf(state).telegraphScale ?? 1)),
+    detonatesAt: state.tick + Math.max(3, Math.round((e.delayTicks || 30) * telegraphScaleOf(state))),
     damage: e.damage || 0,
     minSoakers: e.minSoakers || 0,
     raidDamage: e.raidDamage || 0,
@@ -431,6 +447,7 @@ export function startAbility(state, content, unit, abilityId, target, cell = nul
     unit.castCell = cell;
     unit.castOverrides = overrides;
     log(state, `${unit.name} begins casting ${ability.name}${target ? ` on ${target.name}` : ''}`, 'cast');
+    if (ability.interruptible) state.events.push({ kind: 'interruptible', text: ability.name });
     return;
   }
   resolveAbility(state, content, unit, abilityId, target, cell, overrides);

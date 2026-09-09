@@ -15,7 +15,14 @@ import {
 } from '../engine/abilities.js';
 import { applyAura } from '../engine/auras.js';
 import { distance, cellCenter, contains, vec } from '../engine/geometry.js';
-import { urgentGather, committedArea } from '../engine/ai.js';
+import {
+  urgentGather,
+  committedArea,
+  conditions,
+  performAction,
+  CONDITION_SPECS,
+  ACTION_SPECS,
+} from '../engine/ai.js';
 import { toTicks, TICKS_PER_SECOND } from '../engine/clock.js';
 
 const base = await loadContent();
@@ -176,6 +183,78 @@ test('snapshot is renderable and never leaks live units', () => {
   view.party[0].pos.x = 99;
   assert.ok(unitById(state, view.party[0].id).hp > -1);
   assert.notEqual(unitById(state, view.party[0].id).pos.x, 99);
+});
+
+/* ------------------------------------------------------------- modes */
+
+test('a play mode decides how much of the party you drive', () => {
+  const counts = {};
+  for (const mode of ['solo', 'commander', 'gambit']) {
+    const state = createState(content, { seed: 1, mode, playerRole: 'healer' });
+    counts[mode] = state.playerIds.length;
+    for (const u of state.units.filter((x) => x.team === 'party')) {
+      assert.equal(!!u.ai, !state.playerIds.includes(u.id), 'a unit is either yours or a bot, never both');
+    }
+  }
+  assert.deepEqual(counts, { solo: 1, commander: 4, gambit: 0 });
+});
+
+test('headless runs stay all-bot whatever the mode says', () => {
+  const state = createState(content, { seed: 1, mode: 'commander', headless: true });
+  assert.equal(state.playerIds.length, 0);
+  assert.ok(state.units.filter((u) => u.team === 'party').every((u) => u.ai));
+});
+
+test('every AI condition and action the editor offers actually exists', () => {
+  for (const spec of CONDITION_SPECS) {
+    assert.ok(conditions[spec.id], `editor offers unknown condition ${spec.id}`);
+  }
+  for (const id of Object.keys(conditions)) {
+    assert.ok(CONDITION_SPECS.some((s) => s.id === id), `condition ${id} is missing an editor label`);
+  }
+  const state = createState(content, { seed: 1, headless: true });
+  const unit = unitById(state, 'crash');
+  for (const spec of ACTION_SPECS) {
+    assert.doesNotThrow(() => performAction(state, content, unit, spec.id), `action ${spec.id} is not implemented`);
+  }
+});
+
+test('an edited priority list changes the fight', () => {
+  const lazy = structuredClone(content.ai);
+  lazy.healer.priority = [{ else: true, do: 'wait' }]; // a healer who does nothing
+  const c = { ...content, ai: lazy };
+  const state = createState(c, { seed: 11, headless: true });
+  while (!state.over) step(state, c, []);
+  assert.equal(state.result, 'wipe', 'no healing should not be survivable');
+});
+
+/* --------------------------------------------------------- modifiers */
+
+test('modifiers stack into one set of knobs', () => {
+  const plain = createState(content, { seed: 1, headless: true });
+  const loaded = createState(content, {
+    seed: 1,
+    headless: true,
+    modifiers: ['volcanic', 'quickening', 'shortFuse', 'fogOfWar'],
+  });
+  assert.equal(loaded.mods.geyserExtra, content.modifiers.volcanic.geyserExtra);
+  assert.equal(loaded.mods.telegraphScale, content.modifiers.quickening.telegraphScale);
+  assert.ok(loaded.enrageTick < plain.enrageTick);
+  assert.equal(loaded.mods.hideTimers, true);
+  assert.throws(() => createState(content, { seed: 1, modifiers: ['nonsense'] }), /unknown modifier/);
+});
+
+test('a modifier actually changes the fight it describes', () => {
+  const count = (mods) => {
+    const state = createState(content, { seed: 9, headless: true, modifiers: mods });
+    let most = 0;
+    for (let i = 0; i < 400; i++) {
+      step(state, content, []);
+      most = Math.max(most, state.hazards.filter((h) => h.kind === 'blast').length);
+    }
+    return most;
+  };
+  assert.ok(count(['volcanic']) > count([]), 'Volcanic should put more tiles on the floor');
 });
 
 test('the tick rate lives in exactly one place', () => {

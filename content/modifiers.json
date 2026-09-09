@@ -1,0 +1,38 @@
+{
+  "volcanic": {
+    "id": "volcanic",
+    "name": "Volcanic",
+    "desc": "Lava Geyser marks two extra tiles.",
+    "geyserExtra": 2,
+    "bots": "18%"
+  },
+  "quickening": {
+    "id": "quickening",
+    "name": "Quickening",
+    "desc": "Every telegraph resolves 45% sooner.",
+    "telegraphScale": 0.55,
+    "bots": "26%"
+  },
+  "shortFuse": {
+    "id": "shortFuse",
+    "name": "Short Fuse",
+    "desc": "Chthon takes the Quad Damage 55s early. Your kill has to beat it.",
+    "enrageDelta": -55,
+    "bots": "17%"
+  },
+  "swarm": {
+    "id": "swarm",
+    "name": "Swarm",
+    "desc": "Twice as many Scrags, at less than half the health each.",
+    "addCountDelta": 2,
+    "addHpScale": 0.45,
+    "bots": "26%"
+  },
+  "fogOfWar": {
+    "id": "fogOfWar",
+    "name": "Fog of War",
+    "desc": "No countdowns on the ground. Read the fight, not the numbers.",
+    "hideTimers": true,
+    "bots": "45%"
+  }
+}

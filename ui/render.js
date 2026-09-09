@@ -23,7 +23,7 @@ const setClass = (node, name, on) => node.classList.toggle(name, !!on);
 let R = null;
 
 export function render(view, content, hud = {}) {
-  if (!R || R.playerId !== view.playerId) R = build(view, content);
+  if (!R || R.playerId !== view.playerId || R.mode !== view.mode.id) R = build(view, content);
   paintBoss(view);
   paintFrames(view, hud);
   paintGrid(view);
@@ -39,7 +39,7 @@ export function resetRenderer() {
 /* ----------------------------------------------------------- one-time */
 
 function build(view, content) {
-  const refs = { playerId: view.playerId, frames: new Map(), tokens: new Map(), buttons: new Map() };
+  const refs = { playerId: view.playerId, mode: view.mode.id, frames: new Map(), tokens: new Map(), buttons: new Map() };
 
   el('bossFrame').innerHTML = `
     <div>
@@ -87,16 +87,28 @@ function build(view, content) {
   });
   el('tokens').innerHTML = '';
 
+  buildBar(refs);
+
+  return refs;
+}
+
+function buildBar(refs) {
   const bar = el('actionBar');
   bar.innerHTML = `
     <div class="hudstrip" data-r="strip">
       <div class="lbl" data-r="resName"></div>
       <div class="bar"><i data-r="resFill"></i><span><b data-r="resText"></b></span></div>
       <div class="tgt" data-r="tgt"></div>
-    </div>`;
+    </div>
+    <div class="btns" data-r="btns"></div>`;
   refs.hud = collect(bar);
-  const player = view.party.find((u) => u.id === view.playerId);
-  (player ? player.abilities : []).forEach((id, i) => {
+}
+
+// The four buttons belong to whichever unit you are driving right now.
+function buildButtons(view, content, player) {
+  R.buttons = new Map();
+  R.hud.btns.innerHTML = '';
+  player.abilities.forEach((id, i) => {
     const a = content.abilities[id];
     const btn = document.createElement('button');
     btn.className = 'btn';
@@ -109,11 +121,9 @@ function build(view, content) {
       <span class="nm">${a.name}</span>
       ${a.cost ? `<span class="cost" data-r="cost">${a.cost}</span>` : ''}
       <span class="sweep" data-r="sweep" hidden></span>`;
-    bar.appendChild(btn);
-    refs.buttons.set(id, { node: btn, ...collect(btn) });
+    R.hud.btns.appendChild(btn);
+    R.buttons.set(id, { node: btn, ...collect(btn) });
   });
-
-  return refs;
 }
 
 // Map every [data-r] descendant to a named reference.
@@ -152,16 +162,18 @@ function paintFrames(view, hud) {
   for (const u of view.party) {
     const r = R.frames.get(u.id);
     if (!r) continue;
-    setText(r.name, u.id === view.playerId ? `${u.name} (you)` : u.name);
+    const slot = view.playerIds.indexOf(u.id);
+    setText(r.name, view.mode.control === 'all' && slot >= 0 ? `F${slot + 1} ${u.name}` : u.name);
     setText(r.title, u.title || u.role);
     setWidth(r.hpFill, pct(u.hp, u.maxHp));
     setText(r.hpText, u.alive ? num(u.hp) : 'DEAD');
     setText(r.hpPct, u.alive ? `${Math.round(u.hpPct)}%` : '');
     setWidth(r.resFill, pct(u.resource, u.maxResource));
     setClass(r.node, 'you', u.id === view.playerId);
+    setClass(r.node, 'mine', view.playerIds.includes(u.id) && u.id !== view.playerId);
     setClass(r.node, 'dead', !u.alive);
-    setClass(r.node, 'target', u.id === view.playerAllyTarget);
-    setClass(r.node, 'auto-target', !view.playerAllyTarget && u.id === hud.autoHealTarget);
+    setClass(r.node, 'target', u.id === activeAllyTarget(view));
+    setClass(r.node, 'auto-target', !activeAllyTarget(view) && u.id === hud.autoHealTarget);
     setText(r.cast, u.cast ? `▸ ${u.cast.name} ${u.cast.remaining.toFixed(1)}s` : u.moving ? '▸ moving' : '');
 
     const auras = u.auras.filter(visiblePip);
@@ -172,6 +184,9 @@ function paintFrames(view, hud) {
     }
   }
 }
+
+const activeUnit = (view) => view.party.find((u) => u.id === view.playerId) || null;
+const activeAllyTarget = (view) => (activeUnit(view) || {}).allyTargetId || null;
 
 // Permanent, helpful auras are role passives -- flavour, not information.
 const visiblePip = (a) => a.harmful || a.remaining !== null;
@@ -195,7 +210,7 @@ function paintGrid(view) {
     setClass(r.node, 'blast', h && h.kind === 'blast');
     setClass(r.node, 'split', h && h.kind === 'split');
     setClass(r.node, 'soak', h && h.kind === 'soak');
-    setText(r.cd, h ? Math.max(0, h.remaining).toFixed(1) : '');
+    setText(r.cd, h && !view.hideTimers ? Math.max(0, h.remaining).toFixed(1) : '');
     setText(r.tag, h ? (h.kind === 'split' ? 'STACK' : h.kind === 'soak' ? `SOAK ${h.minSoakers}+` : h.name) : '');
   }
 
@@ -204,13 +219,16 @@ function paintGrid(view) {
     let token = R.tokens.get(u.id);
     if (!token) {
       token = document.createElement('div');
-      token.className = `token ${u.role}${u.id === view.playerId ? ' you' : ''}`;
+      token.className = `token ${u.role}`;
+      token.dataset.unit = u.id;
       token.innerHTML = `<span>${ROLE_LETTER[u.role] || '?'}</span><i class="aim" hidden></i>`;
       layer.appendChild(token);
       R.tokens.set(u.id, token);
     }
     token.hidden = !u.alive;
     token.title = `${u.name} — ${num(u.hp)}`;
+    setClass(token, 'you', u.id === view.playerId);
+    setClass(token, 'mine', view.playerIds.includes(u.id) && u.id !== view.playerId);
     setClass(token, 'moving', u.moving);
     token.style.left = `${(u.pos.x / 5) * 100}%`;
     token.style.top = `${(u.pos.y / 5) * 100}%`;
@@ -238,8 +256,15 @@ const cellIndexOf = (p) =>
   Math.min(4, Math.max(0, Math.floor(p.y))) * 5 + Math.min(4, Math.max(0, Math.floor(p.x)));
 
 function paintActions(view, content, hud) {
-  const player = view.party.find((u) => u.id === view.playerId);
+  const player = activeUnit(view);
+  const bar = el('actionBar');
+  bar.hidden = !player;
   if (!player) return;
+  // In commander mode the bar follows whoever you are currently driving.
+  if (R.barFor !== player.id) {
+    buildButtons(view, content, player);
+    R.barFor = player.id;
+  }
 
   const h = R.hud;
   setText(h.resName, player.resourceName);
@@ -254,7 +279,7 @@ function paintActions(view, content, hud) {
     const auto = view.party.find((u) => u.id === hud.autoHealTarget);
     setText(h.tgt, ally ? `▸ ${ally.name}` : auto ? `▸ ${auto.name} (auto)` : '');
   } else {
-    const foe = view.enemies.find((e) => e.id === view.playerTarget);
+    const foe = view.enemies.find((e) => e.id === player.targetId);
     setText(h.tgt, foe ? `▸ ${foe.name}` : '');
   }
 
@@ -290,7 +315,7 @@ function paintThreat(view) {
 
 function paintSide(view) {
   const adds = view.enemies.filter((u) => u.role === 'add' && u.alive);
-  const target = view.enemies.find((e) => e.id === view.playerTarget) || view.boss;
+  const target = view.enemies.find((e) => e.id === (activeUnit(view) || {}).targetId) || view.boss;
   const html = `
     <h3>Target</h3>
     <div class="enemy"><b>${target.name}</b> <span style="color:var(--dim)">${Math.round(target.hpPct)}%</span></div>

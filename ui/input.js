@@ -12,7 +12,7 @@
 const ARENA_SIZE = 5;
 
 export function createInput(queue, getView, hooks) {
-  const state = { scheme: 'raid', held: new Set() };
+  const state = { scheme: 'raid', mode: 'solo', held: new Set() };
 
   const push = (action) => {
     if (queue.length > 3) queue.shift();
@@ -40,7 +40,7 @@ export function createInput(queue, getView, hooks) {
 
   grid.addEventListener('pointerdown', (e) => {
     e.preventDefault();
-    if (state.scheme === 'raid') push({ type: 'move', pos: arenaPoint(e) });
+    if (state.scheme === 'raid') push({ type: 'move', pos: arenaPoint(e), unitId: getView()?.playerId });
     else fire(0); // click to fire your first weapon
   });
 
@@ -54,10 +54,18 @@ export function createInput(queue, getView, hooks) {
 
   /* ------------------------------------------------------ the panels */
 
-  document.getElementById('raidFrames').addEventListener('pointerdown', (e) => {
+  // Clicking a party member means "I want to drive you" when you command
+  // the whole party, and "heal that one" when you are driving one slot.
+  // Right-click is always the heal target.
+  const frames = document.getElementById('raidFrames');
+  frames.addEventListener('pointerdown', (e) => {
     const frame = e.target.closest('[data-unit]');
-    if (frame) push({ type: 'targetAlly', unitId: frame.dataset.unit });
+    if (!frame) return;
+    const commanding = state.mode === 'commander';
+    if (e.button === 2 || !commanding) push({ type: 'targetAlly', unitId: frame.dataset.unit });
+    else push({ type: 'select', unitId: frame.dataset.unit });
   });
+  frames.addEventListener('contextmenu', (e) => e.preventDefault());
 
   document.getElementById('sidePanel').addEventListener('pointerdown', (e) => {
     const enemy = e.target.closest('[data-enemy]');
@@ -77,7 +85,7 @@ export function createInput(queue, getView, hooks) {
     const view = getView();
     const player = view && view.party.find((u) => u.id === view.playerId);
     const abilityId = player && player.abilities[slot];
-    if (abilityId) push({ type: 'cast', abilityId });
+    if (abilityId) push({ type: 'cast', abilityId, unitId: player.id });
   };
 
   const MOVE_KEYS = { w: [0, -1], a: [-1, 0], s: [0, 1], d: [1, 0] };
@@ -100,6 +108,16 @@ export function createInput(queue, getView, hooks) {
       return hooks.togglePause();
     }
     if (key === 'r' && !e.repeat) return hooks.reset();
+
+    // F1-F4 switch which character you are commanding.
+    const partySlot = ['f1', 'f2', 'f3', 'f4'].indexOf(key);
+    if (partySlot >= 0) {
+      e.preventDefault();
+      const view = getView();
+      const id = view && view.playerIds[partySlot];
+      if (id) push({ type: 'select', unitId: id });
+      return;
+    }
 
     if (state.scheme === 'arena' && MOVE_KEYS[key]) {
       e.preventDefault();
@@ -138,9 +156,16 @@ export function createInput(queue, getView, hooks) {
     sendHeldDirection();
   });
 
+  // Clicking a token on the grid also picks who you are commanding.
+  document.getElementById('tokens').addEventListener('pointerdown', (e) => {
+    const token = e.target.closest('[data-unit]');
+    if (token && state.mode === 'commander') push({ type: 'select', unitId: token.dataset.unit });
+  });
+
   return {
-    setScheme(id) {
-      state.scheme = id;
+    setScheme(scheme, mode) {
+      state.scheme = scheme;
+      state.mode = mode;
       state.held.clear();
     },
   };

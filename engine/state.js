@@ -15,6 +15,25 @@ export function createState(content, options = {}) {
   // without it we still run, on the default raid rules.
   const scheme = content.scheme || content.schemes[options.scheme || 'raid'];
   if (!scheme) throw new Error(`unknown control scheme: ${options.scheme}`);
+  const mode = content.modes[options.mode || 'solo'];
+  if (!mode) throw new Error(`unknown play mode: ${options.mode}`);
+
+  // Modifiers are stackable encounter tweaks, folded into one object so
+  // the engine reads a single set of knobs rather than a list.
+  const chosen = (options.modifiers || []).map((id) => {
+    const mod = content.modifiers[id];
+    if (!mod) throw new Error(`unknown modifier: ${id}`);
+    return mod;
+  });
+  const mods = { telegraphScale: 1, geyserExtra: 0, addCountDelta: 0, addHpScale: 1, enrageDelta: 0, hideTimers: false };
+  for (const mod of chosen) {
+    mods.telegraphScale *= mod.telegraphScale ?? 1;
+    mods.geyserExtra += mod.geyserExtra ?? 0;
+    mods.addCountDelta += mod.addCountDelta ?? 0;
+    mods.addHpScale *= mod.addHpScale ?? 1;
+    mods.enrageDelta += mod.enrageDelta ?? 0;
+    mods.hideTimers = mods.hideTimers || !!mod.hideTimers;
+  }
 
   const state = {
     tick: 0,
@@ -24,37 +43,51 @@ export function createState(content, options = {}) {
     hazards: [],
     hazardCounter: 0,
     scheme,
+    mode,
+    mods,
+    modifiers: chosen.map((m) => m.id),
     phaseIndex: -1,
     phaseStartTick: 0,
     schedule: [],
-    enrageTick: (bossDef.enrageAtSeconds || 300) * TICKS_PER_SECOND,
+    enrageTick: Math.max(
+      600,
+      ((bossDef.enrageAtSeconds || 300) + (mods.enrageDelta || 0)) * TICKS_PER_SECOND
+    ),
     enraged: false,
     hardStopTick: (options.hardStopSeconds ?? 480) * TICKS_PER_SECOND,
     spawnCounter: 0,
     log: [],
+    events: [],
     over: false,
     result: null,
     bossId: bossDef.id,
-    playerId: null,
-    playerTarget: bossDef.id,
-    playerAllyTarget: null,
+    playerIds: [],
+    activeId: null,
     playerAim: { x: 2.5, y: 2.5 },
     stats: { damageBy: {}, healBy: {}, deaths: [], interrupts: 0 },
   };
 
-  // The player takes over one party slot; the rest stay bots.
+  // How much of the party you drive is the play mode's business:
+  //   one  -- you take a slot, three bots fill the rest
+  //   all  -- every slot is yours, nobody runs a priority list
+  //   none -- you drive nobody; you wrote the priority lists instead
+  const control = options.headless ? 'none' : mode.control;
   const playerRole = options.playerRole || 'dps';
-  let playerAssigned = options.headless === true;
+  let slotTaken = false;
 
   for (const member of partyDef.members) {
     const unit = makeUnit(state, content, { ...member, team: 'party', speed: scheme.moveSpeed });
-    if (!playerAssigned && member.role === playerRole) {
+    const mine = control === 'all' || (control === 'one' && !slotTaken && member.role === playerRole);
+    if (mine) {
       unit.ai = null;
-      state.playerId = unit.id;
-      playerAssigned = true;
+      state.playerIds.push(unit.id);
+      slotTaken = true;
     }
+    unit.playerTarget = bossDef.id;
+    unit.playerAllyTarget = null;
     state.units.push(unit);
   }
+  state.activeId = state.playerIds[0] || null;
 
   state.units.push(
     makeUnit(state, content, {

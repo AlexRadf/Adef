@@ -16,6 +16,41 @@ open http://localhost:8080
 (A static server is needed only because browsers refuse ES modules and `fetch` over
 `file://`. There is nothing to build.)
 
+## Three ways to play it
+
+The mode decides **how much of the party you drive** — it is orthogonal to the control
+scheme below, so any mode combines with either.
+
+| Mode | You are | What it is actually testing |
+|---|---|---|
+| **Solo** | one character, three bots | Doing your job under pressure while trusting three priority lists |
+| **Commander** | all four, with tactical pause | Whole-party decisions. Nobody runs a priority list; `F1`–`F4` or a click switches who you are driving, and the fight pauses itself on anything worth reacting to. Orders given while paused execute on resume |
+| **Gambit** | nobody — you wrote the lists | Systems design. You arrange the four priority lists from the real condition registry, then **run hundreds of headless pulls of your build in the browser** before watching one |
+
+Gambit mode is the one this architecture makes uniquely cheap: `ui/simworker.js` is the
+same headless runner as `sim.js`, in a worker. Editing a list and pressing *run 400 pulls*
+gives you the same win rate `node sim.js` would, in about eight seconds, because the sim
+has no idea whether it is running in a browser or a terminal.
+
+## Modifiers
+
+Stackable encounter tweaks, toggled on the pull screen. Each is a few numbers in
+`content/modifiers.json`, and each was calibrated against the headless runner rather than
+guessed — the bot win rate is on the chip:
+
+| Modifier | Effect | Bots win |
+|---|---|---|
+| — | the encounter as tuned | 45% |
+| **Volcanic** | Lava Geyser marks two extra tiles | 18% |
+| **Quickening** | every telegraph resolves 45% sooner | 24% |
+| **Short Fuse** | Quad Damage 55s early — your kill has to beat it | 16% |
+| **Swarm** | twice as many Scrags, at under half health each | 27% |
+| **Fog of War** | no countdowns on the ground | 45%* |
+
+\* Fog of War costs the bots nothing — they were never reading the numbers. It is aimed
+squarely at you, which is the honest way to describe it. Modifiers stack: Volcanic + Swarm
+is 8.7%.
+
 ## Two control philosophies
 
 The same encounter, the same sim, two ways of playing it — pick one on the pull screen.
@@ -67,14 +102,18 @@ no mechanic-specific code in it.
 
 ```
 /engine   clock.js  geometry.js  rng.js  auras.js  abilities.js  ai.js  state.js  tick.js
-/content  abilities.json  auras.json  units.json  parties.json  schemes.json
-          bosses/*.json  ai/*.json  load.js
-/ui       render.js  input.js  log.js
+/content  abilities.json  auras.json  units.json  parties.json  schemes.json  modes.json
+          modifiers.json  bosses/*.json  ai/*.json  load.js
+/ui       render.js  input.js  log.js  gambit.js  simworker.js
 /tests    engine.test.mjs
 sim.js    headless balance runner (node)
 main.js   browser entry: owns the 100ms clock, nothing else
 index.html
 ```
+
+Every one of those axes — mode, control scheme, modifier, boss, party, ability, aura, bot
+priority list — is a JSON file. The engine gained four small hooks for all of it: who is in
+`state.playerIds`, a global-cooldown lookup, a telegraph multiplier, and an add-count knob.
 
 **The sim never touches the DOM.** It takes state plus an input queue and returns new
 state; the renderer reads a snapshot. That one rule is what lets the identical encounter
@@ -167,7 +206,8 @@ top death causes
 That run is four bots, no human — the player slot is played by its own AI. A human who
 dodges better than a bot should win more often than the coin flip.
 
-Flags: `--boss chthon --party default --scheme raid|arena --runs N --seed N --verbose`.
+Flags: `--boss chthon --party default --scheme raid|arena --modifiers a,b --runs N --seed N
+--verbose`. The same runner is in the browser behind Gambit mode's *run N pulls*.
 
 **It earns its keep as a bug detector, not just a tuning tool.** Three real AI defects
 showed up as a *non-monotonic difficulty curve* — longer telegraphs were making the fight
