@@ -5,12 +5,12 @@
 //   node sim.js --runs 1000
 //   node sim.js --runs 200 --seed 7 --verbose
 
-import { loadContent } from './content/load.js';
+import { loadContent, applyScheme } from './content/load.js';
 import { createState } from './engine/state.js';
 import { step } from './engine/tick.js';
 
 function parseArgs(argv) {
-  const args = { boss: 'chthon', party: 'default', runs: 100, seed: 1, verbose: false };
+  const args = { boss: 'chthon', party: 'default', scheme: 'raid', runs: 100, seed: 1, verbose: false };
   for (let i = 0; i < argv.length; i++) {
     const a = argv[i];
     if (a === '--verbose') args.verbose = true;
@@ -28,7 +28,7 @@ export function runOnce(content, options) {
 }
 
 const args = parseArgs(process.argv.slice(2));
-const content = await loadContent();
+const content = applyScheme(await loadContent(), args.scheme);
 
 const results = [];
 const started = Date.now();
@@ -74,7 +74,7 @@ for (const r of results) {
   }
 }
 
-console.log(`\nboss ${args.boss} · party ${args.party} · ${args.runs} runs · ${Date.now() - started}ms`);
+console.log(`\nboss ${args.boss} · party ${args.party} · ${content.scheme.name.toLowerCase()} controls · ${args.runs} runs · ${Date.now() - started}ms`);
 console.log(`win rate ${((kills.length / results.length) * 100).toFixed(1)}%`);
 console.log(`median kill ${mmss(median(kills.map((r) => r.seconds)))}`);
 console.log(

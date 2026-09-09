@@ -1,8 +1,9 @@
-// Bot AI: a priority list evaluated top to bottom, first match wins.
-// The lists themselves live in /content/ai/*.json -- this file only
-// provides the named condition registry and the action verbs.
+// Bot AI: a priority list evaluated top to bottom; the first rule that
+// both matches AND produces a usable action wins. The lists themselves
+// live in /content/ai/*.json -- this file only provides the named
+// condition registry and the action verbs.
 
-import { distance, allCells, stepToward } from './grid.js';
+import { distance, allCells, cellCenter, clampToArena, contains } from './geometry.js';
 import { auraStacks, hasAura, dispellable } from './auras.js';
 import {
   livingParty,
@@ -26,61 +27,100 @@ export function adds(state) {
   return state.units.filter((u) => u.alive && u.team === 'enemy' && u.role === 'add');
 }
 
-export function hazardAt(state, cell) {
-  return state.cells[cell].hazard;
+export function hazardUnder(state, pos) {
+  return state.hazards.find((h) => contains(h, pos)) || null;
 }
 
 // A bot only "sees" a hazard once its reaction delay has elapsed. This is
 // the single cheapest thing in the project that makes bots feel human.
-function noticedHazard(state, unit, cell) {
-  const h = hazardAt(state, cell);
+function noticedHazard(state, unit) {
+  const h = hazardUnder(state, unit.pos);
   if (!h) return null;
   if (h.kind === 'split' || h.kind === 'soak') return null; // those you walk into
   return state.tick >= h.markedAt + unit.reactionTicks ? h : null;
 }
 
-function cellIsSafe(state, cell, arrivalTick) {
-  const h = state.cells[cell].hazard;
-  if (!h) return true;
-  if (h.kind === 'split' || h.kind === 'soak') return true;
-  return h.detonatesAt < arrivalTick;
+function spotIsSafe(state, pos, arrivalTick) {
+  for (const h of state.hazards) {
+    if (h.kind === 'split' || h.kind === 'soak') continue;
+    if (contains(h, pos) && h.detonatesAt >= arrivalTick) return false;
+  }
+  return true;
 }
 
-export function nearestSafeCell(state, unit) {
+// Step just far enough to be clear, the way a person does -- not to the
+// middle of the next tile. Sampling short offsets first keeps bots from
+// spending more uptime running than the hazard would have cost them.
+// In 3D this samples the navmesh; everything around it is unchanged.
+function safetyCandidates(unit) {
+  const spots = [];
+  for (let i = 0; i < 8; i++) {
+    const angle = (i / 8) * Math.PI * 2;
+    for (const reach of [0.75, 1.2, 1.8]) {
+      spots.push(clampToArena({
+        x: unit.pos.x + Math.cos(angle) * reach,
+        y: unit.pos.y + Math.sin(angle) * reach,
+      }));
+    }
+  }
+  for (const cell of allCells()) spots.push(cellCenter(cell));
+  return spots;
+}
+
+export function nearestSafeSpot(state, unit) {
   let best = null;
   let bestScore = Infinity;
-  for (const cell of allCells()) {
-    const steps = distance(unit.cell, cell);
-    if (steps === 0) continue;
-    const arrival = state.tick + steps * 4;
-    if (!cellIsSafe(state, cell, arrival + 4)) continue;
+  const boss = bossOf(state);
+  for (const spot of safetyCandidates(unit)) {
+    const steps = distance(unit.pos, spot);
+    if (steps < 0.1) continue;
+    const arrival = state.tick + Math.ceil((steps / unit.speed) * 10);
+    if (!spotIsSafe(state, spot, arrival + 6)) continue;
     let score = steps * 10;
-    // Spread-marked units want elbow room; everyone else likes the middle.
+    // Spread-marked units want elbow room; the tank wants to stay in melee.
     if (hasAura(unit, 'riftMark')) {
-      const crowd = livingParty(state).filter((u) => u.id !== unit.id && distance(u.cell, cell) <= 1).length;
-      score += crowd * 40;
+      score += livingParty(state).filter((u) => u.id !== unit.id && distance(u.pos, spot) <= 1).length * 40;
     }
-    const boss = bossOf(state);
-    if (boss && unit.role === 'tank') score += distance(cell, boss.cell) * 6;
+    if (boss && unit.role === 'tank') score += distance(spot, boss.pos) * 6;
     if (score < bestScore) {
       bestScore = score;
-      best = cell;
+      best = spot;
     }
   }
   return best;
 }
 
-function markedCellOfKind(state, kind) {
-  for (const c of allCells()) {
-    const h = state.cells[c].hazard;
-    if (h && h.kind === kind) return c;
-  }
-  return null;
+// Standing in a soak or a stack marker is a commitment. Without this a
+// bot walks in, then wanders back out to get in range of its target and
+// the mechanic fails -- and the longer the telegraph, the more time it
+// has to make that mistake.
+export function committedArea(state, unit) {
+  return (
+    state.hazards.find((h) => (h.kind === 'soak' || h.kind === 'split') && contains(h, unit.pos)) || null
+  );
 }
 
-function soakersHeadedTo(state, cell) {
+// When a stack marker and a soak are pending at once they demand
+// opposite positions. Whichever lands first wins, then deal with the
+// other -- otherwise the party abandons a soak it was already standing
+// in and dies to it.
+export function urgentGather(state) {
+  let soonest = null;
+  for (const h of state.hazards) {
+    if (h.kind !== 'split' && h.kind !== 'soak') continue;
+    if (!soonest || h.detonatesAt < soonest.detonatesAt) soonest = h;
+  }
+  return soonest;
+}
+
+function markedAreaOfKind(state, kind) {
+  const area = urgentGather(state);
+  return area && area.kind === kind ? area : null;
+}
+
+function soakersHeadedTo(state, area) {
   return livingParty(state).filter(
-    (u) => u.cell === cell || (u.movePath.length && u.movePath[u.movePath.length - 1] === cell)
+    (u) => contains(area, u.pos) || (u.moveTarget && contains(area, u.moveTarget))
   ).length;
 }
 
@@ -88,8 +128,8 @@ function soakersHeadedTo(state, cell) {
 
 export const conditions = {
   always: () => true,
-  selfCellUnsafe: (state, content, unit) => !!noticedHazard(state, unit, unit.cell),
-  selfBelowPct: (state, content, unit, n) => unit.hp / unit.maxHp * 100 < Number(n),
+  selfCellUnsafe: (state, content, unit) => !!noticedHazard(state, unit),
+  selfBelowPct: (state, content, unit, n) => (unit.hp / unit.maxHp) * 100 < Number(n),
   allyBelowPct: (state, content, unit, n) =>
     livingParty(state).some((u) => (u.hp / u.maxHp) * 100 < Number(n)),
   partyAvgBelowPct: (state, content, unit, n) => {
@@ -122,20 +162,18 @@ export const conditions = {
   selfHasAura: (state, content, unit, id) => hasAura(unit, id),
   cooldownReady: (state, content, unit, id) => !onCooldown(state, unit, id),
   addAlive: (state) => adds(state).length > 0,
-  stackMarkerActive: (state) => markedCellOfKind(state, 'split') !== null,
+  stackMarkerActive: (state) => !!markedAreaOfKind(state, 'split'),
   soakNeeded: (state, content, unit) => {
-    const cell = markedCellOfKind(state, 'soak');
-    if (cell === null) return false;
-    const h = state.cells[cell].hazard;
-    return soakersHeadedTo(state, cell) < h.minSoakers || unit.cell === cell;
+    const area = markedAreaOfKind(state, 'soak');
+    if (!area) return false;
+    return soakersHeadedTo(state, area) < area.minSoakers || contains(area, unit.pos);
   },
   outOfMelee: (state, content, unit) => {
     const boss = bossOf(state);
-    return !!boss && distance(unit.cell, boss.cell) > 1;
+    return !!boss && distance(unit.pos, boss.pos) > 1;
   },
   resourceBelowPct: (state, content, unit, n) => (unit.resource / unit.maxResource) * 100 < Number(n),
-  enrageSoon: (state, content, unit, seconds) =>
-    state.enrageTick - state.tick <= Number(seconds) * 10,
+  enrageSoon: (state, content, unit, seconds) => state.enrageTick - state.tick <= Number(seconds) * 10,
 };
 
 export function checkCondition(state, content, unit, expr) {
@@ -151,6 +189,21 @@ export function enemyFocus(state, unit) {
   const add = adds(state).sort((a, b) => a.hp - b.hp)[0];
   if (add && unit.role !== 'tank') return add;
   return bossOf(state) || add || null;
+}
+
+// In the arena scheme the player has no target lock: whatever the
+// crosshair is nearest to is what the ability hits.
+export function nearestTo(units, point) {
+  let best = null;
+  let bestDist = Infinity;
+  for (const u of units) {
+    const d = Math.hypot(u.pos.x - point.x, u.pos.y - point.y);
+    if (d < bestDist) {
+      bestDist = d;
+      best = u;
+    }
+  }
+  return best;
 }
 
 export function resolveTarget(state, content, unit, ability, preferred = null) {
@@ -185,27 +238,28 @@ export function decide(state, content, unit) {
   const script = content.ai[unit.ai];
   if (!script) return null;
   for (const rule of script.priority) {
-    const test = rule.else ? 'always' : rule.if;
-    if (checkCondition(state, content, unit, test)) return rule.do;
+    if (checkCondition(state, content, unit, rule.else ? 'always' : rule.if)) return rule.do;
   }
   return null;
 }
 
 export function performAction(state, content, unit, action) {
   if (!action) return false;
+
   if (action.startsWith('cast:')) {
     const abilityId = action.slice(5);
     const ability = abilityDef(content, abilityId);
     const target = resolveTarget(state, content, unit, ability);
     if (!target) return false;
     if (!canUseAbility(state, content, unit, abilityId, target)) {
-      // Out of range for a melee ability? Walk in instead of standing still.
+      // Out of range? Walk in rather than stand there -- unless leaving
+      // would break a soak or stack we are already standing in.
       if (
         target !== unit &&
-        distance(unit.cell, target.cell) > (ability.range ?? 5) &&
-        unit.moveUntil <= state.tick
+        distance(unit.pos, target.pos) > (ability.range ?? 5) &&
+        !committedArea(state, unit)
       ) {
-        orderMove(state, unit, stepToward(unit.cell, target.cell));
+        orderMove(state, unit, target.pos);
         return true;
       }
       return false;
@@ -216,27 +270,29 @@ export function performAction(state, content, unit, action) {
 
   switch (action) {
     case 'moveToSafe': {
-      const cell = nearestSafeCell(state, unit);
-      if (cell === null || cell === unit.cell) return false;
-      orderMove(state, unit, cell);
+      const spot = nearestSafeSpot(state, unit);
+      if (!spot) return false;
+      orderMove(state, unit, spot);
+      unit.moveReason = 'safety'; // so it stops the moment it is clear
       return true;
     }
     case 'moveToStack': {
-      const cell = markedCellOfKind(state, 'split');
-      if (cell === null || cell === unit.cell) return false;
-      orderMove(state, unit, cell);
+      const area = markedAreaOfKind(state, 'split');
+      if (!area || contains(area, unit.pos)) return false;
+      orderMove(state, unit, area);
       return true;
     }
     case 'moveToSoak': {
-      const cell = markedCellOfKind(state, 'soak');
-      if (cell === null || cell === unit.cell) return false;
-      orderMove(state, unit, cell);
+      const area = markedAreaOfKind(state, 'soak');
+      if (!area || contains(area, unit.pos)) return false;
+      orderMove(state, unit, area);
       return true;
     }
     case 'moveToBoss': {
       const boss = bossOf(state);
-      if (!boss || distance(unit.cell, boss.cell) <= 1) return false;
-      orderMove(state, unit, stepToward(unit.cell, boss.cell));
+      if (!boss || distance(unit.pos, boss.pos) <= 1) return false;
+      if (committedArea(state, unit)) return false;
+      orderMove(state, unit, boss.pos);
       return true;
     }
     case 'wait':
@@ -252,7 +308,6 @@ export function runBot(state, content, unit) {
   if (!unit.ai || !unit.alive) return;
   if (state.tick < unit.aiReadyAt) return;
   if (unit.castAbility) return;
-  if (unit.moveUntil > state.tick && unit.movePath.length) return;
 
   const script = content.ai[unit.ai];
   if (!script) return;

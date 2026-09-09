@@ -1,11 +1,28 @@
 // Ability execution plus the two choke points every point of damage and
 // healing in the game must pass through.
 
-import { distance, allCells, CELL_COUNT } from './grid.js';
+import {
+  distance,
+  allCells,
+  cellCenter,
+  cellOf,
+  clonePos,
+  contains,
+  normalize,
+  sub,
+  vec,
+  CELL_COUNT,
+  TILE_HALF,
+} from './geometry.js';
+import { TICKS_PER_SECOND } from './clock.js';
 import { applyAura, removeAura, statMult, consumeAbsorb, dispellable } from './auras.js';
 import { nextInt, pick, pickMany } from './rng.js';
 
-export const GCD_TICKS = 15;
+export const DEFAULT_GCD_TICKS = 15;
+
+// The control scheme decides the global cooldown and how fast bodies move.
+export const schemeOf = (state) => state.scheme || { gcd: 1.5, moveSpeed: 2.5, aim: 'target' };
+export const gcdTicksOf = (state) => Math.round(schemeOf(state).gcd * TICKS_PER_SECOND);
 
 export const unitById = (state, id) => state.units.find((u) => u.id === id) || null;
 export const living = (state) => state.units.filter((u) => u.alive);
@@ -131,17 +148,17 @@ function resolveEffectTargets(state, ctx, spec) {
     case 'targetAndAdjacent': {
       if (!target) return [];
       const foes = target.team === 'party' ? livingParty(state) : livingEnemies(state);
-      return foes.filter((u) => distance(u.cell, target.cell) <= 1);
+      return foes.filter((u) => distance(u.pos, target.pos) <= 1);
     }
     case 'nearTarget': {
       if (!target) return [];
       const foes = target.team === 'party' ? livingParty(state) : livingEnemies(state);
-      return foes.filter((u) => u.id !== target.id && distance(u.cell, target.cell) <= 1);
+      return foes.filter((u) => u.id !== target.id && distance(u.pos, target.pos) <= 1);
     }
-    case 'inTargetCell': {
-      const c = cell ?? (target ? target.cell : null);
-      if (c === null) return [];
-      return living(state).filter((u) => u.cell === c);
+    case 'inTargetArea': {
+      const area = cell || (target ? { x: target.pos.x, y: target.pos.y, half: TILE_HALF } : null);
+      if (!area) return [];
+      return living(state).filter((u) => contains(area, u.pos));
     }
     case 'party':
       return livingParty(state);
@@ -255,21 +272,21 @@ const effectHandlers = {
 
   markCells(state, content, ctx, e) {
     const spec = { ...e, ...(ctx.overrides || {}) };
-    const candidates = allCells().filter((c) => !state.cells[c].hazard);
-    const chosen = pickMany(state, candidates.length ? candidates : allCells(), spec.count || 1);
-    for (const c of chosen) markCell(state, c, ctx.caster.id, spec);
-    log(state, `${ctx.caster.name} — ${ctx.abilityName} — ${chosen.length} cells begin to glow`, 'telegraph');
+    const taken = new Set(state.hazards.map((h) => cellOf(h)));
+    const free = allCells().filter((c) => !taken.has(c));
+    const chosen = pickMany(state, free.length ? free : allCells(), spec.count || 1);
+    for (const c of chosen) markArea(state, cellCenter(c), ctx.caster.id, spec);
+    log(state, `${ctx.caster.name} — ${ctx.abilityName} — ${chosen.length} tiles begin to glow`, 'telegraph');
   },
 
-  markTargetCell(state, content, ctx, e) {
+  markTargetArea(state, content, ctx, e) {
     const targets = resolveEffectTargets(state, ctx, e.target);
-    for (const t of targets) markCell(state, t.cell, ctx.caster.id, e);
+    for (const t of targets) markArea(state, t.pos, ctx.caster.id, e);
     if (targets.length) log(state, `${ctx.abilityName} marks the ground under ${targets[0].name}`, 'telegraph');
   },
 
-  markRandomCell(state, content, ctx, e) {
-    const c = nextInt(state, CELL_COUNT);
-    markCell(state, c, ctx.caster.id, e);
+  markRandomArea(state, content, ctx, e) {
+    markArea(state, cellCenter(nextInt(state, CELL_COUNT)), ctx.caster.id, e);
     log(state, `${ctx.caster.name} — ${ctx.abilityName} — the party must gather!`, 'telegraph');
   },
 
@@ -277,26 +294,32 @@ const effectHandlers = {
     for (let i = 0; i < (e.count || 1); i++) {
       const template = content.units[e.unit];
       const id = `${e.unit}${++state.spawnCounter}`;
-      const free = allCells().filter((c) => c !== ctx.caster.cell);
-      state.units.push(makeUnit(state, content, { ...template, id, cell: pick(state, free) }));
+      const away = allCells().filter((c) => c !== cellOf(ctx.caster.pos));
+      state.units.push(makeUnit(state, content, { ...template, id, cell: pick(state, away) }));
       log(state, `${template.name} joins the fight!`, 'spawn');
     }
   },
 
 };
 
-export function markCell(state, index, sourceId, e) {
-  state.cells[index].hazard = {
+// An area effect: a position and a half-extent. A 3D port swaps the shape
+// test in geometry.js and leaves every mechanic that spawns one alone.
+export function markArea(state, pos, sourceId, e) {
+  state.hazards.push({
+    id: ++state.hazardCounter,
     kind: e.kind || 'blast',
     name: e.name || 'Hazard',
+    x: pos.x,
+    y: pos.y,
+    half: e.half ?? TILE_HALF,
     markedAt: state.tick,
-    detonatesAt: state.tick + (e.delayTicks || 30),
+    detonatesAt: state.tick + Math.round((e.delayTicks || 30) * (schemeOf(state).telegraphScale ?? 1)),
     damage: e.damage || 0,
     minSoakers: e.minSoakers || 0,
     raidDamage: e.raidDamage || 0,
     aura: e.aura || null,
     sourceId,
-  };
+  });
 }
 
 export function runEffects(state, content, ctx, effects) {
@@ -323,7 +346,12 @@ export function makeUnit(state, content, def) {
     maxResource: def.maxResource ?? 100,
     resourceName: def.resourceName || 'Ammo',
     resourceRegen: def.resourceRegen ?? 0.4,
-    cell: def.cell ?? 12,
+    pos: def.pos ? clonePos(def.pos) : cellCenter(def.cell ?? 12),
+    facing: vec(0, 1),
+    speed: def.speed ?? 2.5,
+    // Bosses and adds cast on the move. Players do not -- that asymmetry
+    // is the whole point of "moving cancels a cast".
+    castWhileMoving: def.castWhileMoving ?? def.team === 'enemy',
     threat: {},
     auras: [],
     gcdUntil: 0,
@@ -331,8 +359,10 @@ export function makeUnit(state, content, def) {
     castStart: 0,
     castAbility: null,
     castTarget: null,
-    movePath: [],
-    moveUntil: 0,
+    moveTarget: null,
+    moveDir: null,
+    moveReason: null,
+    movedThisTick: false,
     cooldowns: {},
     alive: true,
     ai: def.ai ?? null,
@@ -354,10 +384,13 @@ export function canUseAbility(state, content, unit, abilityId, target) {
   if (unit.castAbility) return false;
   if (!ability.offGcd && unit.gcdUntil > state.tick) return false;
   if (onCooldown(state, unit, abilityId)) return false;
+  // You cannot cast on the move -- so do not start one that movement is
+  // about to cancel, paying the cost and the cooldown for nothing.
+  if (ability.castTicks > 0 && (unit.moveTarget || unit.moveDir)) return false;
   if ((ability.cost || 0) > unit.resource) return false;
   if (ability.targeting !== 'self' && ability.targeting !== 'cell' && ability.targeting !== 'none') {
     if (!target || !target.alive) return false;
-    if (distance(unit.cell, target.cell) > (ability.range ?? 5)) return false;
+    if (distance(unit.pos, target.pos) > (ability.range ?? 5)) return false;
   }
   return true;
 }
@@ -366,6 +399,9 @@ export function canUseAbility(state, content, unit, abilityId, target) {
 export function castBlockedReason(state, content, unit, abilityId, target) {
   const ability = abilityDef(content, abilityId);
   if (!unit.alive) return 'you are dead';
+  if (ability.castTicks > 0 && (unit.moveTarget || unit.moveDir)) {
+    return `${ability.name} cannot be cast while moving`;
+  }
   if (onCooldown(state, unit, abilityId)) {
     return `${ability.name} is not ready (${((unit.cooldowns[abilityId] - state.tick) / 10).toFixed(1)}s)`;
   }
@@ -374,7 +410,7 @@ export function castBlockedReason(state, content, unit, abilityId, target) {
   if (
     ability.targeting !== 'self' &&
     ability.targeting !== 'none' &&
-    distance(unit.cell, target.cell) > (ability.range ?? 5)
+    distance(unit.pos, target.pos) > (ability.range ?? 5)
   ) {
     return `${target.name} is out of range for ${ability.name}`;
   }
@@ -384,7 +420,7 @@ export function castBlockedReason(state, content, unit, abilityId, target) {
 export function startAbility(state, content, unit, abilityId, target, cell = null, overrides = null) {
   const ability = abilityDef(content, abilityId);
   unit.resource = Math.max(0, unit.resource - (ability.cost || 0));
-  if (!ability.offGcd) unit.gcdUntil = state.tick + (ability.gcdTicks ?? GCD_TICKS);
+  if (!ability.offGcd) unit.gcdUntil = state.tick + (ability.gcdTicks ?? gcdTicksOf(state));
   if (ability.cooldownTicks) unit.cooldowns[abilityId] = state.tick + ability.cooldownTicks;
 
   if (ability.castTicks > 0) {
@@ -403,7 +439,10 @@ export function startAbility(state, content, unit, abilityId, target, cell = nul
 export function resolveAbility(state, content, unit, abilityId, target, cell = null, overrides = null) {
   const ability = abilityDef(content, abilityId);
   const ctx = { caster: unit, target, cell, ability, abilityName: ability.name, overrides };
-  if (ability.requiresTargetInRange && (!target || !target.alive || distance(unit.cell, target.cell) > (ability.range ?? 5))) {
+  if (
+    ability.requiresTargetInRange &&
+    (!target || !target.alive || distance(unit.pos, target.pos) > (ability.range ?? 5))
+  ) {
     if (ability.onNoTarget) {
       log(state, ability.onNoTargetText || `${ability.name} finds no target!`, 'mechanic');
       runEffects(state, content, ctx, ability.onNoTarget);
@@ -426,8 +465,24 @@ export function cancelCast(state, unit, reason) {
 // Moving cancels a cast in progress. Those seven words are the whole
 // movement-versus-DPS tension.
 export function orderMove(state, unit, destination) {
-  if (!unit.alive || destination === unit.cell) return;
-  unit.movePath = [destination];
+  if (!unit.alive) return;
+  if (distance(unit.pos, destination) < 0.05) return;
+  unit.moveTarget = clonePos(destination);
+  unit.moveDir = null;
+  unit.moveReason = null;
   if (unit.castAbility) cancelCast(state, unit, 'moving');
-  if (unit.moveUntil <= state.tick) unit.moveUntil = state.tick + 4;
+}
+
+// Held-direction movement: the arena scheme's WASD.
+export function orderMoveDirection(state, unit, dir) {
+  if (!unit.alive) return;
+  const n = normalize(dir);
+  unit.moveTarget = null;
+  unit.moveDir = n.x === 0 && n.y === 0 ? null : n;
+  if (unit.moveDir && unit.castAbility) cancelCast(state, unit, 'moving');
+}
+
+export function faceToward(unit, point) {
+  const d = normalize(sub(point, unit.pos));
+  if (d.x !== 0 || d.y !== 0) unit.facing = d;
 }

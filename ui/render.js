@@ -75,16 +75,17 @@ function build(view, content) {
     refs.frames.set(u.id, { node, ...collect(node) });
   }
 
-  const grid = el('grid');
-  grid.innerHTML = '';
-  refs.cells = view.cells.map((c) => {
+  const tiles = el('tiles');
+  tiles.innerHTML = '';
+  refs.cells = Array.from({ length: 25 }, (_, index) => {
     const node = document.createElement('div');
     node.className = 'cell';
-    node.dataset.cell = c.index;
+    node.dataset.cell = index;
     node.innerHTML = '<div class="cd" data-r="cd"></div><div class="tag" data-r="tag"></div>';
-    grid.appendChild(node);
+    tiles.appendChild(node);
     return { node, ...collect(node) };
   });
+  el('tokens').innerHTML = '';
 
   const bar = el('actionBar');
   bar.innerHTML = `
@@ -183,9 +184,14 @@ function pip(a) {
 }
 
 function paintGrid(view) {
-  for (const c of view.cells) {
-    const r = R.cells[c.index];
-    const h = c.hazard;
+  // Hazards are areas with a position; the floor tile they sit on is a
+  // rendering detail worked out here, not something the sim knows about.
+  const byCell = new Map();
+  for (const h of view.hazards) byCell.set(cellIndexOf(h), h);
+
+  for (let i = 0; i < R.cells.length; i++) {
+    const r = R.cells[i];
+    const h = byCell.get(i);
     setClass(r.node, 'blast', h && h.kind === 'blast');
     setClass(r.node, 'split', h && h.kind === 'split');
     setClass(r.node, 'soak', h && h.kind === 'soak');
@@ -193,21 +199,43 @@ function paintGrid(view) {
     setText(r.tag, h ? (h.kind === 'split' ? 'STACK' : h.kind === 'soak' ? `SOAK ${h.minSoakers}+` : h.name) : '');
   }
 
+  const layer = el('tokens');
   for (const u of [...view.party, ...view.enemies]) {
     let token = R.tokens.get(u.id);
     if (!token) {
       token = document.createElement('div');
       token.className = `token ${u.role}${u.id === view.playerId ? ' you' : ''}`;
-      token.textContent = ROLE_LETTER[u.role] || '?';
+      token.innerHTML = `<span>${ROLE_LETTER[u.role] || '?'}</span><i class="aim" hidden></i>`;
+      layer.appendChild(token);
       R.tokens.set(u.id, token);
     }
     token.hidden = !u.alive;
     token.title = `${u.name} — ${num(u.hp)}`;
     setClass(token, 'moving', u.moving);
-    const cell = R.cells[u.cell].node;
-    if (token.parentNode !== cell) cell.appendChild(token);
+    token.style.left = `${(u.pos.x / 5) * 100}%`;
+    token.style.top = `${(u.pos.y / 5) * 100}%`;
+    // A facing pip, so the arena scheme shows where you are pointing.
+    const pip = token.querySelector('.aim');
+    const showAim = u.id === view.playerId && view.scheme.aim === 'crosshair';
+    pip.hidden = !showAim;
+    if (showAim) {
+      pip.style.left = `${10 + u.facing.x * 11}px`;
+      pip.style.top = `${10 + u.facing.y * 11}px`;
+    }
+  }
+
+  const cross = el('crosshair');
+  if (view.scheme.aim === 'crosshair' && !view.over) {
+    cross.hidden = false;
+    cross.style.left = `${(view.aim.x / 5) * 100}%`;
+    cross.style.top = `${(view.aim.y / 5) * 100}%`;
+  } else {
+    cross.hidden = true;
   }
 }
+
+const cellIndexOf = (p) =>
+  Math.min(4, Math.max(0, Math.floor(p.y))) * 5 + Math.min(4, Math.max(0, Math.floor(p.x)));
 
 function paintActions(view, content, hud) {
   const player = view.party.find((u) => u.id === view.playerId);
@@ -218,9 +246,17 @@ function paintActions(view, content, hud) {
   setText(h.resText, `${player.resource} / ${player.maxResource}`);
   setWidth(h.resFill, pct(player.resource, player.maxResource));
   setClass(h.strip, 'dry', player.resource < 12);
-  const ally = view.party.find((u) => u.id === view.playerAllyTarget);
-  const auto = view.party.find((u) => u.id === hud.autoHealTarget);
-  setText(h.tgt, ally ? `▸ ${ally.name}` : auto ? `▸ ${auto.name} (auto)` : '');
+  // What this ability set is pointed at, in the terms the scheme uses.
+  if (view.scheme.aim === 'crosshair') {
+    setText(h.tgt, '▸ crosshair');
+  } else if (player.role === 'healer') {
+    const ally = view.party.find((u) => u.id === view.playerAllyTarget);
+    const auto = view.party.find((u) => u.id === hud.autoHealTarget);
+    setText(h.tgt, ally ? `▸ ${ally.name}` : auto ? `▸ ${auto.name} (auto)` : '');
+  } else {
+    const foe = view.enemies.find((e) => e.id === view.playerTarget);
+    setText(h.tgt, foe ? `▸ ${foe.name}` : '');
+  }
 
   for (const [id, r] of R.buttons) {
     const a = content.abilities[id];

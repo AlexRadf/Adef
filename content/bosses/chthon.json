@@ -4,6 +4,7 @@
   "title": "Lord of the Lava Pit",
   "hp": 22500000,
   "cell": 12,
+  "speed": 1.8,
   "enrageAtSeconds": 270,
   "phases": [
     {
@@ -12,7 +13,7 @@
       "timeline": [
         { "t": 1,  "every": 2,  "ability": "lavaSwipe",        "target": "threatLeader" },
         { "t": 10, "every": 24, "ability": "magmaCleave",      "target": "threatLeader" },
-        { "t": 16, "every": 22, "ability": "lavaGeyser",       "target": "randomCells", "count": 6, "delay": 3 },
+        { "t": 16, "every": 22, "ability": "lavaGeyser",       "target": "randomCells", "count": 6, "delay": 1.5 },
         { "t": 34, "every": 40, "ability": "slipgateRift",     "target": "randomPlayer" },
         { "t": 50, "every": 38, "ability": "runeOfBlackMagic", "target": "self" }
       ]
@@ -24,7 +25,7 @@
       "timeline": [
         { "t": 1,  "every": 2,  "ability": "lavaSwipe",        "target": "threatLeader" },
         { "t": 6,  "every": 24, "ability": "magmaCleave",      "target": "threatLeader" },
-        { "t": 12, "every": 20, "ability": "lavaGeyser",       "target": "randomCells", "count": 7, "delay": 3 },
+        { "t": 12, "every": 20, "ability": "lavaGeyser",       "target": "randomCells", "count": 7, "delay": 1.5 },
         { "t": 20, "every": 26, "ability": "chainOfSouls",     "target": "none" },
         { "t": 30, "every": 40, "ability": "slipgateRift",     "target": "randomPlayer" },
         { "t": 44, "every": 36, "ability": "runeOfBlackMagic", "target": "self" },
@@ -37,7 +38,7 @@
       "timeline": [
         { "t": 1,  "every": 2,  "ability": "lavaSwipe",        "target": "threatLeader" },
         { "t": 4,  "every": 18, "ability": "magmaCleave",      "target": "threatLeader" },
-        { "t": 9,  "every": 16, "ability": "lavaGeyser",       "target": "randomCells", "count": 8, "delay": 3 },
+        { "t": 9,  "every": 16, "ability": "lavaGeyser",       "target": "randomCells", "count": 8, "delay": 1.5 },
         { "t": 15, "every": 30, "ability": "voidWell",         "target": "none" },
         { "t": 24, "every": 26, "ability": "chainOfSouls",     "target": "none" },
         { "t": 32, "every": 34, "ability": "slipgateRift",     "target": "randomPlayer" },

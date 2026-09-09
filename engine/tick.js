@@ -1,7 +1,17 @@
 // The fixed 100ms tick. Phase order below is load-bearing: mechanics are
 // written against it. Do not reorder.
 
-import { stepToward } from './grid.js';
+import {
+  clonePos,
+  contains,
+  distance,
+  moveAlong,
+  moveToward,
+  normalize,
+  stepPerTick,
+  sub,
+  vec,
+} from './geometry.js';
 import { applyAura, removeAura } from './auras.js';
 import {
   applyDamage,
@@ -12,15 +22,18 @@ import {
   resolveAbility,
   startAbility,
   canUseAbility,
+  cancelCast,
   castBlockedReason,
   orderMove,
+  orderMoveDirection,
+  faceToward,
   runEffects,
   log,
   fmt,
 } from './abilities.js';
 import { pick } from './rng.js';
-import { runBot, resolveTarget } from './ai.js';
-import { TICKS_PER_SECOND } from './state.js';
+import { runBot, resolveTarget, nearestTo } from './ai.js';
+import { TICKS_PER_SECOND } from './clock.js';
 
 export function step(state, content, inputQueue = []) {
   if (state.over) return state;
@@ -53,12 +66,7 @@ function resolveCastsAndMoves(state, content) {
   for (const unit of state.units) {
     if (!unit.alive) continue;
 
-    if (unit.movePath.length && unit.moveUntil === state.tick) {
-      const dest = unit.movePath[unit.movePath.length - 1];
-      unit.cell = stepToward(unit.cell, dest);
-      if (unit.cell === dest) unit.movePath = [];
-      else unit.moveUntil = state.tick + 4;
-    }
+    moveUnit(state, unit);
 
     if (unit.castAbility && unit.castUntil === state.tick) {
       const abilityId = unit.castAbility;
@@ -73,6 +81,42 @@ function resolveCastsAndMoves(state, content) {
       resolveAbility(state, content, unit, abilityId, target, cell, overrides);
     }
   }
+}
+
+// Continuous movement. Position is a coordinate, so this is the same
+// function a 3D port keeps -- only the collision and pathing change.
+function moveUnit(state, unit) {
+  unit.movedThisTick = false;
+  if (!unit.speed) return;
+
+  // A dodge ends the moment you are clear. Walking on to the middle of
+  // the next tile just costs uptime you could have spent casting.
+  if (unit.moveReason === 'safety' && !state.hazards.some((h) => h.kind === 'blast' && contains(h, unit.pos))) {
+    unit.moveTarget = null;
+    unit.moveReason = null;
+    return;
+  }
+
+  const step = stepPerTick(unit.speed);
+  const from = clonePos(unit.pos);
+
+  if (unit.moveDir) {
+    unit.pos = moveAlong(unit.pos, unit.moveDir, step);
+  } else if (unit.moveTarget) {
+    const result = moveToward(unit.pos, unit.moveTarget, step);
+    unit.pos = result.pos;
+    if (result.arrived) unit.moveTarget = null;
+  } else {
+    return;
+  }
+
+  const moved = Math.abs(unit.pos.x - from.x) > 1e-6 || Math.abs(unit.pos.y - from.y) > 1e-6;
+  if (!moved) return;
+  unit.movedThisTick = true;
+  const heading = normalize(sub(unit.pos, from));
+  if (heading.x || heading.y) unit.facing = heading;
+  // Moving cancels a cast in progress.
+  if (unit.castAbility && !unit.castWhileMoving) cancelCast(state, unit, 'moving');
 }
 
 /* --------------------------------------------------------------- 3 */
@@ -124,12 +168,12 @@ function auraPass(state, content) {
 /* --------------------------------------------------------------- 4 */
 
 function hazardPass(state, content) {
-  for (const cell of state.cells) {
-    const h = cell.hazard;
-    if (!h || h.detonatesAt !== state.tick) continue;
-    cell.hazard = null;
+  const due = state.hazards.filter((h) => h.detonatesAt === state.tick);
+  if (!due.length) return;
+  state.hazards = state.hazards.filter((h) => h.detonatesAt !== state.tick);
 
-    const occupants = state.units.filter((u) => u.alive && u.team === 'party' && u.cell === cell.index);
+  for (const h of due) {
+    const occupants = state.units.filter((u) => u.alive && u.team === 'party' && contains(h, u.pos));
 
     if (h.kind === 'split') {
       if (!occupants.length) {
@@ -234,6 +278,13 @@ function bossPass(state, content) {
   }
   if (state.phaseIndex === -1) enterPhase(state, content, 0);
 
+  // A boss that cannot reach anybody walks. Standing still forever made
+  // its anti-kite punishment the leading cause of death, which is not a
+  // mechanic so much as a consequence of the tank having to soak.
+  const leader = threatLeader(state, boss);
+  if (leader && distance(boss.pos, leader.pos) > 1) orderMove(state, boss, leader.pos);
+  else boss.moveTarget = null;
+
   if (boss.castAbility) return;
 
   for (const slot of state.schedule) {
@@ -275,13 +326,11 @@ function aiPass(state, content) {
 function playerPass(state, content, inputQueue) {
   const player = state.playerId ? unitById(state, state.playerId) : null;
   if (!player) return;
-  // Target changes are selection, not actions -- they never wait behind a
-  // queued cast, so clicking a frame always feels instant.
-  while (inputQueue.length && inputQueue[0].type.startsWith('target')) {
-    const pick = inputQueue.shift();
-    if (pick.type === 'targetEnemy') state.playerTarget = pick.unitId;
-    // Clicking your current ally target again drops back to automatic targeting.
-    else state.playerAllyTarget = state.playerAllyTarget === pick.unitId ? null : pick.unitId;
+
+  // Selection is not an action. Target picks, aim and held movement keys
+  // never wait behind a queued cast, so the controls always feel live.
+  while (inputQueue.length && SELECTION_INPUTS.has(inputQueue[0].type)) {
+    applySelection(state, player, inputQueue.shift());
   }
   if (!inputQueue.length) return;
 
@@ -289,20 +338,22 @@ function playerPass(state, content, inputQueue) {
   if (input.expires !== undefined && state.tick > input.expires) return;
   if (!player.alive) return;
 
+  if (SELECTION_INPUTS.has(input.type)) {
+    applySelection(state, player, input);
+    return;
+  }
+
   if (input.type === 'move') {
-    orderMove(state, player, input.cell);
+    orderMove(state, player, input.pos);
     return;
   }
 
   if (input.type === 'cast') {
     const ability = content.abilities[input.abilityId];
     if (!ability) return;
-    const preferred =
-      ability.targeting === 'enemy'
-        ? unitById(state, state.playerTarget)
-        : unitById(state, state.playerAllyTarget);
-    const target = resolveTarget(state, content, player, ability, preferred);
+    const target = resolveTarget(state, content, player, ability, playerPreference(state, player, ability));
     if (canUseAbility(state, content, player, input.abilityId, target)) {
+      if (target && target !== player) faceToward(player, target.pos);
       startAbility(state, content, player, input.abilityId, target);
       return;
     }
@@ -311,6 +362,41 @@ function playerPass(state, content, inputQueue) {
     if (state.tick < input.expires) inputQueue.unshift(input);
     else log(state, castBlockedReason(state, content, player, input.abilityId, target), 'info');
   }
+}
+
+const SELECTION_INPUTS = new Set(['targetEnemy', 'targetAlly', 'aim', 'moveDir']);
+
+function applySelection(state, player, input) {
+  switch (input.type) {
+    case 'targetEnemy':
+      state.playerTarget = input.unitId;
+      return;
+    case 'targetAlly':
+      // Clicking your current ally target again drops back to automatic.
+      state.playerAllyTarget = state.playerAllyTarget === input.unitId ? null : input.unitId;
+      return;
+    case 'aim':
+      state.playerAim = { x: input.x, y: input.y };
+      if (player.alive) faceToward(player, state.playerAim);
+      return;
+    case 'moveDir':
+      if (player.alive) orderMoveDirection(state, player, vec(input.x, input.y));
+      return;
+    default:
+  }
+}
+
+// Raid scheme: whatever you selected. Arena scheme: whatever the
+// crosshair is nearest to -- no target lock at all.
+function playerPreference(state, player, ability) {
+  const wantsAlly = ability.targeting === 'ally' || ability.targeting === 'lowestAlly';
+  if (state.scheme.aim === 'crosshair') {
+    const pool = wantsAlly
+      ? livingParty(state).filter((u) => u.id !== player.id || true)
+      : livingEnemies(state);
+    return nearestTo(pool, state.playerAim);
+  }
+  return wantsAlly ? unitById(state, state.playerAllyTarget) : unitById(state, state.playerTarget);
 }
 
 /* --------------------------------------------------------------- 8 */
@@ -325,7 +411,8 @@ function deathPass(state, content) {
     unit.alive = false;
     unit.castAbility = null;
     unit.castUntil = 0;
-    unit.movePath = [];
+    unit.moveTarget = null;
+    unit.moveDir = null;
     unit.auras = [];
     log(state, `${unit.name} dies (${unit.pendingDeath.by}).`, 'death');
     if (unit.team === 'party') {
@@ -377,18 +464,19 @@ export function snapshot(state, content) {
     boss: boss ? unitView(state, content, boss) : null,
     party: state.units.filter((u) => u.team === 'party').map((u) => unitView(state, content, u)),
     enemies: state.units.filter((u) => u.team === 'enemy').map((u) => unitView(state, content, u)),
-    cells: state.cells.map((c) => ({
-      index: c.index,
-      hazard: c.hazard
-        ? {
-            kind: c.hazard.kind,
-            name: c.hazard.name,
-            remaining: (c.hazard.detonatesAt - state.tick) / TICKS_PER_SECOND,
-            total: (c.hazard.detonatesAt - c.hazard.markedAt) / TICKS_PER_SECOND,
-            minSoakers: c.hazard.minSoakers,
-          }
-        : null,
+    hazards: state.hazards.map((h) => ({
+      id: h.id,
+      kind: h.kind,
+      name: h.name,
+      x: h.x,
+      y: h.y,
+      half: h.half,
+      remaining: (h.detonatesAt - state.tick) / TICKS_PER_SECOND,
+      total: (h.detonatesAt - h.markedAt) / TICKS_PER_SECOND,
+      minSoakers: h.minSoakers,
     })),
+    aim: { ...state.playerAim },
+    scheme: { id: state.scheme.id, name: state.scheme.name, aim: state.scheme.aim },
     logLength: state.log.length,
   };
 }
@@ -407,10 +495,11 @@ function unitView(state, content, u) {
     resource: Math.floor(u.resource),
     maxResource: u.maxResource,
     resourceName: u.resourceName,
-    cell: u.cell,
+    pos: { x: u.pos.x, y: u.pos.y },
+    facing: { x: u.facing.x, y: u.facing.y },
     alive: u.alive,
     abilities: u.abilities,
-    moving: u.movePath.length > 0,
+    moving: u.movedThisTick || !!u.moveTarget || !!u.moveDir,
     threat: u.team === 'enemy' ? { ...u.threat } : null,
     gcdRemaining: Math.max(0, u.gcdUntil - state.tick),
     cast: ability

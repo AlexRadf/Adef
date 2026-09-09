@@ -1,46 +1,144 @@
 {
   "vanguardStance": {
-    "name": "Vanguard Stance", "durationTicks": 0, "harmful": false,
+    "name": "Vanguard Stance",
+    "duration": 0,
+    "harmful": false,
     "modifiers": [
-      { "stat": "threatMult", "op": "mult", "value": 5 },
-      { "stat": "damageTaken", "op": "mult", "value": 0.7 }
+      {
+        "stat": "threatMult",
+        "op": "mult",
+        "value": 5
+      },
+      {
+        "stat": "damageTaken",
+        "op": "mult",
+        "value": 0.7
+      }
     ]
   },
   "fieldMedicine": {
-    "name": "Field Medicine", "durationTicks": 0, "harmful": false,
-    "modifiers": [{ "stat": "healingDone", "op": "mult", "value": 1.15 }]
+    "name": "Field Medicine",
+    "duration": 0,
+    "harmful": false,
+    "modifiers": [
+      {
+        "stat": "healingDone",
+        "op": "mult",
+        "value": 1.15
+      }
+    ]
   },
   "pentagram": {
-    "name": "Pentagram of Protection", "durationTicks": 90, "harmful": false,
-    "modifiers": [{ "stat": "damageTaken", "op": "mult", "value": 0.35 }]
+    "name": "Pentagram of Protection",
+    "duration": 9,
+    "harmful": false,
+    "modifiers": [
+      {
+        "stat": "damageTaken",
+        "op": "mult",
+        "value": 0.35
+      }
+    ]
   },
-  "taunted": { "name": "Taunted", "durationTicks": 40, "harmful": true, "modifiers": [] },
+  "taunted": {
+    "name": "Taunted",
+    "duration": 4,
+    "harmful": true,
+    "modifiers": []
+  },
   "quadDamage": {
-    "name": "QUAD DAMAGE", "durationTicks": 0, "harmful": true,
-    "modifiers": [{ "stat": "damageDealt", "op": "mult", "value": 10 }]
+    "name": "QUAD DAMAGE",
+    "duration": 0,
+    "harmful": true,
+    "modifiers": [
+      {
+        "stat": "damageDealt",
+        "op": "mult",
+        "value": 10
+      }
+    ]
   },
   "scorched": {
-    "name": "Scorched", "durationTicks": 260, "harmful": true, "maxStacks": 3,
-    "modifiers": [{ "stat": "damageTaken", "op": "mult", "value": 1.12, "perStack": true }]
+    "name": "Scorched",
+    "duration": 26,
+    "harmful": true,
+    "maxStacks": 3,
+    "modifiers": [
+      {
+        "stat": "damageTaken",
+        "op": "mult",
+        "value": 1.12,
+        "perStack": true
+      }
+    ]
   },
   "seared": {
-    "name": "Seared", "durationTicks": 60, "harmful": true, "dispelType": null,
-    "periodic": { "intervalTicks": 10, "effect": { "type": "damage", "amount": 12000, "school": "lava" } },
+    "name": "Seared",
+    "duration": 6,
+    "harmful": true,
+    "dispelType": null,
+    "periodic": {
+      "interval": 1,
+      "effect": {
+        "type": "damage",
+        "amount": 12000,
+        "school": "lava"
+      }
+    },
     "modifiers": []
   },
   "riftMark": {
-    "name": "Slipgate Rift", "durationTicks": 120, "harmful": true, "dispelType": "magic",
-    "periodic": { "intervalTicks": 10, "effect": { "type": "damage", "amount": 13000, "school": "void" } },
+    "name": "Slipgate Rift",
+    "duration": 12,
+    "harmful": true,
+    "dispelType": "magic",
+    "periodic": {
+      "interval": 1,
+      "effect": {
+        "type": "damage",
+        "amount": 13000,
+        "school": "void"
+      }
+    },
     "modifiers": [],
     "onExpire": [
-      { "type": "damage", "target": "target", "amount": 90000, "school": "void", "name": "Rift Collapse" },
-      { "type": "damage", "target": "nearTarget", "amount": 230000, "school": "void", "name": "Rift Collapse" }
+      {
+        "type": "damage",
+        "target": "target",
+        "amount": 90000,
+        "school": "void",
+        "name": "Rift Collapse"
+      },
+      {
+        "type": "damage",
+        "target": "nearTarget",
+        "amount": 230000,
+        "school": "void",
+        "name": "Rift Collapse"
+      }
     ],
-    "onDispel": [{ "type": "damage", "target": "target", "amount": 35000, "school": "void", "name": "Rift Backlash" }]
+    "onDispel": [
+      {
+        "type": "damage",
+        "target": "target",
+        "amount": 35000,
+        "school": "void",
+        "name": "Rift Backlash"
+      }
+    ]
   },
   "shrapnel": {
-    "name": "Shrapnel", "durationTicks": 120, "harmful": true,
-    "periodic": { "intervalTicks": 20, "effect": { "type": "damage", "amount": 21000, "school": "shrapnel" } },
+    "name": "Shrapnel",
+    "duration": 12,
+    "harmful": true,
+    "periodic": {
+      "interval": 2,
+      "effect": {
+        "type": "damage",
+        "amount": 21000,
+        "school": "shrapnel"
+      }
+    },
     "modifiers": []
   }
 }

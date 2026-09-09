@@ -1,0 +1,37 @@
+{
+  "raid": {
+    "id": "raid",
+    "name": "Raid",
+    "tagline": "Tab-target, cast bars, global cooldown.",
+    "blurb": "Click a tile to walk. Pick a target and it stays picked. Every ability shares a 1.5s global cooldown, and moving cancels a cast — so the whole fight is a question of when you can afford to stand still.",
+    "moveSpeed": 2.5,
+    "gcd": 1.5,
+    "telegraphScale": 1,
+    "aim": "target",
+    "abilities": {}
+  },
+  "arena": {
+    "id": "arena",
+    "name": "Arena",
+    "tagline": "WASD, mouse aim, no global cooldown.",
+    "blurb": "Move with WASD and aim with the mouse — there is no target lock, you hit whatever the crosshair is nearest to. Nothing has a cast time and there is no global cooldown, only a 0.3s weapon switch and each weapon's own fire rate. Movement is free; ammo is the thing you run out of.",
+    "moveSpeed": 5.2,
+    "gcd": 0.3,
+    "telegraphScale": 1,
+    "aim": "crosshair",
+    "abilities": {
+      "shotgun":      { "cooldown": 0.8, "cost": 5 },
+      "superShotgun": { "cooldown": 6 },
+      "grapple":      { "cooldown": 10 },
+      "pentagram":    { "cooldown": 42 },
+      "nailgun":      { "cooldown": 1.2, "cost": 6 },
+      "rocket":       { "cast": 0, "cooldown": 3, "cost": 20 },
+      "lightning":    { "cooldown": 12 },
+      "grenade":      { "cooldown": 11 },
+      "stimpack":     { "cooldown": 0.9, "cost": 10 },
+      "medkit":       { "cast": 0, "cooldown": 3.5, "cost": 22 },
+      "megahealth":   { "cooldown": 20 },
+      "biosuit":      { "cooldown": 8 }
+    }
+  }
+}

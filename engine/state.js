@@ -1,23 +1,29 @@
 // Builds a fresh GameState. Pure data in, pure data out -- nothing here
 // knows the DOM exists.
 
-import { CELL_COUNT } from './grid.js';
 import { makeUnit } from './abilities.js';
 import { applyAura } from './auras.js';
+import { TICKS_PER_SECOND } from './clock.js';
 
-export const TICKS_PER_SECOND = 10;
+export { TICKS_PER_SECOND };
 
 export function createState(content, options = {}) {
   const seed = options.seed ?? 1234;
   const bossDef = content.bosses[options.boss || 'chthon'];
   const partyDef = content.parties[options.party || 'default'];
+  // applyScheme() folds the ability overrides in and sets content.scheme;
+  // without it we still run, on the default raid rules.
+  const scheme = content.scheme || content.schemes[options.scheme || 'raid'];
+  if (!scheme) throw new Error(`unknown control scheme: ${options.scheme}`);
 
   const state = {
     tick: 0,
     rngSeed: seed | 0,
     seed,
     units: [],
-    cells: Array.from({ length: CELL_COUNT }, (_, index) => ({ index, hazard: null })),
+    hazards: [],
+    hazardCounter: 0,
+    scheme,
     phaseIndex: -1,
     phaseStartTick: 0,
     schedule: [],
@@ -32,6 +38,7 @@ export function createState(content, options = {}) {
     playerId: null,
     playerTarget: bossDef.id,
     playerAllyTarget: null,
+    playerAim: { x: 2.5, y: 2.5 },
     stats: { damageBy: {}, healBy: {}, deaths: [], interrupts: 0 },
   };
 
@@ -40,7 +47,7 @@ export function createState(content, options = {}) {
   let playerAssigned = options.headless === true;
 
   for (const member of partyDef.members) {
-    const unit = makeUnit(state, content, { ...member, team: 'party' });
+    const unit = makeUnit(state, content, { ...member, team: 'party', speed: scheme.moveSpeed });
     if (!playerAssigned && member.role === playerRole) {
       unit.ai = null;
       state.playerId = unit.id;
@@ -61,6 +68,7 @@ export function createState(content, options = {}) {
       cell: bossDef.cell ?? 12,
       maxResource: 100,
       resourceRegen: 0,
+      speed: bossDef.speed ?? 0,
       ai: null,
     })
   );

@@ -16,18 +16,31 @@ open http://localhost:8080
 (A static server is needed only because browsers refuse ES modules and `fetch` over
 `file://`. There is nothing to build.)
 
-## Controls
+## Two control philosophies
 
-| Input | Action |
+The same encounter, the same sim, two ways of playing it — pick one on the pull screen.
+They are content, not code: `content/schemes.json`.
+
+| | **Raid** | **Arena** |
+|---|---|---|
+| Move | Click a tile, 2.5 cells/s | `WASD`, 5.2 cells/s |
+| Aim | Tab-target; your target stays picked | Mouse. No target lock — you hit whatever the crosshair is nearest |
+| Pacing | 1.5s global cooldown on everything | 0.3s weapon switch, then each weapon's own fire rate |
+| Casting | Rocket and Medkit have cast bars, and **moving cancels a cast** | Nothing has a cast time |
+| The constraint | *When can I afford to stand still?* | *Am I going to run out of ammo?* |
+
+Both are honest to their genre and both are balanced: raid wins 52% of headless pulls,
+arena 59.6%, with a 3:40 median kill either way. Arena is a little more forgiving because
+free movement makes dodging cheap — that gap is the finding, not a bug.
+
+| Shared | |
 |---|---|
 | `1` `2` `3` `4` | Your four abilities |
-| Click a tile | Walk there — 0.4s per cell, and **moving cancels a cast** |
-| Click a raid frame | Target that ally |
-| `Tab` | Cycle enemy target (boss ⇄ Scrags) |
+| Click a raid frame | Target that ally (raid scheme; click again for automatic) |
 | `Space` / `R` | Pause / restart |
 
-Pick Vanguard (tank), Field Medic (healer) or Slayer (dps) on the pull screen. The three
-slots you don't take are run by bots off the same code path you are.
+Pick Vanguard (tank), Field Medic (healer) or Slayer (dps). The three slots you don't take
+are run by bots off the same code path you are.
 
 ## The encounter
 
@@ -53,8 +66,9 @@ no mechanic-specific code in it.
 ## Architecture
 
 ```
-/engine   rng.js  grid.js  auras.js  abilities.js  ai.js  state.js  tick.js
-/content  abilities.json  auras.json  units.json  parties.json  bosses/*.json  ai/*.json
+/engine   clock.js  geometry.js  rng.js  auras.js  abilities.js  ai.js  state.js  tick.js
+/content  abilities.json  auras.json  units.json  parties.json  schemes.json
+          bosses/*.json  ai/*.json  load.js
 /ui       render.js  input.js  log.js
 /tests    engine.test.mjs
 sim.js    headless balance runner (node)
@@ -65,6 +79,10 @@ index.html
 **The sim never touches the DOM.** It takes state plus an input queue and returns new
 state; the renderer reads a snapshot. That one rule is what lets the identical encounter
 run headlessly in Node a thousand times in forty seconds.
+
+**Positions are coordinates, not grid indices.** Units live at continuous `{x, y}` and
+move at a speed in cells per second; area effects are a position plus a half-extent. The
+5×5 tiling survives only as a telegraph shape and a way to draw the floor.
 
 **Fixed 10Hz tick.** No delta time, no interpolation, all durations in ticks. The phase
 order inside a tick is load-bearing — mechanics are written against it:
@@ -81,6 +99,30 @@ modifiers — no new code in twelve places.
 **The aura system carries the game.** Buffs, debuffs, DoTs, HoTs, stacking tank debuffs,
 absorb shields, delayed bombs and the enrage are one struct with `modifiers`, `periodic`,
 `onExpire`, `onDispel` and `dispelType`.
+
+## Porting this to a 3D engine
+
+The layout is deliberately arranged so the expensive half survives a port.
+
+**Ports unchanged.** `auras.js` contains zero geometry — the whole buff/debuff/DoT/shield/
+stacking-debuff system is arithmetic. So do the damage and healing choke points, the threat
+table, the boss phase machine and every file in `/content`.
+
+**Two seams do the work.** `distance()` in `engine/geometry.js` is the single function that
+decides what "range 1" means; add a `z` and swap the metric and every mechanic in `/content`
+keeps working. `TICKS_PER_SECOND` in `engine/clock.js` is the only place that knows how fast
+the world runs — content is authored in **seconds** and converted once at load, so moving to
+a 30Hz or 60Hz sim does not invalidate a single JSON file.
+
+**Expect to retune, not to rewrite.** When this project moved from grid indices to
+coordinates, the win rate went from 48% to 88% overnight: continuous movement makes dodging
+far cheaper. The tuning *method* survived — `sim.js` found the new numbers in an
+afternoon — but the numbers themselves did not. Budget for that in any port.
+
+**What actually gets rewritten:** the renderer (always was disposable), the movement
+resolution, and the AI's movement verbs — `nearestSafeSpot` samples tile centres here and
+would sample a navmesh there, about eighty lines. The priority lists themselves are data
+and survive.
 
 ## Adding content without touching the engine
 
@@ -108,24 +150,38 @@ Seeded RNG (mulberry32) on the state: a seed plus an input sequence always repla
 identically. So tune against a thousand pulls instead of playing two hundred:
 
 ```
-$ node sim.js --runs 1000
+$ node sim.js --runs 500 --scheme raid
 
-boss chthon · party default · 1000 runs · 39842ms
-win rate 46.4%
-median kill 3:39
-median wipe at 1.7% boss hp · timeouts 0
-avg deaths/pull 2.42 · avg interrupts 3.9
+boss chthon · party default · raid controls · 500 runs · 6800ms
+win rate 52.0%
+median kill 3:40
+median wipe at 12.9% boss hp · timeouts 0
+avg deaths/pull 1.95 · avg interrupts 3.8
 
 top death causes
-  Void Well              49%
-  Chain of Souls         25%
-  Lava Swipe             12%
+  Void Well              41%
+  Chain of Souls         24%
+  Lava Swipe             13%
 ```
 
 That run is four bots, no human — the player slot is played by its own AI. A human who
 dodges better than a bot should win more often than the coin flip.
 
-Flags: `--boss chthon --party default --runs N --seed N --verbose`.
+Flags: `--boss chthon --party default --scheme raid|arena --runs N --seed N --verbose`.
+
+**It earns its keep as a bug detector, not just a tuning tool.** Three real AI defects
+showed up as a *non-monotonic difficulty curve* — longer telegraphs were making the fight
+easier, which is impossible if the bots are playing correctly:
+
+1. Bots walked into a Void Well to soak it, then wandered back out to get in range of their
+   target. Standing in a soak is now a commitment.
+2. A bot with a move order would start a 1.5s cast that movement cancelled on the next
+   tick, burning the resource and the cooldown for nothing.
+3. A Chain of Souls marker appearing during a pending Void Well made the whole party
+   abandon the soak — two mechanics demanding opposite ground, with no resolution rule.
+   Whichever lands first now wins.
+
+None of those were visible while playing. All three were obvious in a 300-pull sweep.
 
 ```
 npm test        # determinism, choke points, cast cancelling, snapshot isolation

@@ -1,7 +1,7 @@
 // Browser entry point. Owns the 100ms clock, hands input to the sim and
 // snapshots to the renderer. No game rules live here.
 
-import { loadContent } from './content/load.js';
+import { loadContent, applyScheme } from './content/load.js';
 import { createState } from './engine/state.js';
 import { step, snapshot } from './engine/tick.js';
 import { render, renderEnd, resetRenderer } from './ui/render.js';
@@ -24,14 +24,16 @@ let view = null;
 let timer = null;
 let paused = false;
 let role = 'dps';
+let scheme = 'raid';
+let active = null; // content with this scheme's ability overrides folded in
 
-createInput(inputQueue, () => view, {
+const input = createInput(inputQueue, () => view, {
   togglePause: () => {
     if (!state || state.over) return;
     paused = !paused;
     document.getElementById('pausedTag').hidden = !paused;
   },
-  reset: () => start(role),
+  reset: () => start(),
 });
 
 /* ------------------------------------------------------- start screen */
@@ -50,14 +52,34 @@ picker.addEventListener('click', (e) => {
   [...picker.children].forEach((c) => c.classList.toggle('sel', c.dataset.role === role));
 });
 
-document.getElementById('startBtn').addEventListener('click', () => start(role));
+const schemePicker = document.getElementById('schemePicker');
+schemePicker.innerHTML = Object.values(content.schemes)
+  .map(
+    (s) => `<div class="role ${s.id === scheme ? 'sel' : ''}" data-scheme="${s.id}">
+      <b>${s.name}</b><em>${s.tagline}</em>
+    </div>`
+  )
+  .join('');
+schemePicker.addEventListener('click', (e) => {
+  const card = e.target.closest('[data-scheme]');
+  if (!card) return;
+  scheme = card.dataset.scheme;
+  [...schemePicker.children].forEach((c) => c.classList.toggle('sel', c.dataset.scheme === scheme));
+  describeScheme();
+});
+function describeScheme() {
+  document.getElementById('schemeHelp').textContent = content.schemes[scheme].blurb;
+}
+describeScheme();
+
+document.getElementById('startBtn').addEventListener('click', () => start());
 document.getElementById('endOverlay').addEventListener('click', (e) => {
-  if (e.target.id === 'retryBtn') start(role);
+  if (e.target.id === 'retryBtn') start();
 });
 
 /* -------------------------------------------------------------- loop */
 
-function start(playerRole) {
+function start() {
   clearInterval(timer);
   inputQueue.length = 0;
   paused = false;
@@ -66,10 +88,12 @@ function start(playerRole) {
   document.getElementById('endOverlay').classList.add('hide');
   logView.reset();
   resetRenderer();
+  input.setScheme(scheme);
 
-  state = createState(content, { seed: (Math.random() * 1e9) | 0, playerRole });
-  view = snapshot(state, content);
-  render(view, content, hud());
+  active = applyScheme(content, scheme);
+  state = createState(active, { seed: (Math.random() * 1e9) | 0, playerRole: role });
+  view = snapshot(state, active);
+  render(view, active, hud());
   logView.push(state.log);
 
   timer = setInterval(frame, TICK_MS);
@@ -85,17 +109,17 @@ function hud() {
 }
 
 // Handy from the devtools console: __raid.state().units, __raid.content, etc.
-window.__raid = { state: () => state, view: () => view, content, queue: inputQueue };
+window.__raid = { state: () => state, view: () => view, content: () => active, queue: inputQueue };
 
 function frame() {
   if (paused) return;
-  step(state, content, inputQueue);
-  view = snapshot(state, content);
-  render(view, content, hud());
+  step(state, active, inputQueue);
+  view = snapshot(state, active);
+  render(view, active, hud());
   logView.push(state.log);
   if (state.over) {
     clearInterval(timer);
-    renderEnd(view, content, {
+    renderEnd(view, active, {
       playerDamage: state.stats.damageBy[state.playerId] || 0,
       playerHealing: state.stats.healBy[state.playerId] || 0,
       deaths: state.stats.deaths.map((d) => ({

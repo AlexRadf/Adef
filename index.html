@@ -79,30 +79,42 @@
 
   /* ---------- grid ---------- */
   .arena { display:flex; align-items:center; justify-content:center; padding:10px; min-height:0; overflow:hidden; }
-  .grid { display:grid; grid-template-columns:repeat(5,1fr); grid-template-rows:repeat(5,1fr);
-    gap:5px; aspect-ratio:1; width:min(100%, calc(100cqh - 0px)); height:auto; margin:auto; }
   .arena { container-type:size; }
+  /* One square box. Tiles are the floor; units live on a coordinate
+     overlay above it, because positions are continuous now. */
+  .grid { position:relative; aspect-ratio:1; width:min(100%, 100cqh); height:auto; margin:auto; }
+  .tiles { position:absolute; inset:0; display:grid; grid-template-columns:repeat(5,1fr); grid-template-rows:repeat(5,1fr); }
+  .tokens { position:absolute; inset:0; pointer-events:none; }
+  .cell { position:relative; border:1px solid #241c16; border-radius:0; cursor:pointer;
+    background:linear-gradient(180deg,#171210,#0f0b09); transition:background .1s; }
   .cell { position:relative; border:1px solid #2c221b; border-radius:2px; cursor:pointer;
     background:linear-gradient(180deg,#171210,#0f0b09); display:flex; flex-wrap:wrap; align-content:center;
     justify-content:center; gap:3px; padding:3px; transition:border-color .1s; }
-  .cell:hover { border-color:var(--fire); }
+  .grid:hover .cell:hover { border-color:#5a4432; }
   .cell .cd { position:absolute; top:2px; right:4px; font:11px/1 Impact,sans-serif; color:#fff; text-shadow:0 1px 3px #000; }
   .cell .tag { position:absolute; bottom:2px; left:0; right:0; text-align:center; font-size:9px; letter-spacing:.1em; color:#fff; text-shadow:0 1px 3px #000; }
   .cell.blast { background:linear-gradient(180deg,#5a1c05,#2a0d03); border-color:#ff7a18; animation:danger .5s infinite alternate; }
   .cell.split { background:linear-gradient(180deg,#33155a,#170a2a); border-color:var(--void); }
   .cell.soak  { background:linear-gradient(180deg,#0b3d52,#062430); border-color:var(--soak); }
   @keyframes danger { from { box-shadow:inset 0 0 12px rgba(255,122,24,.35) } to { box-shadow:inset 0 0 26px rgba(255,122,24,.85) } }
-  .token { width:26px; height:26px; border-radius:50%; display:flex; align-items:center; justify-content:center;
-    font:12px/1 Impact,sans-serif; border:1px solid #000; box-shadow:0 1px 4px rgba(0,0,0,.7); }
+  .token { position:absolute; width:26px; height:26px; margin:-13px 0 0 -13px; border-radius:50%;
+    display:flex; align-items:center; justify-content:center; font:12px/1 Impact,sans-serif;
+    border:1px solid #000; box-shadow:0 1px 4px rgba(0,0,0,.7); transition:left .1s linear, top .1s linear; }
+  .token .aim { position:absolute; width:5px; height:5px; border-radius:50%; background:#fff; opacity:.9; }
+  .crosshair { position:absolute; width:20px; height:20px; margin:-10px 0 0 -10px; pointer-events:none;
+    border:1px solid var(--ember); border-radius:50%; opacity:.8; }
+  .crosshair::before, .crosshair::after { content:""; position:absolute; background:var(--ember); }
+  .crosshair::before { left:9px; top:-6px; width:1px; height:6px; }
+  .crosshair::after { left:9px; bottom:-6px; width:1px; height:6px; }
   .token.tank { background:#3f6ea8; color:#eaf2ff; }
   .token.healer { background:#3f8a4a; color:#eafbe9; }
   .token.dps { background:#a8562a; color:#ffeede; }
-  .token.boss { background:#b31d1d; color:#fff; width:34px; height:34px; font-size:16px; box-shadow:0 0 14px rgba(255,60,20,.6); }
-  .token.add { background:#6b3f8a; color:#f3e9ff; width:22px; height:22px; font-size:10px; }
+  .token.boss { background:#b31d1d; color:#fff; width:34px; height:34px; margin:-17px 0 0 -17px;
+    font-size:16px; box-shadow:0 0 14px rgba(255,60,20,.6); }
+  .token.add { background:#6b3f8a; color:#f3e9ff; width:22px; height:22px; margin:-11px 0 0 -11px; font-size:10px; }
   .token.you { outline:2px solid var(--ember); }
   .token.dead { opacity:.25; }
-  .token.moving { animation:step .4s linear infinite alternate; }
-  @keyframes step { to { transform:translateY(-2px) } }
+  .token.moving { box-shadow:0 0 10px rgba(255,255,255,.25); }
 
   /* ---------- right column ---------- */
   .side { padding:8px 10px; font-size:11px; }
@@ -212,7 +224,13 @@
       <div class="panel stack"><div class="hdr">Strike Team</div><div class="frames" id="raidFrames"></div></div>
       <div class="panel side fixed" id="threatPanel"></div>
     </div>
-    <div class="panel arena"><div class="grid" id="grid"></div></div>
+    <div class="panel arena">
+      <div class="grid" id="grid">
+        <div class="tiles" id="tiles"></div>
+        <div class="tokens" id="tokens"></div>
+        <div class="crosshair" id="crosshair" hidden></div>
+      </div>
+    </div>
     <div class="panel side" id="sidePanel" style="overflow:auto"></div>
   </div>
 
@@ -230,11 +248,12 @@
     <p>Chthon has come up through the pit. Four of you. One of him. Five minutes.</p>
     <h2>Choose your role</h2>
     <div class="roles" id="rolePicker"></div>
+    <h2>Choose your controls</h2>
+    <div class="roles" id="schemePicker" style="grid-template-columns:repeat(2,1fr)"></div>
+    <div class="keys" id="schemeHelp" style="margin-bottom:10px"></div>
     <div class="keys">
-      <kbd>1</kbd><kbd>2</kbd><kbd>3</kbd><kbd>4</kbd> abilities &nbsp;·&nbsp;
-      <kbd>click a tile</kbd> move &nbsp;·&nbsp; <kbd>click a frame</kbd> target ally<br>
-      <kbd>Tab</kbd> switch enemy &nbsp;·&nbsp; <kbd>Space</kbd> pause &nbsp;·&nbsp; <kbd>R</kbd> reset<br>
-      Moving cancels a cast. Orange tiles erupt. Purple tiles must be stacked. Blue tiles need two soakers.
+      Orange tiles erupt. Purple tiles must be stacked. Blue tiles need two soakers.<br>
+      <kbd>Space</kbd> pause &nbsp;·&nbsp; <kbd>R</kbd> reset
     </div>
     <button class="go" id="startBtn">Pull</button>
   </div>

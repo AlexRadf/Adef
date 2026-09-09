@@ -1,163 +1,458 @@
 {
   "shotgun": {
-    "id": "shotgun", "name": "Shotgun", "icon": "▮",
-    "castTicks": 0, "gcdTicks": 15, "cooldownTicks": 0, "cost": 5,
-    "targeting": "enemy", "range": 1, "threatMult": 1,
+    "id": "shotgun",
+    "name": "Shotgun",
+    "icon": "▮",
+    "cast": 0,
+    "gcd": 1.5,
+    "cooldown": 0,
+    "cost": 5,
+    "targeting": "enemy",
+    "range": 1,
+    "threatMult": 1,
     "desc": "Point blank filler. Cheap, always available.",
-    "effects": [{ "type": "damage", "amount": 26000, "school": "shell" }]
+    "effects": [
+      {
+        "type": "damage",
+        "amount": 26000,
+        "school": "shell"
+      }
+    ]
   },
   "superShotgun": {
-    "id": "superShotgun", "name": "Super Shotgun", "icon": "▮▮",
-    "castTicks": 0, "gcdTicks": 15, "cooldownTicks": 60, "cost": 12,
-    "targeting": "enemy", "range": 1, "threatMult": 2.5,
+    "id": "superShotgun",
+    "name": "Super Shotgun",
+    "icon": "▮▮",
+    "cast": 0,
+    "gcd": 1.5,
+    "cooldown": 6,
+    "cost": 12,
+    "targeting": "enemy",
+    "range": 1,
+    "threatMult": 2.5,
     "desc": "Both barrels. Heavy threat.",
-    "effects": [{ "type": "damage", "amount": 72000, "school": "shell" }]
+    "effects": [
+      {
+        "type": "damage",
+        "amount": 72000,
+        "school": "shell"
+      }
+    ]
   },
   "grapple": {
-    "id": "grapple", "name": "Grappling Hook", "icon": "⚓",
-    "castTicks": 0, "gcdTicks": 15, "cooldownTicks": 100, "cost": 0,
-    "targeting": "enemy", "range": 5,
+    "id": "grapple",
+    "name": "Grappling Hook",
+    "icon": "⚓",
+    "cast": 0,
+    "gcd": 1.5,
+    "cooldown": 10,
+    "cost": 0,
+    "targeting": "enemy",
+    "range": 5,
     "desc": "Taunt. Rips the target's attention back to you for 4s.",
-    "effects": [{ "type": "taunt" }, { "type": "damage", "amount": 12000, "school": "physical", "threatMult": 1 }]
+    "effects": [
+      {
+        "type": "taunt"
+      },
+      {
+        "type": "damage",
+        "amount": 12000,
+        "school": "physical",
+        "threatMult": 1
+      }
+    ]
   },
   "pentagram": {
-    "id": "pentagram", "name": "Pentagram of Protection", "icon": "⛨",
-    "castTicks": 0, "gcdTicks": 0, "offGcd": true, "cooldownTicks": 420, "cost": 0,
-    "targeting": "self", "range": 0,
+    "id": "pentagram",
+    "name": "Pentagram of Protection",
+    "icon": "⛨",
+    "cast": 0,
+    "gcd": 0,
+    "offGcd": true,
+    "cooldown": 42,
+    "cost": 0,
+    "targeting": "self",
+    "range": 0,
     "desc": "Take 65% less damage for 9s.",
-    "effects": [{ "type": "aura", "aura": "pentagram", "target": "self" }]
+    "effects": [
+      {
+        "type": "aura",
+        "aura": "pentagram",
+        "target": "self"
+      }
+    ]
   },
-
   "stimpack": {
-    "id": "stimpack", "name": "Stimpack", "icon": "✚",
-    "castTicks": 0, "gcdTicks": 15, "cooldownTicks": 0, "cost": 10,
-    "targeting": "ally", "range": 5,
+    "id": "stimpack",
+    "name": "Stimpack",
+    "icon": "✚",
+    "cast": 0,
+    "gcd": 1.5,
+    "cooldown": 0,
+    "cost": 10,
+    "targeting": "ally",
+    "range": 5,
     "desc": "Fast, cheap heal. Click a raid frame to pick a target, or let it find the lowest.",
-    "effects": [{ "type": "heal", "amount": 105000 }]
+    "effects": [
+      {
+        "type": "heal",
+        "amount": 105000
+      }
+    ]
   },
   "medkit": {
-    "id": "medkit", "name": "Medkit", "icon": "✚✚",
-    "castTicks": 20, "gcdTicks": 15, "cooldownTicks": 0, "cost": 22,
-    "targeting": "ally", "range": 5,
+    "id": "medkit",
+    "name": "Medkit",
+    "icon": "✚✚",
+    "cast": 2,
+    "gcd": 1.5,
+    "cooldown": 0,
+    "cost": 22,
+    "targeting": "ally",
+    "range": 5,
     "desc": "2s cast, big heal. Moving cancels it.",
-    "effects": [{ "type": "heal", "amount": 235000 }]
+    "effects": [
+      {
+        "type": "heal",
+        "amount": 235000
+      }
+    ]
   },
   "megahealth": {
-    "id": "megahealth", "name": "Megahealth", "icon": "❤",
-    "castTicks": 0, "gcdTicks": 15, "cooldownTicks": 200, "cost": 30,
-    "targeting": "self", "range": 0,
+    "id": "megahealth",
+    "name": "Megahealth",
+    "icon": "❤",
+    "cast": 0,
+    "gcd": 1.5,
+    "cooldown": 20,
+    "cost": 30,
+    "targeting": "self",
+    "range": 0,
     "desc": "Heals the whole party.",
-    "effects": [{ "type": "heal", "amount": 105000, "target": "party" }]
+    "effects": [
+      {
+        "type": "heal",
+        "amount": 105000,
+        "target": "party"
+      }
+    ]
   },
   "biosuit": {
-    "id": "biosuit", "name": "Biosuit", "icon": "☣",
-    "castTicks": 0, "gcdTicks": 15, "cooldownTicks": 80, "cost": 12,
-    "targeting": "dispelTarget", "range": 5,
+    "id": "biosuit",
+    "name": "Biosuit",
+    "icon": "☣",
+    "cast": 0,
+    "gcd": 1.5,
+    "cooldown": 8,
+    "cost": 12,
+    "targeting": "dispelTarget",
+    "range": 5,
     "desc": "Cleanses one magic effect. This is how you beat Slipgate Rift.",
-    "effects": [{ "type": "dispel", "types": ["magic", "curse", "poison"] }, { "type": "heal", "amount": 30000 }]
+    "effects": [
+      {
+        "type": "dispel",
+        "types": [
+          "magic",
+          "curse",
+          "poison"
+        ]
+      },
+      {
+        "type": "heal",
+        "amount": 30000
+      }
+    ]
   },
-
   "nailgun": {
-    "id": "nailgun", "name": "Nailgun", "icon": "⁙",
-    "castTicks": 0, "gcdTicks": 15, "cooldownTicks": 0, "cost": 6,
-    "targeting": "enemy", "range": 5,
+    "id": "nailgun",
+    "name": "Nailgun",
+    "icon": "⁙",
+    "cast": 0,
+    "gcd": 1.5,
+    "cooldown": 0,
+    "cost": 6,
+    "targeting": "enemy",
+    "range": 5,
     "desc": "Filler. No cooldown, cheap, boring, essential.",
-    "effects": [{ "type": "damage", "amount": 46000, "school": "nail" }]
+    "effects": [
+      {
+        "type": "damage",
+        "amount": 46000,
+        "school": "nail"
+      }
+    ]
   },
   "rocket": {
-    "id": "rocket", "name": "Rocket Launcher", "icon": "✹",
-    "castTicks": 15, "gcdTicks": 15, "cooldownTicks": 0, "cost": 20,
-    "targeting": "enemy", "range": 5,
+    "id": "rocket",
+    "name": "Rocket Launcher",
+    "icon": "✹",
+    "cast": 1.5,
+    "gcd": 1.5,
+    "cooldown": 0,
+    "cost": 20,
+    "targeting": "enemy",
+    "range": 5,
     "desc": "1.5s cast, your hardest hit. Moving cancels it.",
-    "effects": [{ "type": "damage", "amount": 118000, "school": "rocket" }]
+    "effects": [
+      {
+        "type": "damage",
+        "amount": 118000,
+        "school": "rocket"
+      }
+    ]
   },
   "lightning": {
-    "id": "lightning", "name": "Thunderbolt", "icon": "⚡",
-    "castTicks": 0, "gcdTicks": 15, "cooldownTicks": 120, "cost": 15,
-    "targeting": "enemy", "range": 5,
+    "id": "lightning",
+    "name": "Thunderbolt",
+    "icon": "⚡",
+    "cast": 0,
+    "gcd": 1.5,
+    "cooldown": 12,
+    "cost": 15,
+    "targeting": "enemy",
+    "range": 5,
     "desc": "Interrupts a cast in progress. Save it for Rune of Black Magic.",
     "effects": [
-      { "type": "interrupt", "lockoutTicks": 60 },
-      { "type": "damage", "amount": 62000, "school": "shock" }
+      {
+        "type": "interrupt",
+        "lockout": 6
+      },
+      {
+        "type": "damage",
+        "amount": 62000,
+        "school": "shock"
+      }
     ]
   },
   "grenade": {
-    "id": "grenade", "name": "Grenade Launcher", "icon": "◍",
-    "castTicks": 0, "gcdTicks": 15, "cooldownTicks": 110, "cost": 14,
-    "targeting": "enemy", "range": 5,
+    "id": "grenade",
+    "name": "Grenade Launcher",
+    "icon": "◍",
+    "cast": 0,
+    "gcd": 1.5,
+    "cooldown": 11,
+    "cost": 14,
+    "targeting": "enemy",
+    "range": 5,
     "desc": "Impact damage plus a bleed.",
     "effects": [
-      { "type": "damage", "amount": 52000, "school": "shrapnel" },
-      { "type": "aura", "aura": "shrapnel", "target": "target" }
+      {
+        "type": "damage",
+        "amount": 52000,
+        "school": "shrapnel"
+      },
+      {
+        "type": "aura",
+        "aura": "shrapnel",
+        "target": "target"
+      }
     ]
   },
-
   "lavaSwipe": {
-    "id": "lavaSwipe", "name": "Lava Swipe", "icon": "☄",
-    "castTicks": 0, "gcdTicks": 0, "offGcd": true, "cooldownTicks": 0, "cost": 0,
-    "targeting": "enemy", "range": 1, "requiresTargetInRange": true,
+    "id": "lavaSwipe",
+    "name": "Lava Swipe",
+    "icon": "☄",
+    "cast": 0,
+    "gcd": 0,
+    "offGcd": true,
+    "cooldown": 0,
+    "cost": 0,
+    "targeting": "enemy",
+    "range": 1,
+    "requiresTargetInRange": true,
     "onNoTargetText": "Chthon finds nothing in reach and roars — UNOPPOSED!",
-    "onNoTarget": [{ "type": "damage", "target": "party", "amount": 28000, "school": "lava", "name": "Unopposed" }],
-    "effects": [{ "type": "damage", "amount": 76000, "school": "lava" }]
+    "onNoTarget": [
+      {
+        "type": "damage",
+        "target": "party",
+        "amount": 28000,
+        "school": "lava",
+        "name": "Unopposed"
+      }
+    ],
+    "effects": [
+      {
+        "type": "damage",
+        "amount": 76000,
+        "school": "lava"
+      }
+    ]
   },
   "magmaCleave": {
-    "id": "magmaCleave", "name": "Magma Cleave", "icon": "⚔",
-    "castTicks": 10, "gcdTicks": 0, "offGcd": true, "cooldownTicks": 0, "cost": 0,
-    "targeting": "enemy", "range": 2,
+    "id": "magmaCleave",
+    "name": "Magma Cleave",
+    "icon": "⚔",
+    "cast": 1,
+    "gcd": 0,
+    "offGcd": true,
+    "cooldown": 0,
+    "cost": 0,
+    "targeting": "enemy",
+    "range": 2,
     "effects": [
-      { "type": "damage", "target": "targetAndAdjacent", "amount": 112000, "school": "lava" },
-      { "type": "aura", "aura": "scorched", "target": "target" }
+      {
+        "type": "damage",
+        "target": "targetAndAdjacent",
+        "amount": 112000,
+        "school": "lava"
+      },
+      {
+        "type": "aura",
+        "aura": "scorched",
+        "target": "target"
+      }
     ]
   },
   "lavaGeyser": {
-    "id": "lavaGeyser", "name": "Lava Geyser", "icon": "▲",
-    "castTicks": 0, "gcdTicks": 0, "offGcd": true, "cooldownTicks": 0, "cost": 0,
-    "targeting": "none", "range": 5,
+    "id": "lavaGeyser",
+    "name": "Lava Geyser",
+    "icon": "▲",
+    "cast": 0,
+    "gcd": 0,
+    "offGcd": true,
+    "cooldown": 0,
+    "cost": 0,
+    "targeting": "none",
+    "range": 5,
     "effects": [
-      { "type": "markCells", "count": 6, "delayTicks": 30, "damage": 195000, "kind": "blast", "name": "Lava Geyser", "aura": "seared" }
+      {
+        "type": "markCells",
+        "count": 6,
+        "delay": 3,
+        "damage": 195000,
+        "kind": "blast",
+        "name": "Lava Geyser",
+        "aura": "seared"
+      }
     ]
   },
   "slipgateRift": {
-    "id": "slipgateRift", "name": "Slipgate Rift", "icon": "◈",
-    "castTicks": 15, "gcdTicks": 0, "offGcd": true, "cooldownTicks": 0, "cost": 0,
-    "targeting": "enemy", "range": 5,
-    "effects": [{ "type": "aura", "aura": "riftMark", "target": "target" }]
+    "id": "slipgateRift",
+    "name": "Slipgate Rift",
+    "icon": "◈",
+    "cast": 1.5,
+    "gcd": 0,
+    "offGcd": true,
+    "cooldown": 0,
+    "cost": 0,
+    "targeting": "enemy",
+    "range": 5,
+    "effects": [
+      {
+        "type": "aura",
+        "aura": "riftMark",
+        "target": "target"
+      }
+    ]
   },
   "chainOfSouls": {
-    "id": "chainOfSouls", "name": "Chain of Souls", "icon": "⛓",
-    "castTicks": 10, "gcdTicks": 0, "offGcd": true, "cooldownTicks": 0, "cost": 0,
-    "targeting": "none", "range": 5,
+    "id": "chainOfSouls",
+    "name": "Chain of Souls",
+    "icon": "⛓",
+    "cast": 1,
+    "gcd": 0,
+    "offGcd": true,
+    "cooldown": 0,
+    "cost": 0,
+    "targeting": "none",
+    "range": 5,
     "effects": [
-      { "type": "markRandomCell", "delayTicks": 50, "damage": 520000, "raidDamage": 340000, "kind": "split", "name": "Chain of Souls" }
+      {
+        "type": "markRandomArea",
+        "delay": 5,
+        "damage": 520000,
+        "raidDamage": 340000,
+        "kind": "split",
+        "name": "Chain of Souls"
+      }
     ]
   },
   "voidWell": {
-    "id": "voidWell", "name": "Void Well", "icon": "◎",
-    "castTicks": 10, "gcdTicks": 0, "offGcd": true, "cooldownTicks": 0, "cost": 0,
-    "targeting": "none", "range": 5,
+    "id": "voidWell",
+    "name": "Void Well",
+    "icon": "◎",
+    "cast": 1,
+    "gcd": 0,
+    "offGcd": true,
+    "cooldown": 0,
+    "cost": 0,
+    "targeting": "none",
+    "range": 5,
     "effects": [
-      { "type": "markRandomCell", "delayTicks": 60, "damage": 330000, "raidDamage": 300000, "minSoakers": 2, "kind": "soak", "name": "Void Well" }
+      {
+        "type": "markRandomArea",
+        "delay": 6,
+        "damage": 330000,
+        "raidDamage": 300000,
+        "minSoakers": 2,
+        "kind": "soak",
+        "name": "Void Well"
+      }
     ]
   },
   "runeOfBlackMagic": {
-    "id": "runeOfBlackMagic", "name": "Rune of Black Magic", "icon": "☠",
-    "castTicks": 30, "gcdTicks": 0, "offGcd": true, "cooldownTicks": 0, "cost": 0,
-    "targeting": "self", "range": 5, "interruptible": true,
+    "id": "runeOfBlackMagic",
+    "name": "Rune of Black Magic",
+    "icon": "☠",
+    "cast": 3,
+    "gcd": 0,
+    "offGcd": true,
+    "cooldown": 0,
+    "cost": 0,
+    "targeting": "self",
+    "range": 5,
+    "interruptible": true,
     "effects": [
-      { "type": "healPct", "pct": 4, "target": "self", "name": "Rune of Black Magic" },
-      { "type": "damage", "target": "party", "amount": 165000, "school": "void", "name": "Rune of Black Magic" }
+      {
+        "type": "healPct",
+        "pct": 4,
+        "target": "self",
+        "name": "Rune of Black Magic"
+      },
+      {
+        "type": "damage",
+        "target": "party",
+        "amount": 165000,
+        "school": "void",
+        "name": "Rune of Black Magic"
+      }
     ]
   },
   "summonScrags": {
-    "id": "summonScrags", "name": "Summon Scrags", "icon": "☗",
-    "castTicks": 20, "gcdTicks": 0, "offGcd": true, "cooldownTicks": 0, "cost": 0,
-    "targeting": "none", "range": 5,
-    "effects": [{ "type": "summon", "unit": "scrag", "count": 2 }]
+    "id": "summonScrags",
+    "name": "Summon Scrags",
+    "icon": "☗",
+    "cast": 2,
+    "gcd": 0,
+    "offGcd": true,
+    "cooldown": 0,
+    "cost": 0,
+    "targeting": "none",
+    "range": 5,
+    "effects": [
+      {
+        "type": "summon",
+        "unit": "scrag",
+        "count": 2
+      }
+    ]
   },
   "acidSpit": {
-    "id": "acidSpit", "name": "Acid Spit", "icon": "•",
-    "castTicks": 10, "gcdTicks": 20, "cooldownTicks": 0, "cost": 0,
-    "targeting": "enemy", "range": 5,
-    "effects": [{ "type": "damage", "amount": 30000, "school": "acid" }]
+    "id": "acidSpit",
+    "name": "Acid Spit",
+    "icon": "•",
+    "cast": 1,
+    "gcd": 2,
+    "cooldown": 0,
+    "cost": 0,
+    "targeting": "enemy",
+    "range": 5,
+    "effects": [
+      {
+        "type": "damage",
+        "amount": 30000,
+        "school": "acid"
+      }
+    ]
   }
 }
