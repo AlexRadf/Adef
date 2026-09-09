@@ -5,13 +5,37 @@
 import { loadContent, applyScheme } from '../content/load.js';
 import { createState } from '../engine/state.js';
 import { step } from '../engine/tick.js';
+import { generateEncounter } from '../engine/generate.js';
+import { tuneEncounter } from '../engine/tune.js';
 
 let content = null;
 
 self.onmessage = async (event) => {
-  const { scheme = 'raid', modifiers = [], ai, runs = 200, seed = 1 } = event.data;
+  const { type = 'batch', scheme = 'raid', modifiers = [], ai, runs = 200, seed = 1 } = event.data;
   if (!content) content = await loadContent();
   const c = { ...applyScheme(content, scheme), ai: ai || content.ai };
+
+  // Roll a new encounter and tune it against this very sim before
+  // anybody has to play it.
+  if (type === 'generate') {
+    const tuned = tuneEncounter(c, generateEncounter(seed), {
+      seed,
+      onProgress: (stage) => self.postMessage({ type: 'progress', stage }),
+    });
+    self.postMessage({
+      type: 'encounter',
+      encounter: tuned.encounter,
+      accepted: tuned.accepted,
+      report: {
+        winRate: tuned.report.winRate,
+        medianKill: tuned.report.medianKill,
+        deathsPerPull: tuned.report.deathsPerPull,
+        causes: tuned.report.causes.slice(0, 3),
+        log: tuned.report.log,
+      },
+    });
+    return;
+  }
 
   const kills = [];
   const causes = {};
@@ -20,7 +44,7 @@ self.onmessage = async (event) => {
   let wipes = 0;
 
   for (let i = 0; i < runs; i++) {
-    const state = createState(c, { seed: seed + i * 7919, headless: true, modifiers });
+    const state = createState(c, { seed: seed + i * 7919, headless: true, modifiers, boss: event.data.boss });
     while (!state.over) step(state, c, []);
     if (state.result === 'kill') kills.push(state.tick / 10);
     else wipes++;

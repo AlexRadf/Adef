@@ -8,6 +8,8 @@ import { render, renderEnd, resetRenderer } from './ui/render.js';
 import { createLog } from './ui/log.js';
 import { createInput } from './ui/input.js';
 import { createGambitEditor } from './ui/gambit.js';
+import { createEncounterPicker } from './ui/encounter.js';
+import { withEncounter } from './engine/generate.js';
 
 const TICK_MS = 100;
 const ROLES = [
@@ -18,6 +20,10 @@ const ROLES = [
 
 const content = await loadContent();
 const gambit = createGambitEditor(content);
+let encounter = null;
+const encounters = createEncounterPicker(content, (chosen) => {
+  encounter = chosen;
+});
 const logView = createLog(document.getElementById('combatLog'));
 const inputQueue = [];
 
@@ -71,13 +77,26 @@ function describeMode() {
 }
 
 const modifierPicker = document.getElementById('modifierPicker');
-modifierPicker.innerHTML = Object.values(content.modifiers)
-  .map(
-    (m) => `<button class="chip" data-mod="${m.id}">
+modifierPicker.innerHTML =
+  Object.values(content.modifiers)
+    .map(
+      (m) => `<button class="chip" data-mod="${m.id}">
       <b>${m.name}</b>${m.desc} <i>bots win ${m.bots}</i></button>`
-  )
-  .join('');
+    )
+    .join('') +
+  `<button class="chip" data-roulette="1"><b>Roulette</b>Roll one or two of them for me and do not tell me which until the pull screen.</button>`;
 modifierPicker.addEventListener('click', (e) => {
+  if (e.target.closest('[data-roulette]')) {
+    const ids = Object.keys(content.modifiers);
+    modifiers.clear();
+    const many = 1 + Math.floor(Math.random() * 2);
+    while (modifiers.size < many) modifiers.add(ids[Math.floor(Math.random() * ids.length)]);
+    for (const node of modifierPicker.querySelectorAll('[data-mod]')) {
+      node.classList.toggle('sel', modifiers.has(node.dataset.mod));
+    }
+    gambit.setModifiers([...modifiers]);
+    return;
+  }
   const chip = e.target.closest('[data-mod]');
   if (!chip) return;
   const id = chip.dataset.mod;
@@ -116,6 +135,7 @@ schemePicker.addEventListener('click', (e) => {
   [...schemePicker.children].forEach((c) => c.classList.toggle('sel', c.dataset.scheme === scheme));
   describeScheme();
   gambit.setScheme(scheme);
+  encounters.setScheme(scheme);
 });
 function describeScheme() {
   document.getElementById('schemeHelp').textContent = content.schemes[scheme].blurb;
@@ -142,12 +162,15 @@ function start() {
   resetRenderer();
   input.setScheme(scheme, mode);
 
+  encounter = encounters.current();
   active = { ...applyScheme(content, scheme), ai: gambit.lists() };
+  if (encounter) active = withEncounter(active, encounter);
   state = createState(active, {
     seed: (Math.random() * 1e9) | 0,
     playerRole: role,
     mode,
     modifiers: [...modifiers],
+    boss: encounter ? encounter.boss.id : 'chthon',
   });
   view = snapshot(state, active);
   render(view, active, hud());

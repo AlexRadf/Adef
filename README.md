@@ -16,10 +16,62 @@ open http://localhost:8080
 (A static server is needed only because browsers refuse ES modules and `fetch` over
 `file://`. There is nothing to build.)
 
+## Procedural encounters
+
+The handcrafted fight is one fight. The generator makes as many as you want, from a seed,
+and **tunes each one against the headless sim before you ever see it** — so a random
+encounter arrives with its difficulty measured rather than hoped for.
+
+```
+$ node sim.js --boss random --seed 4417 --runs 100
+
+generated #4417: The Pale Enforcer, Whisper of the Elder World
+  19.3M hp · enrage 291s · 2 phases · damage x1.285
+  · Tesla Bloom — 8 tiles erupt 2s after they light up, every 20s
+  · Capacitor — every 26s a tile needs two bodies in it or the raid eats the hit
+  · Grounding Rod — a dispellable curse every 28s that detonates on everyone nearby
+  · Summons 3 Scrags every 44s
+  [tuner] party does 111,149 dps → 23.3M hp for a 210s kill
+  [tuner] ran 254s long → 19.3M hp
+  [tuner] damage ×1.285 → 33% survive, killing it in 202s
+```
+
+**The generator** (`engine/generate.js`) draws a theme, a name, 4–5 mechanics from the
+primitive vocabulary and 2–3 phases — then allocates their numbers out of a fixed
+incoming-damage-per-second budget, the way an encounter designer would. The part that
+makes this work is `payload`: how many party members' worth of damage a cast actually
+delivers. A whole-party nuke and a hit that lands on one person are not the same size just
+because they cost the same budget, and a stack mechanic divides itself by whoever turned
+up. Before that model existed the tuner was reliably having to multiply every generated
+fight by 1.85 to make it dangerous.
+
+**The tuner** (`engine/tune.js`) keeps two knobs deliberately apart, because conflating
+them is what makes naive auto-tuners oscillate:
+
+- **boss hp sets the kill time**, fitted from measured party dps. Raising hp to make a
+  fight "harder" just pushes the kill past the enrage timer and falls off a cliff — an
+  early version went 75% → 0% doing exactly that.
+- **a damage scale sets the lethality**, binary-searched, because win rate falls
+  monotonically as it rises.
+
+Before either, one pass looks for the unfairness a random fight usually has — a single
+mechanic doing more than 55% of the killing — and turns *that one* down rather than
+nerfing everything around it.
+
+Measured over 40 seeds: **95% land inside the playable band**, median win rate 50%, median
+kill 3:31, about 3.4s of simulation each. The rejects are marked as lopsided in the UI so
+you can roll again.
+
+The same seed always makes the same fight, so a seed is shareable — hand somebody a number
+and they get your encounter exactly.
+
 ## Three ways to play it
 
 The mode decides **how much of the party you drive** — it is orthogonal to the control
 scheme below, so any mode combines with either.
+
+**Solo is the default and the one the game is really about.** The other two exist because
+the engine made them nearly free, not because they are the point.
 
 | Mode | You are | What it is actually testing |
 |---|---|---|
@@ -47,7 +99,7 @@ guessed — the bot win rate is on the chip:
 | **Swarm** | twice as many Scrags, at under half health each | 27% |
 | **Fog of War** | no countdowns on the ground | 45%* |
 
-\* Fog of War costs the bots nothing — they were never reading the numbers. It is aimed
+Modifiers apply to generated encounters too. \* Fog of War costs the bots nothing — they were never reading the numbers. It is aimed
 squarely at you, which is the honest way to describe it. Modifiers stack: Volcanic + Swarm
 is 8.7%.
 
@@ -104,7 +156,8 @@ no mechanic-specific code in it.
 /engine   clock.js  geometry.js  rng.js  auras.js  abilities.js  ai.js  state.js  tick.js
 /content  abilities.json  auras.json  units.json  parties.json  schemes.json  modes.json
           modifiers.json  bosses/*.json  ai/*.json  load.js
-/ui       render.js  input.js  log.js  gambit.js  simworker.js
+/engine   generate.js  tune.js          procedural encounters and their auto-tuning
+/ui       render.js  input.js  log.js  gambit.js  encounter.js  simworker.js
 /tests    engine.test.mjs
 sim.js    headless balance runner (node)
 main.js   browser entry: owns the 100ms clock, nothing else
@@ -227,8 +280,17 @@ None of those were visible while playing. All three were obvious in a 300-pull s
 npm test        # determinism, choke points, cast cancelling, snapshot isolation
 ```
 
+## Two players
+
+The engine already runs on `state.playerIds` — a list, not a single player — and every
+input carries the unit it speaks for, so two people driving two characters with two bots
+filling in is not an architectural change. What is missing is only the transport: some way
+for a second machine's input queue to reach this one, and a snapshot going back. The sim
+being deterministic and tick-based is the hard part of that problem, and it is already
+done.
+
 ## Deliberately not here
 
-3D. Networking. Multiplayer. Loot. Talent trees. Classes past the four archetypes. A
+3D. Networking. Loot. Talent trees. Classes past the four archetypes. A
 second boss. Animations. Save files. Difficulty modes. Sound. None of them would make a
 bad core loop good — so the loop got the time instead.

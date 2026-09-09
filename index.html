@@ -168,9 +168,17 @@
   .log .phase, .log .enrage, .log .win { color:var(--gold); font-weight:bold; }
   .log .buff, .log .debuff, .log .taunt, .log .spawn, .log .cast { color:#a08f7e; }
 
+  .scout { display:flex; gap:6px; align-items:center; flex-wrap:wrap; font-size:11px; text-align:left; }
+  .scout-head { display:flex; width:100%; align-items:baseline; gap:4px; margin-bottom:2px; }
+  .scout-head b { font-family:Impact,sans-serif; letter-spacing:.06em; font-size:16px; color:var(--ember); font-weight:400; }
+  .scout-list { list-style:none; margin:0 0 8px; padding:0; width:100%; }
+  .scout-list li { padding:2px 0 2px 12px; position:relative; color:var(--text); font-size:11px; }
+  .scout-list li::before { content:"·"; position:absolute; left:2px; color:var(--fire); }
+  #encounterPanel { border:1px solid var(--edge); border-radius:3px; padding:8px; margin-bottom:12px; background:#100c0a; }
+
   .chips { display:flex; flex-wrap:wrap; gap:6px; justify-content:center; margin:6px 0 14px; }
   .chip { border:1px solid var(--edge); background:#140f0c; border-radius:2px; padding:5px 10px;
-    cursor:pointer; font-size:11px; color:var(--dim); text-align:left; }
+    cursor:pointer; font-size:11px; color:var(--dim); text-align:left; flex:1 1 190px; max-width:250px; }
   .chip:hover { border-color:var(--edge-hot); }
   .chip.sel { border-color:var(--fire); color:var(--text); box-shadow:0 0 0 1px rgba(255,122,24,.25) inset; }
   .chip b { display:block; color:var(--ember); font-size:12px; font-weight:normal;
@@ -282,11 +290,13 @@
 <div class="overlay" id="startOverlay">
   <div class="panel card">
     <h1>Slipgate Raid</h1>
-    <p>Chthon has come up through the pit. Four of you. One of him. Five minutes.</p>
+    <p>Something has come up through the pit. Four of you. One of it. Five minutes.</p>
     <h2>Choose how you play</h2>
     <div class="roles" id="modePicker" style="grid-template-columns:repeat(3,1fr)"></div>
     <div class="keys" id="modeHelp" style="margin-bottom:10px"></div>
-    <h2>Modifiers <span style="font-size:11px;color:var(--dim);letter-spacing:0;text-transform:none">— stack freely</span></h2>
+    <h2>Choose your opponent</h2>
+    <div id="encounterPanel"></div>
+    <h2>Modifiers <span style="font-size:11px;color:var(--dim);letter-spacing:0;text-transform:none">— stack freely, or roll them</span></h2>
     <div class="chips" id="modifierPicker"></div>
     <h2 id="roleHeading">Choose your role</h2>
     <div class="roles" id="rolePicker"></div>

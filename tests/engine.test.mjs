@@ -24,6 +24,8 @@ import {
   ACTION_SPECS,
 } from '../engine/ai.js';
 import { toTicks, TICKS_PER_SECOND } from '../engine/clock.js';
+import { generateEncounter, withEncounter } from '../engine/generate.js';
+import { tuneEncounter } from '../engine/tune.js';
 
 const base = await loadContent();
 const content = applyScheme(base, 'raid');
@@ -255,6 +257,62 @@ test('a modifier actually changes the fight it describes', () => {
     return most;
   };
   assert.ok(count(['volcanic']) > count([]), 'Volcanic should put more tiles on the floor');
+});
+
+/* --------------------------------------------------- generated fights */
+
+test('a seed always makes the same encounter, and different seeds differ', () => {
+  assert.deepEqual(generateEncounter(7), generateEncounter(7));
+  const names = [1, 2, 3, 4, 5, 6].map((s) => JSON.stringify(generateEncounter(s).boss));
+  assert.equal(new Set(names).size, 6);
+});
+
+test('generated encounters are structurally valid content', () => {
+  for (let seed = 1; seed <= 25; seed++) {
+    const e = generateEncounter(seed);
+    const c = withEncounter(content, e);
+    assert.ok(e.boss.phases.length >= 2, `#${seed} needs phases`);
+    assert.ok(e.mechanics.length >= 2, `#${seed} needs mechanics to describe`);
+
+    for (const phase of e.boss.phases) {
+      assert.ok(phase.trigger && phase.trigger.type, `#${seed} phase needs a trigger`);
+      for (const entry of phase.timeline) {
+        const ability = c.abilities[entry.ability];
+        assert.ok(ability, `#${seed} timeline references missing ability ${entry.ability}`);
+        assert.equal(typeof ability.castTicks, 'number', `#${seed} ${entry.ability} was never hydrated`);
+        for (const effect of [...(ability.effects || []), ...(ability.onNoTarget || [])]) {
+          if (effect.type === 'aura') assert.ok(c.auras[effect.aura], `#${seed} missing aura ${effect.aura}`);
+          if (effect.type === 'summon') assert.ok(c.units[effect.unit], `#${seed} missing unit ${effect.unit}`);
+        }
+      }
+    }
+  }
+});
+
+test('a generated fight actually runs to a conclusion', () => {
+  for (const seed of [3, 19]) {
+    const e = generateEncounter(seed);
+    const c = withEncounter(content, e);
+    const state = createState(c, { seed: 1, headless: true, boss: e.boss.id });
+    while (!state.over) step(state, c, []);
+    assert.ok(['kill', 'wipe', 'timeout'].includes(state.result));
+    assert.ok(state.log.length > 50, 'a real fight leaves a real log');
+  }
+});
+
+test('the tuner lands a random encounter in a playable band', () => {
+  const tuned = tuneEncounter(content, generateEncounter(12), { seed: 12, runs: 24 });
+  assert.ok(tuned.report.winRate > 0.1 && tuned.report.winRate < 0.85, `win rate was ${tuned.report.winRate}`);
+  assert.ok(tuned.report.medianKill > 120 && tuned.report.medianKill < 320, `kill was ${tuned.report.medianKill}s`);
+  assert.ok(tuned.encounter.boss.hp > 1e6);
+  assert.ok(tuned.report.log.length >= 2, 'the tuner should say what it did');
+});
+
+test('tuning is deterministic', () => {
+  const a = tuneEncounter(content, generateEncounter(5), { seed: 5, runs: 12 });
+  const b = tuneEncounter(content, generateEncounter(5), { seed: 5, runs: 12 });
+  assert.equal(a.encounter.boss.hp, b.encounter.boss.hp);
+  assert.equal(a.encounter.damageScale, b.encounter.damageScale);
 });
 
 test('the tick rate lives in exactly one place', () => {

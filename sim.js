@@ -8,6 +8,8 @@
 import { loadContent, applyScheme } from './content/load.js';
 import { createState } from './engine/state.js';
 import { step } from './engine/tick.js';
+import { generateEncounter } from './engine/generate.js';
+import { tuneEncounter } from './engine/tune.js';
 
 function parseArgs(argv) {
   const args = { boss: 'chthon', party: 'default', scheme: 'raid', modifiers: '', runs: 100, seed: 1, verbose: false };
@@ -29,7 +31,19 @@ export function runOnce(content, options) {
 }
 
 const args = parseArgs(process.argv.slice(2));
-const content = applyScheme(await loadContent(), args.scheme);
+let content = applyScheme(await loadContent(), args.scheme);
+
+// --boss random rolls a procedural encounter and tunes it first.
+if (args.boss === 'random') {
+  const tuned = tuneEncounter(content, generateEncounter(args.seed), { seed: args.seed });
+  content = tuned.content;
+  args.boss = tuned.encounter.boss.id;
+  const b = tuned.encounter.boss;
+  console.log(`\ngenerated #${b.seed}: ${b.name}, ${b.title}`);
+  console.log(`  ${(b.hp / 1e6).toFixed(1)}M hp · enrage ${b.enrageAtSeconds}s · ${b.phases.length} phases · damage x${tuned.encounter.damageScale}`);
+  for (const m of tuned.encounter.mechanics) console.log(`  · ${m}`);
+  for (const l of tuned.report.log) console.log(`  [tuner] ${l}`);
+}
 
 const results = [];
 const started = Date.now();

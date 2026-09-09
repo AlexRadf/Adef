@@ -16,7 +16,7 @@
   "shortFuse": {
     "id": "shortFuse",
     "name": "Short Fuse",
-    "desc": "Chthon takes the Quad Damage 55s early. Your kill has to beat it.",
+    "desc": "The boss takes the Quad Damage 55s early. Your kill has to beat it.",
     "enrageDelta": -55,
     "bots": "17%"
   },

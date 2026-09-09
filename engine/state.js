@@ -2,6 +2,7 @@
 // knows the DOM exists.
 
 import { makeUnit } from './abilities.js';
+import { nextInt } from './rng.js';
 import { applyAura } from './auras.js';
 import { TICKS_PER_SECOND } from './clock.js';
 
@@ -77,6 +78,9 @@ export function createState(content, options = {}) {
 
   for (const member of partyDef.members) {
     const unit = makeUnit(state, content, { ...member, team: 'party', speed: scheme.moveSpeed });
+    // Reaction delay varies per pull, seeded like everything else. The
+    // same three bots, but never quite the same three people.
+    unit.reactionTicks = Math.max(4, member.reactionTicks + nextInt(state, 7) - 3);
     const mine = control === 'all' || (control === 'one' && !slotTaken && member.role === playerRole);
     if (mine) {
       unit.ai = null;
