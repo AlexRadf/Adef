@@ -1,0 +1,7 @@
+{
+  "scrag": {
+    "type": "scrag", "name": "Scrag", "role": "add", "team": "enemy",
+    "maxHp": 450000, "maxResource": 100, "resourceRegen": 0,
+    "abilities": ["acidSpit"], "passives": []
+  }
+}

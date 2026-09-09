@@ -1,0 +1,14 @@
+{
+  "id": "dps",
+  "reactionTicks": 12,
+  "priority": [
+    { "if": "selfCellUnsafe",             "do": "moveToSafe" },
+    { "if": "stackMarkerActive",          "do": "moveToStack" },
+    { "if": "soakNeeded",                 "do": "moveToSoak" },
+    { "if": "bossCastingInterruptible",   "do": "cast:lightning" },
+    { "if": "resourceBelowPct:35",        "do": "cast:nailgun" },
+    { "else": true,                       "do": "cast:grenade" },
+    { "else": true,                       "do": "cast:rocket" },
+    { "else": true,                       "do": "cast:nailgun" }
+  ]
+}

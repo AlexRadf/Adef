@@ -1,0 +1,16 @@
+{
+  "id": "healer",
+  "reactionTicks": 9,
+  "priority": [
+    { "if": "selfCellUnsafe",       "do": "moveToSafe" },
+    { "if": "stackMarkerActive",    "do": "moveToStack" },
+    { "if": "soakNeeded",           "do": "moveToSoak" },
+    { "if": "allyHasDispellable",   "do": "cast:biosuit" },
+    { "if": "partyAvgBelowPct:75",  "do": "cast:megahealth" },
+    { "if": "allyBelowPct:42",      "do": "cast:stimpack" },
+    { "if": "resourceBelowPct:18",  "do": "cast:nailgun" },
+    { "if": "allyBelowPct:70",      "do": "cast:medkit" },
+    { "if": "allyBelowPct:92",      "do": "cast:stimpack" },
+    { "else": true,                 "do": "cast:nailgun" }
+  ]
+}

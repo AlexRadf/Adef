@@ -1,0 +1,48 @@
+{
+  "id": "chthon",
+  "name": "Chthon",
+  "title": "Lord of the Lava Pit",
+  "hp": 22500000,
+  "cell": 12,
+  "enrageAtSeconds": 270,
+  "phases": [
+    {
+      "name": "Phase 1 — The Pit Stirs",
+      "trigger": { "type": "start" },
+      "timeline": [
+        { "t": 1,  "every": 2,  "ability": "lavaSwipe",        "target": "threatLeader" },
+        { "t": 10, "every": 24, "ability": "magmaCleave",      "target": "threatLeader" },
+        { "t": 16, "every": 22, "ability": "lavaGeyser",       "target": "randomCells", "count": 6, "delay": 3 },
+        { "t": 34, "every": 40, "ability": "slipgateRift",     "target": "randomPlayer" },
+        { "t": 50, "every": 38, "ability": "runeOfBlackMagic", "target": "self" }
+      ]
+    },
+    {
+      "name": "Phase 2 — The Brood Wakes",
+      "trigger": { "type": "hpBelow", "pct": 60 },
+      "onEnter": [{ "type": "summon", "unit": "scrag", "count": 2 }],
+      "timeline": [
+        { "t": 1,  "every": 2,  "ability": "lavaSwipe",        "target": "threatLeader" },
+        { "t": 6,  "every": 24, "ability": "magmaCleave",      "target": "threatLeader" },
+        { "t": 12, "every": 20, "ability": "lavaGeyser",       "target": "randomCells", "count": 7, "delay": 3 },
+        { "t": 20, "every": 26, "ability": "chainOfSouls",     "target": "none" },
+        { "t": 30, "every": 40, "ability": "slipgateRift",     "target": "randomPlayer" },
+        { "t": 44, "every": 36, "ability": "runeOfBlackMagic", "target": "self" },
+        { "t": 58, "every": 46, "ability": "summonScrags",     "target": "none" }
+      ]
+    },
+    {
+      "name": "Phase 3 — Lord of the Pit",
+      "trigger": { "type": "hpBelow", "pct": 25 },
+      "timeline": [
+        { "t": 1,  "every": 2,  "ability": "lavaSwipe",        "target": "threatLeader" },
+        { "t": 4,  "every": 18, "ability": "magmaCleave",      "target": "threatLeader" },
+        { "t": 9,  "every": 16, "ability": "lavaGeyser",       "target": "randomCells", "count": 8, "delay": 3 },
+        { "t": 15, "every": 30, "ability": "voidWell",         "target": "none" },
+        { "t": 24, "every": 26, "ability": "chainOfSouls",     "target": "none" },
+        { "t": 32, "every": 34, "ability": "slipgateRift",     "target": "randomPlayer" },
+        { "t": 40, "every": 34, "ability": "runeOfBlackMagic", "target": "self" }
+      ]
+    }
+  ]
+}

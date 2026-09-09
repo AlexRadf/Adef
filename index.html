@@ -1,0 +1,205 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Ctext y='14' font-size='14'%3E%F0%9F%94%A5%3C/text%3E%3C/svg%3E" />
+<title>SLIPGATE RAID — Chthon, Lord of the Lava Pit</title>
+<style>
+  :root {
+    --bg:#0b0908; --panel:#16110e; --panel2:#1e1713; --edge:#3b2c21;
+    --edge-hot:#7a4a22; --fire:#ff7a18; --ember:#ffb347; --rust:#8a3a10;
+    --blood:#b31d1d; --text:#d9cfc4; --dim:#8a7a6c; --hp:#54a83a; --hp-dark:#2c5a1f;
+    --mana:#3d7fb5; --void:#8b5cf6; --soak:#2f9ec4; --gold:#e8c46a;
+  }
+  * { box-sizing:border-box; }
+  html,body { height:100%; }
+  body {
+    margin:0; background:
+      radial-gradient(1200px 600px at 50% -10%, #2a1a10 0%, transparent 60%),
+      repeating-linear-gradient(0deg, rgba(255,255,255,.012) 0 1px, transparent 1px 3px),
+      var(--bg);
+    color:var(--text); font:13px/1.45 "Trebuchet MS", "Segoe UI", system-ui, sans-serif;
+    overflow:hidden;
+  }
+  h1,h2,h3,.ttl { font-family:Impact, "Haettenschweiler", "Arial Narrow", sans-serif;
+    letter-spacing:.06em; text-transform:uppercase; margin:0; font-weight:400; }
+  .app { display:grid; grid-template-rows:auto 1fr auto; height:100vh; gap:8px; padding:8px; max-width:1240px; margin:0 auto; }
+  .panel { background:linear-gradient(180deg, var(--panel2), var(--panel));
+    border:1px solid var(--edge); border-radius:3px; box-shadow:inset 0 1px 0 rgba(255,255,255,.04), 0 2px 8px rgba(0,0,0,.5); }
+
+  /* ---------- boss frame ---------- */
+  .boss { padding:8px 12px; display:grid; grid-template-columns:1fr auto; gap:10px; align-items:center; }
+  .boss-name { font-size:26px; color:var(--ember); text-shadow:0 0 18px rgba(255,122,24,.35); }
+  .boss-name small { font-family:inherit; font-size:12px; color:var(--dim); margin-left:8px; letter-spacing:.12em; }
+  .bar { position:relative; height:22px; background:#100c0a; border:1px solid var(--edge); border-radius:2px; overflow:hidden; }
+  .bar > i { position:absolute; inset:0 auto 0 0; display:block; transition:width .1s linear; }
+  .bar > span { position:absolute; inset:0; display:flex; align-items:center; justify-content:space-between;
+    padding:0 8px; font-size:11px; letter-spacing:.06em; text-shadow:0 1px 2px #000; }
+  .bar.boss-hp { height:26px; }
+  .bar.boss-hp > i { background:linear-gradient(180deg,#d8341c,#7d1608); }
+  .cast { height:16px; margin-top:5px; }
+  .cast > i { background:linear-gradient(180deg,#ffcf6b,#c98a12); }
+  .cast.interruptible > i { background:linear-gradient(180deg,#8be2ff,#1f7fa8); }
+  .cast.interruptible { border-color:#3aa7d0; box-shadow:0 0 10px rgba(58,167,208,.4); }
+  .enrage { text-align:right; min-width:150px; }
+  .enrage b { font-family:Impact,sans-serif; font-size:24px; color:var(--gold); letter-spacing:.06em; }
+  .enrage.hot b { color:#ff5a3c; animation:pulse .6s infinite alternate; }
+  @keyframes pulse { to { opacity:.45 } }
+  .phase-tag { font-size:11px; color:var(--dim); letter-spacing:.14em; text-transform:uppercase; }
+
+  /* ---------- middle ---------- */
+  .mid { display:grid; grid-template-columns:280px 1fr 230px; gap:8px; min-height:0; }
+  .col { display:flex; flex-direction:column; gap:8px; min-height:0; }
+  .hdr { font-size:11px; letter-spacing:.16em; color:var(--dim); padding:6px 10px 0; }
+
+  .frames { padding:8px; display:flex; flex-direction:column; gap:6px; }
+  .frame { padding:5px 7px; border:1px solid var(--edge); border-radius:2px; background:#120e0c; cursor:pointer; }
+  .frame:hover { border-color:var(--edge-hot); }
+  .frame.you { border-color:var(--fire); box-shadow:0 0 0 1px rgba(255,122,24,.25) inset; }
+  .frame.target { outline:1px solid var(--gold); }
+  .frame.dead { opacity:.4; filter:grayscale(1); }
+  .frame-top { display:flex; justify-content:space-between; align-items:baseline; margin-bottom:3px; }
+  .frame-top b { font-size:13px; letter-spacing:.03em; }
+  .frame-top em { font-style:normal; font-size:10px; color:var(--dim); letter-spacing:.1em; text-transform:uppercase; }
+  .bar.hp { height:16px; } .bar.hp > i { background:linear-gradient(180deg,#68c94a,var(--hp-dark)); }
+  .bar.res { height:5px; margin-top:3px; } .bar.res > i { background:linear-gradient(180deg,#5aa2d8,#22506f); }
+  .pips { display:flex; gap:3px; margin-top:4px; min-height:16px; flex-wrap:wrap; }
+  .pip { font-size:10px; padding:1px 4px; border-radius:2px; border:1px solid; line-height:1.3; white-space:nowrap; }
+  .pip.harm { border-color:#7b2626; background:#2a1010; color:#ff9d9d; }
+  .pip.help { border-color:#2f6b2a; background:#132110; color:#a9e39a; }
+  .pip.magic { border-color:#3a6fae; background:#0f1a2a; color:#9ec8ff; box-shadow:0 0 6px rgba(90,160,255,.4); }
+  .castline { font-size:10px; color:var(--ember); margin-top:3px; height:12px; overflow:hidden; }
+
+  /* ---------- grid ---------- */
+  .arena { display:flex; align-items:center; justify-content:center; padding:10px; min-height:0; }
+  .grid { display:grid; grid-template-columns:repeat(5,1fr); gap:5px; aspect-ratio:1; height:100%; max-height:100%; }
+  .cell { position:relative; border:1px solid #2c221b; border-radius:2px; cursor:pointer;
+    background:linear-gradient(180deg,#171210,#0f0b09); display:flex; flex-wrap:wrap; align-content:center;
+    justify-content:center; gap:3px; padding:3px; transition:border-color .1s; }
+  .cell:hover { border-color:var(--fire); }
+  .cell .cd { position:absolute; top:2px; right:4px; font:11px/1 Impact,sans-serif; color:#fff; text-shadow:0 1px 3px #000; }
+  .cell .tag { position:absolute; bottom:2px; left:0; right:0; text-align:center; font-size:9px; letter-spacing:.1em; color:#fff; text-shadow:0 1px 3px #000; }
+  .cell.blast { background:linear-gradient(180deg,#5a1c05,#2a0d03); border-color:#ff7a18; animation:danger .5s infinite alternate; }
+  .cell.split { background:linear-gradient(180deg,#33155a,#170a2a); border-color:var(--void); }
+  .cell.soak  { background:linear-gradient(180deg,#0b3d52,#062430); border-color:var(--soak); }
+  @keyframes danger { from { box-shadow:inset 0 0 12px rgba(255,122,24,.35) } to { box-shadow:inset 0 0 26px rgba(255,122,24,.85) } }
+  .token { width:26px; height:26px; border-radius:50%; display:flex; align-items:center; justify-content:center;
+    font:12px/1 Impact,sans-serif; border:1px solid #000; box-shadow:0 1px 4px rgba(0,0,0,.7); }
+  .token.tank { background:#3f6ea8; color:#eaf2ff; }
+  .token.healer { background:#3f8a4a; color:#eafbe9; }
+  .token.dps { background:#a8562a; color:#ffeede; }
+  .token.boss { background:#b31d1d; color:#fff; width:34px; height:34px; font-size:16px; box-shadow:0 0 14px rgba(255,60,20,.6); }
+  .token.add { background:#6b3f8a; color:#f3e9ff; width:22px; height:22px; font-size:10px; }
+  .token.you { outline:2px solid var(--ember); }
+  .token.dead { opacity:.25; }
+  .token.moving { animation:step .4s linear infinite alternate; }
+  @keyframes step { to { transform:translateY(-2px) } }
+
+  /* ---------- right column ---------- */
+  .side { padding:8px 10px; font-size:11px; }
+  .side h3 { font-size:11px; color:var(--dim); letter-spacing:.16em; margin-bottom:6px; }
+  .enemy { margin-bottom:7px; }
+  .enemy b { font-size:12px; }
+  .legend div { display:flex; gap:6px; align-items:flex-start; margin-bottom:5px; color:var(--dim); }
+  .legend span.k { width:14px; text-align:center; color:var(--text); }
+  .threat { display:flex; justify-content:space-between; font-size:11px; color:var(--dim); }
+  .threat b { color:var(--text); font-weight:400; }
+  .threat .lead { color:var(--gold); }
+
+  /* ---------- bottom ---------- */
+  .bottom { display:grid; grid-template-columns:auto 1fr; gap:8px; }
+  .actions { padding:8px; display:flex; gap:6px; align-items:center; }
+  .btn { position:relative; width:78px; height:78px; border:1px solid var(--edge); border-radius:3px;
+    background:linear-gradient(180deg,#241b16,#140f0c); color:var(--text); cursor:pointer; overflow:hidden;
+    display:flex; flex-direction:column; align-items:center; justify-content:center; gap:2px; padding:4px; }
+  .btn:hover:not(:disabled) { border-color:var(--fire); }
+  .btn:disabled { opacity:.45; cursor:default; }
+  .btn .ic { font-size:20px; line-height:1; color:var(--ember); }
+  .btn .nm { font-size:9px; text-align:center; letter-spacing:.02em; color:var(--text); line-height:1.1; }
+  .btn .key { position:absolute; top:2px; left:4px; font:11px/1 Impact,sans-serif; color:var(--dim); }
+  .btn .cost { position:absolute; bottom:2px; right:4px; font-size:9px; color:var(--mana); }
+  .btn .sweep { position:absolute; inset:0; background:rgba(0,0,0,.72); display:flex; align-items:center;
+    justify-content:center; font:16px/1 Impact,sans-serif; color:#fff; }
+  .btn.gcd::after { content:""; position:absolute; inset:0; background:rgba(120,140,200,.14); }
+
+  .log { padding:6px 8px; overflow-y:auto; font:11px/1.5 ui-monospace,"Consolas","Courier New",monospace; height:150px; }
+  .log div { white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .log .t { color:#57493d; }
+  .log .damage-taken { color:#ff8f6b; } .log .damage-done { color:#9fb4c9; }
+  .log .heal { color:#8fd47a; } .log .mechanic, .log .telegraph { color:var(--ember); }
+  .log .death { color:#ff4d4d; } .log .interrupt { color:#8be2ff; } .log .dispel { color:#9ec8ff; }
+  .log .phase, .log .enrage, .log .win { color:var(--gold); font-weight:bold; }
+  .log .buff, .log .debuff, .log .taunt, .log .spawn, .log .cast { color:#a08f7e; }
+
+  /* ---------- overlays ---------- */
+  .overlay { position:fixed; inset:0; background:rgba(6,4,3,.9); display:flex; align-items:center;
+    justify-content:center; z-index:20; backdrop-filter:blur(2px); }
+  .overlay.hide { display:none; }
+  .card { width:min(620px,92vw); padding:22px 26px; text-align:center; }
+  .card h1 { font-size:38px; color:var(--fire); text-shadow:0 0 30px rgba(255,122,24,.4); }
+  .card h2 { font-size:20px; color:var(--ember); margin:14px 0 8px; }
+  .card p { color:var(--dim); margin:6px 0 14px; }
+  .roles { display:grid; grid-template-columns:repeat(3,1fr); gap:10px; margin:14px 0; }
+  .role { padding:12px; border:1px solid var(--edge); border-radius:3px; background:#140f0c; cursor:pointer; }
+  .role:hover { border-color:var(--edge-hot); }
+  .role.sel { border-color:var(--fire); box-shadow:0 0 0 1px rgba(255,122,24,.3) inset; }
+  .role b { display:block; font-family:Impact,sans-serif; letter-spacing:.06em; font-size:16px; color:var(--ember); }
+  .role em { font-style:normal; font-size:11px; color:var(--dim); }
+  .go { margin-top:8px; padding:11px 30px; font:20px/1 Impact,sans-serif; letter-spacing:.1em;
+    background:linear-gradient(180deg,#c8480f,#7d2606); color:#fff; border:1px solid #ff9147; border-radius:3px; cursor:pointer; }
+  .go:hover { filter:brightness(1.15); }
+  .keys { font-size:11px; color:var(--dim); line-height:1.9; }
+  .keys kbd { background:#241b16; border:1px solid var(--edge); border-radius:2px; padding:1px 6px; color:var(--text); }
+  .result-stats { display:grid; grid-template-columns:repeat(3,1fr); gap:8px; margin:14px 0; }
+  .result-stats div { border:1px solid var(--edge); padding:8px; border-radius:2px; }
+  .result-stats b { display:block; font:20px/1.3 Impact,sans-serif; color:var(--ember); }
+  .result-stats em { font-style:normal; font-size:10px; color:var(--dim); letter-spacing:.1em; }
+  .paused { position:fixed; top:12px; left:50%; transform:translateX(-50%); z-index:15;
+    font:22px/1 Impact,sans-serif; color:var(--gold); letter-spacing:.2em; }
+</style>
+</head>
+<body>
+<div class="app">
+  <div class="panel boss" id="bossFrame"></div>
+
+  <div class="mid">
+    <div class="col">
+      <div class="panel" style="flex:0 0 auto"><div class="hdr">Strike Team</div><div class="frames" id="raidFrames"></div></div>
+      <div class="panel side" id="threatPanel" style="flex:1 1 auto; overflow:auto"></div>
+    </div>
+    <div class="panel arena"><div class="grid" id="grid"></div></div>
+    <div class="panel side col" id="sidePanel" style="overflow:auto"></div>
+  </div>
+
+  <div class="bottom">
+    <div class="panel actions" id="actionBar"></div>
+    <div class="panel log" id="combatLog"></div>
+  </div>
+</div>
+
+<div class="paused" id="pausedTag" hidden>— PAUSED —</div>
+
+<div class="overlay" id="startOverlay">
+  <div class="panel card">
+    <h1>Slipgate Raid</h1>
+    <p>Chthon has come up through the pit. Four of you. One of him. Five minutes.</p>
+    <h2>Choose your role</h2>
+    <div class="roles" id="rolePicker"></div>
+    <div class="keys">
+      <kbd>1</kbd><kbd>2</kbd><kbd>3</kbd><kbd>4</kbd> abilities &nbsp;·&nbsp;
+      <kbd>click a tile</kbd> move &nbsp;·&nbsp; <kbd>click a frame</kbd> target ally<br>
+      <kbd>Tab</kbd> switch enemy &nbsp;·&nbsp; <kbd>Space</kbd> pause &nbsp;·&nbsp; <kbd>R</kbd> reset<br>
+      Moving cancels a cast. Orange tiles erupt. Purple tiles must be stacked. Blue tiles need two soakers.
+    </div>
+    <button class="go" id="startBtn">Pull</button>
+  </div>
+</div>
+
+<div class="overlay hide" id="endOverlay">
+  <div class="panel card" id="endCard"></div>
+</div>
+
+<script type="module" src="./main.js"></script>
+</body>
+</html>
