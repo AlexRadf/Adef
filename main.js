@@ -144,7 +144,12 @@ describeScheme();
 describeMode();
 gambit.setScheme(scheme);
 
-document.getElementById('startBtn').addEventListener('click', () => start());
+// The button is disabled in the markup until the content is in, so an
+// early click cannot silently do nothing.
+const startBtn = document.getElementById('startBtn');
+startBtn.disabled = false;
+startBtn.textContent = 'Pull';
+startBtn.addEventListener('click', () => start());
 document.getElementById('endOverlay').addEventListener('click', (e) => {
   if (e.target.id === 'retryBtn') start();
 });
