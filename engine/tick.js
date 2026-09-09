@@ -12,6 +12,7 @@ import {
   resolveAbility,
   startAbility,
   canUseAbility,
+  castBlockedReason,
   orderMove,
   runEffects,
   log,
@@ -308,7 +309,8 @@ function playerPass(state, content, inputQueue) {
     }
     // Small input queue window, like every action game you have played.
     if (input.expires === undefined) input.expires = state.tick + 8;
-    if (state.tick <= input.expires) inputQueue.unshift(input);
+    if (state.tick < input.expires) inputQueue.unshift(input);
+    else log(state, castBlockedReason(state, content, player, input.abilityId, target), 'info');
   }
 }
 

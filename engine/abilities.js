@@ -283,9 +283,6 @@ const effectHandlers = {
     }
   },
 
-  killUnitType(state, content, ctx, e) {
-    for (const u of state.units) if (u.alive && u.type === e.unit) u.pendingDeath = { by: 'banished' };
-  },
 };
 
 export function markCell(state, index, sourceId, e) {
@@ -363,6 +360,25 @@ export function canUseAbility(state, content, unit, abilityId, target) {
     if (distance(unit.cell, target.cell) > (ability.range ?? 5)) return false;
   }
   return true;
+}
+
+// Player-facing feedback: why did that button do nothing?
+export function castBlockedReason(state, content, unit, abilityId, target) {
+  const ability = abilityDef(content, abilityId);
+  if (!unit.alive) return 'you are dead';
+  if (onCooldown(state, unit, abilityId)) {
+    return `${ability.name} is not ready (${((unit.cooldowns[abilityId] - state.tick) / 10).toFixed(1)}s)`;
+  }
+  if ((ability.cost || 0) > unit.resource) return `not enough ${unit.resourceName} for ${ability.name}`;
+  if (!target || !target.alive) return `${ability.name} has no valid target`;
+  if (
+    ability.targeting !== 'self' &&
+    ability.targeting !== 'none' &&
+    distance(unit.cell, target.cell) > (ability.range ?? 5)
+  ) {
+    return `${target.name} is out of range for ${ability.name}`;
+  }
+  return `${ability.name} is not ready`;
 }
 
 export function startAbility(state, content, unit, abilityId, target, cell = null, overrides = null) {
