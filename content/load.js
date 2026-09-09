@@ -15,6 +15,7 @@ const FILES = {
   schemes: 'schemes.json',
   modes: 'modes.json',
   modifiers: 'modifiers.json',
+  drills: 'drills.json',
 };
 
 const BOSSES = ['chthon'];

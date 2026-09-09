@@ -8,8 +8,8 @@ import { render, renderEnd, resetRenderer } from './ui/render.js';
 import { createLog } from './ui/log.js';
 import { createInput } from './ui/input.js';
 import { createGambitEditor } from './ui/gambit.js';
-import { createEncounterPicker } from './ui/encounter.js';
-import { withEncounter } from './engine/generate.js';
+import { buildDrillBoss, gauntletStage, applyCarry } from './engine/scenario.js';
+import { applyAura } from './engine/auras.js';
 
 const TICK_MS = 100;
 const ROLES = [
@@ -20,10 +20,6 @@ const ROLES = [
 
 const content = await loadContent();
 const gambit = createGambitEditor(content);
-let encounter = null;
-const encounters = createEncounterPicker(content, (chosen) => {
-  encounter = chosen;
-});
 const logView = createLog(document.getElementById('combatLog'));
 const inputQueue = [];
 
@@ -34,7 +30,20 @@ let paused = false;
 let role = 'dps';
 let scheme = 'raid';
 let mode = 'solo';
+let drill = 'lavaGeyser';
+let drillCount = 0;
 const modifiers = new Set();
+
+// A Gauntlet run: three pulls, health carrying over, a modifier rolled
+// each stage and a pickup chosen between them.
+const run = { stage: 0, modifiers: [], boons: [], carryHealthPct: 100, dead: false };
+function resetRun() {
+  run.stage = 0;
+  run.modifiers = [];
+  run.boons = [];
+  run.carryHealthPct = 100;
+  run.dead = false;
+}
 let active = null; // content with this scheme's ability overrides folded in
 
 const input = createInput(inputQueue, () => view, {
@@ -53,7 +62,10 @@ function setPaused(value, reason = '') {
 /* ------------------------------------------------------- start screen */
 
 const modePicker = document.getElementById('modePicker');
-modePicker.innerHTML = Object.values(content.modes)
+const visibleModes = Object.values(content.modes)
+  .filter((m) => !m.hidden)
+  .sort((a, b) => (a.order || 0) - (b.order || 0));
+modePicker.innerHTML = visibleModes
   .map(
     (m) => `<div class="role ${m.id === mode ? 'sel' : ''}" data-mode="${m.id}">
       <b>${m.name}</b><em>${m.tagline}</em></div>`
@@ -71,10 +83,29 @@ function describeMode() {
   const soloOnly = content.modes[mode].control === 'one';
   document.getElementById('roleHeading').hidden = !soloOnly;
   document.getElementById('rolePicker').hidden = !soloOnly;
+  document.getElementById('drillHeading').hidden = mode !== 'drill';
+  document.getElementById('drillPicker').hidden = mode !== 'drill';
+  document.getElementById('modifierHeading').hidden = mode === 'drill';
+  document.getElementById('modifierPicker').hidden = mode === 'drill';
+  resetRun();
   // The control scheme still matters in gambit -- it sets how fast the
   // bots move and whether they have a global cooldown.
   gambit.setVisible(content.modes[mode].control === 'none');
 }
+
+const drillPicker = document.getElementById('drillPicker');
+drillPicker.innerHTML = Object.entries(content.drills)
+  .map(
+    ([id, d]) => `<button class="chip ${id === drill ? 'sel' : ''}" data-drill="${id}">
+      <b>${d.name}</b>${d.desc}</button>`
+  )
+  .join('');
+drillPicker.addEventListener('click', (e) => {
+  const chip = e.target.closest('[data-drill]');
+  if (!chip) return;
+  drill = chip.dataset.drill;
+  [...drillPicker.children].forEach((c) => c.classList.toggle('sel', c.dataset.drill === drill));
+});
 
 const modifierPicker = document.getElementById('modifierPicker');
 modifierPicker.innerHTML =
@@ -135,7 +166,6 @@ schemePicker.addEventListener('click', (e) => {
   [...schemePicker.children].forEach((c) => c.classList.toggle('sel', c.dataset.scheme === scheme));
   describeScheme();
   gambit.setScheme(scheme);
-  encounters.setScheme(scheme);
 });
 function describeScheme() {
   document.getElementById('schemeHelp').textContent = content.schemes[scheme].blurb;
@@ -151,7 +181,16 @@ startBtn.disabled = false;
 startBtn.textContent = 'Pull';
 startBtn.addEventListener('click', () => start());
 document.getElementById('endOverlay').addEventListener('click', (e) => {
-  if (e.target.id === 'retryBtn') start();
+  const boon = e.target.closest('[data-boon]');
+  if (boon) {
+    run.boons.push(boon.dataset.boon);
+    start();
+    return;
+  }
+  if (e.target.id === 'retryBtn') {
+    if (mode === 'gauntlet') resetRun();
+    start();
+  }
 });
 
 /* -------------------------------------------------------------- loop */
@@ -167,16 +206,31 @@ function start() {
   resetRenderer();
   input.setScheme(scheme, mode);
 
-  encounter = encounters.current();
   active = { ...applyScheme(content, scheme), ai: gambit.lists() };
-  if (encounter) active = withEncounter(active, encounter);
+
+  // Drill and Gauntlet rearrange the handcrafted fight rather than
+  // replacing it -- what you practise is what you meet.
+  let bossId = 'chthon';
+  let stageModifiers = [...modifiers];
+  if (mode === 'drill') {
+    const boss = buildDrillBoss(active, drill);
+    active = { ...active, bosses: { ...active.bosses, [boss.id]: boss } };
+    bossId = boss.id;
+    stageModifiers = [];
+  }
+  const stage = mode === 'gauntlet' ? gauntletStage(run) : null;
+  if (stage) stageModifiers = [...modifiers, ...stage.modifiers];
+
   state = createState(active, {
     seed: (Math.random() * 1e9) | 0,
     playerRole: role,
     mode,
-    modifiers: [...modifiers],
-    boss: encounter ? encounter.boss.id : 'chthon',
+    modifiers: stageModifiers,
+    boss: bossId,
+    hardStopSeconds: mode === 'drill' ? 900 : undefined,
   });
+  if (stage) applyCarry(state, active, stage, applyAura);
+  drillCount = 0;
   view = snapshot(state, active);
   render(view, active, hud());
   logView.push(state.log);
@@ -219,14 +273,104 @@ function frame() {
   }
   if (state.over) {
     clearInterval(timer);
-    const mine = state.playerIds.length ? state.playerIds : state.units.filter((u) => u.team === 'party').map((u) => u.id);
-    renderEnd(view, active, {
-      playerDamage: mine.reduce((sum, id) => sum + (state.stats.damageBy[id] || 0), 0),
-      playerHealing: mine.reduce((sum, id) => sum + (state.stats.healBy[id] || 0), 0),
-      deaths: state.stats.deaths.map((d) => ({
-        ...d,
-        name: state.units.find((u) => u.id === d.unit).name,
-      })),
+    finish();
+  }
+}
+
+/* ------------------------------------------------------- the aftermath */
+
+function finish() {
+  const mine = state.playerIds.length
+    ? state.playerIds
+    : state.units.filter((u) => u.team === 'party').map((u) => u.id);
+  const stats = {
+    playerDamage: mine.reduce((sum, id) => sum + (state.stats.damageBy[id] || 0), 0),
+    playerHealing: mine.reduce((sum, id) => sum + (state.stats.healBy[id] || 0), 0),
+    deaths: state.stats.deaths.map((d) => ({
+      ...d,
+      name: state.units.find((u) => u.id === d.unit).name,
+    })),
+  };
+
+  if (mode === 'drill') return renderDrillEnd(view, stats);
+  if (mode === 'gauntlet' && state.result === 'kill') return renderStageCleared(stats);
+  if (mode === 'gauntlet') return renderRunOver(stats);
+  renderEnd(view, active, stats);
+}
+
+// A drill has no kill. The score is how many repetitions you stood
+// through, and how many of them actually landed on you.
+function renderDrillEnd(v, stats) {
+  const def = content.drills[drill];
+  const entry = active.bosses[`drill_${drill}`].phases[0].timeline[1];
+  const reps = Math.max(0, Math.floor((v.seconds - entry.t) / entry.every) + 1);
+  const player = state.units.find((u) => u.id === state.playerIds[0]);
+  const hits = state.log.filter(
+    (l) => l.text.includes(`— ${def.name} —`) && player && l.text.includes(player.name)
+  ).length;
+  renderEnd(v, active, {
+    ...stats,
+    title: 'Drill Over',
+    subtitle: `${def.name} came at you ${reps} times. It caught you ${hits}.`,
+    scoreboard: [
+      [reps, 'Repetitions'],
+      [`${Math.max(0, reps - hits)}`, 'Clean'],
+      [`${Math.floor(v.seconds / 60)}:${String(Math.floor(v.seconds % 60)).padStart(2, '0')}`, 'Survived'],
+    ],
+  });
+}
+
+function renderStageCleared(stats) {
+  run.stage += 1;
+  const party = view.party.filter((u) => u.alive);
+  run.carryHealthPct = Math.round(party.reduce((sum, u) => sum + u.hpPct, 0) / Math.max(1, party.length));
+
+  const stages = content.modes.gauntlet.stages;
+  if (run.stage >= stages) {
+    return renderEnd(view, active, {
+      ...stats,
+      title: 'Gauntlet Cleared',
+      subtitle: `Three kills, no rest. You finished on ${run.carryHealthPct}% health with ${run.boons.length} pickups.`,
     });
   }
+
+  // The pit rolls something new, and you choose what you take with you.
+  const unused = Object.keys(content.modifiers).filter((id) => !run.modifiers.includes(id));
+  const rolled = unused[Math.floor(Math.random() * unused.length)];
+  run.modifiers.push(rolled);
+  const boonIds = ['boonQuad', 'boonPentagram', 'boonMegahealth', 'boonBiosuit']
+    .filter((id) => !run.boons.includes(id))
+    .sort(() => Math.random() - 0.5)
+    .slice(0, 2);
+
+  document.getElementById('endCard').innerHTML = `
+    <h1>Stage ${run.stage} Cleared</h1>
+    <p>The party walks on with <b>${run.carryHealthPct}%</b> health. The pit answers with
+      <b style="color:var(--ember)">${content.modifiers[rolled].name}</b> —
+      ${content.modifiers[rolled].desc}</p>
+    <h2>Take one with you</h2>
+    <div class="chips">${boonIds
+      .map(
+        (id) => `<button class="chip" data-boon="${id}">
+          <b>${content.auras[id].name}</b>${boonText(id)}</button>`
+      )
+      .join('')}</div>`;
+  document.getElementById('endOverlay').classList.remove('hide');
+}
+
+const boonText = (id) =>
+  ({
+    boonQuad: 'Everything you hit takes 25% more.',
+    boonPentagram: 'The party takes 12% less damage for the rest of the run.',
+    boonMegahealth: 'Heals landing on the party are 20% stronger.',
+    boonBiosuit: 'Your healer heals for 18% more.',
+  })[id];
+
+function renderRunOver(stats) {
+  renderEnd(view, active, {
+    ...stats,
+    title: 'The Run Ends',
+    subtitle: `You got to stage ${run.stage + 1} of ${content.modes.gauntlet.stages}` +
+      `${run.modifiers.length ? `, carrying ${run.modifiers.map((m) => content.modifiers[m].name).join(' and ')}` : ''}.`,
+  });
 }

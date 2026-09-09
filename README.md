@@ -16,77 +16,28 @@ open http://localhost:8080
 (A static server is needed only because browsers refuse ES modules and `fetch` over
 `file://`. There is nothing to build.)
 
-## Procedural encounters
-
-The handcrafted fight is one fight. The generator makes as many as you want, from a seed,
-and **tunes each one against the headless sim before you ever see it** — so a random
-encounter arrives with its difficulty measured rather than hoped for.
-
-```
-$ node sim.js --boss random --seed 4417 --runs 100
-
-generated #4417: The Pale Enforcer, Whisper of the Elder World
-  19.3M hp · enrage 291s · 2 phases · damage x1.285
-  · Tesla Bloom — 8 tiles erupt 2s after they light up, every 20s
-  · Capacitor — every 26s a tile needs two bodies in it or the raid eats the hit
-  · Grounding Rod — a dispellable curse every 28s that detonates on everyone nearby
-  · Summons 3 Scrags every 44s
-  [tuner] party does 111,149 dps → 23.3M hp for a 210s kill
-  [tuner] ran 254s long → 19.3M hp
-  [tuner] damage ×1.285 → 33% survive, killing it in 202s
-```
-
-**The generator** (`engine/generate.js`) draws a theme, a name, 4–5 mechanics from the
-primitive vocabulary and 2–3 phases — then allocates their numbers out of a fixed
-incoming-damage-per-second budget, the way an encounter designer would. The part that
-makes this work is `payload`: how many party members' worth of damage a cast actually
-delivers. A whole-party nuke and a hit that lands on one person are not the same size just
-because they cost the same budget, and a stack mechanic divides itself by whoever turned
-up. Before that model existed the tuner was reliably having to multiply every generated
-fight by 1.85 to make it dangerous.
-
-**The tuner** (`engine/tune.js`) keeps two knobs deliberately apart, because conflating
-them is what makes naive auto-tuners oscillate:
-
-- **boss hp sets the kill time**, fitted from measured party dps. Raising hp to make a
-  fight "harder" just pushes the kill past the enrage timer and falls off a cliff — an
-  early version went 75% → 0% doing exactly that.
-- **a damage scale sets the lethality**, binary-searched, because win rate falls
-  monotonically as it rises.
-
-Before either, one pass looks for the unfairness a random fight usually has — a single
-mechanic doing more than 55% of the killing — and turns *that one* down rather than
-nerfing everything around it.
-
-Measured over 40 seeds: **95% land inside the playable band**, median win rate 50%, median
-kill 3:31, about 3.4s of simulation each. The rejects are marked as lopsided in the UI so
-you can roll again.
-
-The same seed always makes the same fight, so a seed is shareable — hand somebody a number
-and they get your encounter exactly.
-
 ## Three ways to play it
 
-The mode decides **how much of the party you drive** — it is orthogonal to the control
-scheme below, so any mode combines with either.
+All three are solo — you drive one character and three bots fill the rest. They differ in
+what a session *is*.
 
-**Solo is the default and the one the game is really about.** The other two exist because
-the engine made them nearly free, not because they are the point.
+| Mode | What it is |
+|---|---|
+| **Solo** | One pull. Kill him, or wipe. The default and the point. |
+| **Gauntlet** | A run: kill him three times without a rest. Health carries between stages, the pit rolls a new modifier each time, and between rounds you take one Quake pickup — Quad Damage, Pentagram, Megahealth, Biosuit — and keep it for the rest of the run. |
+| **Drill** | Practice. Pick one mechanic and it comes at you on a loop with nothing else going on. He cannot be killed and you are not trying to: the score is how many repetitions you stood through, and how many of them landed on you. |
 
-| Mode | You are | What it is actually testing |
-|---|---|---|
-| **Solo** | one character, three bots | Doing your job under pressure while trusting three priority lists |
-| **Commander** | all four, with tactical pause | Whole-party decisions. Nobody runs a priority list; `F1`–`F4` or a click switches who you are driving, and the fight pauses itself on anything worth reacting to. Orders given while paused execute on resume |
-| **Gambit** | nobody — you wrote the lists | Systems design. You arrange the four priority lists from the real condition registry, then **run hundreds of headless pulls of your build in the browser** before watching one |
+Drill builds its fight out of Chthon's own abilities rather than inventing anything, so
+what you practise is exactly what you meet.
 
-Gambit mode is the one this architecture makes uniquely cheap: `ui/simworker.js` is the
-same headless runner as `sim.js`, in a worker. Editing a list and pressing *run 400 pulls*
-gives you the same win rate `node sim.js` would, in about eight seconds, because the sim
-has no idea whether it is running in a browser or a terminal.
+Two further modes — **Commander** (drive all four with tactical pause) and **Gambit**
+(write the bots' priority lists, then watch) — are built and tested but marked
+`"hidden": true` in `content/modes.json`, because neither is what this game is about.
+Delete that line to get them back.
 
 ## Modifiers
 
-Stackable encounter tweaks, toggled on the pull screen. Each is a few numbers in
+Stackable encounter tweaks, toggled on the pull screen (and rolled for you in Gauntlet). Each is a few numbers in
 `content/modifiers.json`, and each was calibrated against the headless runner rather than
 guessed — the bot win rate is on the chip:
 
@@ -102,6 +53,21 @@ guessed — the bot win rate is on the chip:
 Modifiers apply to generated encounters too. \* Fog of War costs the bots nothing — they were never reading the numbers. It is aimed
 squarely at you, which is the honest way to describe it. Modifiers stack: Volcanic + Swarm
 is 8.7%.
+
+## Procedural encounters (command line)
+
+There is also a generator: `engine/generate.js` rolls a whole boss from a seed —
+theme, name, four or five mechanics, two or three phases — allocating their numbers out of
+a damage budget, and `engine/tune.js` fits it against the headless sim until it lands in a
+playable band. Over 40 seeds, 95% land there, median win 50%, ~3.4s each.
+
+```
+node sim.js --boss random --seed 4417 --runs 100
+```
+
+It is deliberately **not** in the game's UI: the handcrafted fight is the one worth
+playing, and a menu full of procedural options was getting in the way of that. The code is
+kept because the tuner is genuinely useful for balancing anything you add by hand.
 
 ## Two control philosophies
 

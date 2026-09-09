@@ -140,5 +140,53 @@
       }
     },
     "modifiers": []
+  },
+  "boonQuad": {
+    "name": "Quad Damage",
+    "duration": 0,
+    "harmful": false,
+    "modifiers": [
+      {
+        "stat": "damageDealt",
+        "op": "mult",
+        "value": 1.25
+      }
+    ]
+  },
+  "boonPentagram": {
+    "name": "Pentagram",
+    "duration": 0,
+    "harmful": false,
+    "modifiers": [
+      {
+        "stat": "damageTaken",
+        "op": "mult",
+        "value": 0.88
+      }
+    ]
+  },
+  "boonMegahealth": {
+    "name": "Megahealth",
+    "duration": 0,
+    "harmful": false,
+    "modifiers": [
+      {
+        "stat": "healingTaken",
+        "op": "mult",
+        "value": 1.2
+      }
+    ]
+  },
+  "boonBiosuit": {
+    "name": "Biosuit",
+    "duration": 0,
+    "harmful": false,
+    "modifiers": [
+      {
+        "stat": "healingDone",
+        "op": "mult",
+        "value": 1.18
+      }
+    ]
   }
 }

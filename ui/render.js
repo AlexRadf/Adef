@@ -94,9 +94,13 @@ function build(view, content) {
 
 function buildBar(refs) {
   const bar = el('actionBar');
+  // Laid out like Quake's status bar: a big gold health readout, then
+  // ammo, then what you are pointed at.
   bar.innerHTML = `
     <div class="hudstrip" data-r="strip">
-      <div class="lbl" data-r="resName"></div>
+      <div class="lbl">Health</div>
+      <div class="big" data-r="health">—</div>
+      <div class="lbl ammo" data-r="resName"></div>
       <div class="bar"><i data-r="resFill"></i><span><b data-r="resText"></b></span></div>
       <div class="tgt" data-r="tgt"></div>
     </div>
@@ -211,7 +215,9 @@ function paintGrid(view) {
     setClass(r.node, 'split', h && h.kind === 'split');
     setClass(r.node, 'soak', h && h.kind === 'soak');
     setText(r.cd, h && !view.hideTimers ? Math.max(0, h.remaining).toFixed(1) : '');
-    setText(r.tag, h ? (h.kind === 'split' ? 'STACK' : h.kind === 'soak' ? `SOAK ${h.minSoakers}+` : h.name) : '');
+    // Only the mechanics that ask something of you get a label; a lava
+    // tile is self-explanatory once you have stood in one.
+    setText(r.tag, h && h.kind === 'split' ? 'STACK' : h && h.kind === 'soak' ? `SOAK ${h.minSoakers}+` : '');
   }
 
   const layer = el('tokens');
@@ -267,6 +273,8 @@ function paintActions(view, content, hud) {
   }
 
   const h = R.hud;
+  setText(h.health, player.alive ? num(player.hp) : 'DEAD');
+  setClass(h.health, 'hurt', !player.alive || player.hpPct < 35);
   setText(h.resName, player.resourceName);
   setText(h.resText, `${player.resource} / ${player.maxResource}`);
   setWidth(h.resFill, pct(player.resource, player.maxResource));
@@ -351,23 +359,29 @@ function paintSide(view) {
 
 export function renderEnd(view, content, stats) {
   const won = view.result === 'kill';
+  const title = stats.title || (won ? 'Chthon Falls' : view.result === 'timeout' ? 'Out of Time' : 'Wipe');
+  const subtitle =
+    stats.subtitle ||
+    (won
+      ? 'The pit closes. The strike team walks out.'
+      : `The party is dead with Chthon at ${view.boss.hpPct.toFixed(1)}% health.`);
+  const scoreboard = stats.scoreboard || [
+    [clock(view.seconds), 'Duration'],
+    [num(stats.playerDamage), 'Your damage'],
+    [num(stats.playerHealing), 'Your healing'],
+  ];
+
   el('endCard').innerHTML = `
-    <h1 style="${won ? '' : 'color:var(--blood)'}">${won ? 'Chthon Falls' : view.result === 'timeout' ? 'Out of Time' : 'Wipe'}</h1>
-    <p>${
-      won
-        ? 'The pit closes. The strike team walks out.'
-        : `The party is dead with Chthon at ${view.boss.hpPct.toFixed(1)}% health.`
-    }</p>
+    <h1 style="${won || stats.title ? '' : 'color:var(--blood)'}">${title}</h1>
+    <p>${subtitle}</p>
     <div class="result-stats">
-      <div><b>${clock(view.seconds)}</b><em>Duration</em></div>
-      <div><b>${num(stats.playerDamage)}</b><em>Your damage</em></div>
-      <div><b>${num(stats.playerHealing)}</b><em>Your healing</em></div>
+      ${scoreboard.map(([value, label]) => `<div><b>${value}</b><em>${label}</em></div>`).join('')}
     </div>
     <div class="keys">${
       stats.deaths.length
         ? stats.deaths.map((d) => `${d.name} — ${d.cause} at ${clock(d.tick / 10)}`).join('<br>')
         : 'Nobody died. Clean pull.'
     }</div>
-    <button class="go" id="retryBtn" style="margin-top:16px">Pull Again</button>`;
+    <button class="go" id="retryBtn" style="margin-top:16px">Again</button>`;
   el('endOverlay').classList.remove('hide');
 }

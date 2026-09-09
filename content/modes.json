@@ -3,24 +3,53 @@
     "id": "solo",
     "name": "Solo",
     "control": "one",
-    "tagline": "You play one character. Three bots fill the rest.",
-    "blurb": "The raid game as it is normally played: you are responsible for one job and you have to trust — or work around — the three priority lists standing next to you.",
+    "order": 1,
+    "tagline": "One character. Three bots. One pull.",
+    "blurb": "The raid game as it is normally played: you are responsible for one job, and you have to trust — or work around — the three priority lists standing next to you.",
+    "pauseOn": []
+  },
+  "gauntlet": {
+    "id": "gauntlet",
+    "name": "Gauntlet",
+    "control": "one",
+    "order": 2,
+    "stages": 3,
+    "tagline": "Three pulls. Damage carries. It gets worse.",
+    "blurb": "A run, not a pull. Kill him three times without a rest: your health carries between stages, the pit rolls a new modifier each time, and you pick one Quake pickup between rounds to keep for the rest of the run.",
+    "pauseOn": []
+  },
+  "drill": {
+    "id": "drill",
+    "name": "Drill",
+    "control": "one",
+    "order": 3,
+    "tagline": "One mechanic, on repeat, until you drop.",
+    "blurb": "Practice. Pick a single mechanic and it comes at you over and over with nothing else going on. He cannot be killed and you are not trying to — the score is how many you survive cleanly.",
     "pauseOn": []
   },
   "commander": {
     "id": "commander",
     "name": "Commander",
     "control": "all",
+    "order": 9,
+    "hidden": true,
     "tagline": "You drive all four. Tactical pause.",
-    "blurb": "Nobody runs a priority list — every ability of every character is yours. F1–F4 or a click switches who you are commanding, and the fight pauses itself whenever something happens that you would want to react to. Real-time-with-pause, not a raid.",
-    "pauseOn": ["telegraph", "interruptible", "death", "phase"]
+    "blurb": "Nobody runs a priority list — every ability of every character is yours. F1–F4 or a click switches who you are commanding, and the fight pauses itself whenever something happens that you would want to react to.",
+    "pauseOn": [
+      "telegraph",
+      "interruptible",
+      "death",
+      "phase"
+    ]
   },
   "gambit": {
     "id": "gambit",
     "name": "Gambit",
     "control": "none",
+    "order": 10,
+    "hidden": true,
     "tagline": "You write the priority lists, then watch.",
-    "blurb": "You do not play the fight at all — you program the four bots and press pull. The condition registry and every ability are yours to arrange, and you can run hundreds of headless pulls of a build before you watch a single one.",
+    "blurb": "You do not play the fight at all — you program the four bots and press pull, and you can run hundreds of headless pulls of a build before you watch a single one.",
     "pauseOn": []
   }
 }

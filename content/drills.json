@@ -1,0 +1,38 @@
+{
+  "lavaGeyser": {
+    "name": "Lava Geyser",
+    "ability": "lavaGeyser",
+    "desc": "Six tiles light up. Be somewhere else. The whole fight is this reflex.",
+    "every": 8, "count": 6, "delay": 1.5, "target": "randomCells"
+  },
+  "chainOfSouls": {
+    "name": "Chain of Souls",
+    "ability": "chainOfSouls",
+    "desc": "One tile takes a lethal hit split between whoever stands in it. Get everyone there.",
+    "every": 12
+  },
+  "voidWell": {
+    "name": "Void Well",
+    "ability": "voidWell",
+    "desc": "A tile needs two bodies in it or the raid eats the hit. Learn to commit.",
+    "every": 14
+  },
+  "slipgateRift": {
+    "name": "Slipgate Rift",
+    "ability": "slipgateRift",
+    "desc": "A dispellable curse that detonates on everyone near you. Cleanse it or clear out.",
+    "every": 12, "target": "randomPlayer"
+  },
+  "runeOfBlackMagic": {
+    "name": "Rune of Black Magic",
+    "ability": "runeOfBlackMagic",
+    "desc": "An interruptible cast, over and over. Land the Thunderbolt every time.",
+    "every": 10, "target": "self"
+  },
+  "magmaCleave": {
+    "name": "Magma Cleave",
+    "ability": "magmaCleave",
+    "desc": "Hits the tank and anyone beside them, stacking Scorched. Practise not being beside them.",
+    "every": 9, "target": "threatLeader"
+  }
+}

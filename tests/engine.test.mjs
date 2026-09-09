@@ -26,6 +26,7 @@ import {
 import { toTicks, TICKS_PER_SECOND } from '../engine/clock.js';
 import { generateEncounter, withEncounter } from '../engine/generate.js';
 import { tuneEncounter } from '../engine/tune.js';
+import { buildDrillBoss, gauntletStage, applyCarry } from '../engine/scenario.js';
 
 const base = await loadContent();
 const content = applyScheme(base, 'raid');
@@ -313,6 +314,51 @@ test('tuning is deterministic', () => {
   const b = tuneEncounter(content, generateEncounter(5), { seed: 5, runs: 12 });
   assert.equal(a.encounter.boss.hp, b.encounter.boss.hp);
   assert.equal(a.encounter.damageScale, b.encounter.damageScale);
+});
+
+/* ------------------------------------------------------ solo scenarios */
+
+test('a drill is the real fight with everything else removed', () => {
+  for (const id of Object.keys(content.drills)) {
+    const boss = buildDrillBoss(content, id);
+    const timeline = boss.phases[0].timeline;
+    assert.equal(timeline.length, 2, `${id}: melee plus the one drilled mechanic`);
+    assert.equal(timeline[1].ability, content.drills[id].ability);
+    assert.ok(content.abilities[timeline[1].ability], `${id} drills a real ability`);
+    assert.ok(boss.enrageAtSeconds > 1000, 'a drill has no enrage to beat');
+
+    const c = { ...content, bosses: { ...content.bosses, [boss.id]: boss } };
+    const state = createState(c, { seed: 3, headless: true, boss: boss.id, hardStopSeconds: 60 });
+    while (!state.over) step(state, c, []);
+    assert.ok(state.result !== 'kill', 'a drill boss cannot be killed');
+  }
+});
+
+test('gauntlet stages carry health and pickups forward', () => {
+  const run = { stage: 1, modifiers: ['volcanic'], boons: ['boonQuad'], carryHealthPct: 61 };
+  const stage = gauntletStage(run);
+  assert.deepEqual(stage.modifiers, ['volcanic']);
+  assert.equal(stage.carryHealthPct, 61);
+
+  const state = createState(content, { seed: 1, headless: true, modifiers: stage.modifiers });
+  applyCarry(state, content, stage, applyAura);
+  for (const unit of state.units.filter((u) => u.team === 'party')) {
+    assert.equal(Math.round((unit.hp / unit.maxHp) * 100), 61);
+    assert.ok(unit.auras.some((a) => a.id === 'boonQuad'), 'the pickup came with them');
+  }
+});
+
+test('a first stage starts clean however hurt the run is', () => {
+  const stage = gauntletStage({ stage: 0, modifiers: [], boons: [], carryHealthPct: 12 });
+  assert.equal(stage.carryHealthPct, 100);
+});
+
+test('every mode the menu offers is playable', () => {
+  for (const mode of Object.values(content.modes)) {
+    const state = createState(content, { seed: 2, mode: mode.id, playerRole: 'healer' });
+    assert.equal(state.mode.id, mode.id);
+    assert.ok(Array.isArray(mode.pauseOn));
+  }
 });
 
 test('the tick rate lives in exactly one place', () => {
