@@ -230,7 +230,9 @@ func _melee(target: Node3D) -> void:
 func _face_toward(direction: Vector3, delta: float) -> void:
 	if direction.is_zero_approx():
 		return
-	rotation.y = lerp_angle(rotation.y, atan2(direction.x, direction.z), clampf(4.5 * delta, 0.0, 1.0))
+	rotation.y = lerp_angle(
+		rotation.y, Combatant.yaw_toward(Vector3.ZERO, direction), clampf(4.5 * delta, 0.0, 1.0)
+	)
 
 func _face_now(target: Node3D) -> void:
 	if target == null or not is_instance_valid(target):
@@ -238,7 +240,7 @@ func _face_now(target: Node3D) -> void:
 	var to_target: Vector3 = target.global_position - global_position
 	to_target.y = 0.0
 	if not to_target.is_zero_approx():
-		rotation.y = atan2(to_target.x, to_target.z)
+		rotation.y = Combatant.yaw_toward(Vector3.ZERO, to_target)
 
 # --------------------------------------------------------------- targets
 

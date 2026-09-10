@@ -73,18 +73,49 @@ func build_payload(_ability_id: String) -> Dictionary:
 func _server_execute(ability_id: String, payload: Dictionary) -> void:
 	if not Net.is_server():
 		return
-	if not _sender_owns_this(): return
+	if not _sender_owns_this():
+		return
+	server_fire(ability_id, payload)
+
+## The one place an ability is actually allowed to happen, whoever asked.
+##
+## A human's press arrives through `_server_execute`; a bot calls this
+## directly, because there is no client on the other end of an empty seat.
+## Both go through the same validation, so a bot can never do something a
+## player could not.
+func server_fire(ability_id: String, payload: Dictionary) -> bool:
 	if player == null or player.is_dead:
-		return
+		return false
 	if not Content.role(player.role_id).get("abilities", []).has(ability_id):
-		return
+		return false
 	if player.ability_component != null and not player.ability_component.can_use(ability_id):
-		return
+		return false
 	if not execute(ability_id, payload):
-		return
+		return false
 	if player.ability_component != null:
 		player.ability_component.commit(ability_id)
-	_confirm.rpc(ability_id)
+	if Net.online():
+		_confirm.rpc(ability_id)
+	elif player.is_local:
+		GameEvents.ability_used.emit(ability_id, Content.ability(ability_id).get("cooldown", 0.0))
+	return true
+
+## The payload a bot supplies: it has no camera, so its "aim" is simply
+## the line from its chest to whatever it decided to act on.
+func bot_payload(target: Node) -> Dictionary:
+	var direction := -player.global_transform.basis.z
+	if target is Node3D:
+		direction = ((target as Node3D).global_position + Vector3(0, 1.1, 0)) - player.aim_point()
+		if direction.is_zero_approx():
+			direction = -player.global_transform.basis.z
+	var path := target.get_path() if target != null and is_instance_valid(target) else NodePath()
+	return {
+		"origin": player.aim_point(),
+		"direction": direction.normalized(),
+		"ally": path,
+		"enemy": path,
+		"move": player.move_intent(),
+	}
 
 @rpc("authority", "call_local", "unreliable")
 func _confirm(ability_id: String) -> void:

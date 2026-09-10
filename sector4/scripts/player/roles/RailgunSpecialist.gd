@@ -84,8 +84,9 @@ func _concussion(payload: Dictionary) -> bool:
 func _drone() -> bool:
 	var drone: SeekerDrone = preload("res://scenes/abilities/SeekerDrone.tscn").instantiate()
 	drone.configure(player)
-	drone.global_position = player.global_position + Vector3(0.0, 2.0, 0.0)
+	# Parent first -- see the note in FieldMedic._overclock_surge.
 	_spawn_root().add_child(drone, true)
+	drone.global_position = player.global_position + Vector3(0.0, 2.0, 0.0)
 	return true
 
 func _dash(payload: Dictionary) -> bool:

@@ -34,6 +34,37 @@ states and no combo strings.
 | **Kinetic Striker** (melee) | Mono-Blade, 1.6× from behind | **Servo Kick** — the interrupt · Static Snare · Blur Step |
 | **Railgun Specialist** (ranged) | Railgun, charged | Concussion Round — knockback · Seeker Drone · Orbital Lance |
 
+## Bots fill the empty seats
+
+Every boss ability is answered by a specific seat — the tank turns Plasma Sweep away, the
+Striker kicks Core Overcharge, the Medic triages System Shockwave. So a short party is not a
+harder game, it is an unfinishable one. Any seat without a human gets a `BotBrain`.
+
+A bot is a **priority list**, read top to bottom, first rule that both matches *and* produces a
+usable action. Writing the rotation down like this is the fastest way to tell whether a kit
+interlocks — if it does, the list reads like a sentence:
+
+```json
+{ "if": "enemy_casting_interruptible", "do": "use:kick" },
+{ "if": "self_in_hazard",              "do": "use:rocket_dash" },
+{ "if": "caster_add_up",               "do": "use:static_snare" },
+{ "else": true,                        "do": "use:mono_blade" }
+```
+
+The list decides what to press. **Steering runs underneath it every frame** and decides where
+to stand, which is what stops "walk out of the fire" and "heal the tank" from fighting over the
+same slot. The tank's steering is the interesting one: it stands on the far side of the boss
+from the party's centre of mass, which drags the boss round to face away from everyone — the
+doc's Plasma Sweep counter, as a position rather than a scripted reaction.
+
+Bots do not react instantly. Each seat carries a reaction delay of 0.35–0.95s before it acts on
+a condition, and the interrupt gets a much shorter fuse because a 4 second window is not
+forgiving enough for a human-shaped pause. One number, and it is the single biggest reason a
+party of bots reads as people rather than as a machine.
+
+Bots never bypass validation: every press goes through the same `RoleKit.server_fire` a human's
+button reaches, so a bot cannot do anything a player could not.
+
 ## Controller scheme (§2)
 
 Bound in `project.godot`, so they are real actions rather than hardcoded key checks.
@@ -163,10 +194,26 @@ test that fails if anyone changes that.
 
 **Real.** The floor loop end to end, all four kits, the soft-lock scorer, aggro-linked packs
 with line-of-sight pulling and patrols, the full boss cycle with enrage and a wipe you can
-prevent by kicking it, the reticle HUD, and the ENet layer with server-authoritative damage.
-`tools/check.sh` compiles every script and scene and runs 128 assertions — including a suite
-that boots a real floor with a real party, pulls a real pack, holds the terminal and kills the
-boss.
+prevent by kicking it, the reticle HUD, bots in every empty seat, and the ENet layer with
+server-authoritative damage. `tools/check.sh` compiles every script and scene and runs 161
+assertions — including a suite that boots a real floor with a real party, pulls a real pack,
+holds the terminal and kills the boss, and one that proves the Striker bot actually kicks Core
+Overcharge before it wipes the party.
+
+`res://tests/Soak.tscn` is the other half of that: a watchable run with no human in it at all,
+printing the phase, what is alive, everyone's health and what each seat pressed. A party of
+four bots clears the first room in about forty seconds, holds the Security Override, walks into
+the boss chamber and fights the Iron Centurion at roughly **385 damage a second** — a ~130
+second kill, which is what the Core Overcharge schedule at 0:45 / 1:30 / 2:15 was written for.
+
+That number is also how the worst bug in the project so far was found. The press tally showed
+`kinetic_striker/mono_blade` firing **zero** times across an entire run: the Striker never
+landed a single swing. Godot's forward is `-Z`, so facing a target needs `atan2(-dx, -dz)` —
+and the intuitive `atan2(dx, dz)` points a body *exactly backwards*. Every bot, every trash mob
+and the boss had it. Nothing errors; melee arcs simply never connect, the Enforcer's shield
+guards the wrong side, and Plasma Sweep's frontal cone fires into the people standing behind
+the boss. Fixing it took bot damage from ~80 a second to 385. It now lives in one function,
+`Combatant.yaw_toward`, with a test that checks the body's actual forward vector.
 
 **Not real yet.** Art beyond primitives, animation, sound, and visible projectiles. Only one
 floor is authored (`Content.FLOORS`), so **Elevator Ascent** currently ends the run rather than

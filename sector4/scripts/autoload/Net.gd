@@ -66,6 +66,12 @@ func start_solo() -> void:
 	in_game = true
 	roster_changed.emit()
 
+## True only when a real peer exists. Solo runs have no peer at all, so an
+## unguarded `.rpc()` there is an error rather than a no-op -- every
+## replication site asks this first.
+func online() -> bool:
+	return multiplayer.has_multiplayer_peer()
+
 func is_server() -> bool:
 	return multiplayer.multiplayer_peer == null or multiplayer.is_server()
 

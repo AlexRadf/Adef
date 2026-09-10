@@ -243,7 +243,7 @@ func _step(desired: Vector3, delta: float) -> void:
 func _face(direction: Vector3, delta: float) -> void:
 	if direction.is_zero_approx():
 		return
-	var desired := atan2(direction.x, direction.z)
+	var desired := Combatant.yaw_toward(Vector3.ZERO, direction)
 	rotation.y = lerp_angle(rotation.y, desired, clampf(9.0 * delta, 0.0, 1.0))
 
 # ------------------------------------------------------ what can be done

@@ -85,7 +85,10 @@ func _on_ready_pressed() -> void:
 func _on_start() -> void:
 	if not Net.is_server():
 		return
-	Net.start_game.rpc()
+	if Net.online():
+		Net.start_game.rpc()
+	else:
+		Net.start_game()
 
 func _refresh() -> void:
 	for child in _roster.get_children():

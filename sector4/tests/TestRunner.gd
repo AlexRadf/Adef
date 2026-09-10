@@ -23,6 +23,7 @@ func _run_all() -> void:
 	await _suite("combat choke point", _test_combat)
 	await _suite("armour and corrosion", _test_armor)
 	await _suite("directional shield", _test_guard)
+	await _suite("facing", _test_facing)
 	await _suite("threat table", _test_threat)
 	await _suite("ability cooldowns", _test_cooldowns)
 	await _suite("soft-lock scoring", _test_softlock)
@@ -31,6 +32,8 @@ func _run_all() -> void:
 	await _suite("boss cycle", _test_boss)
 	await _suite("floor director", _test_floor)
 	await _suite("a floor, actually running", _test_integration)
+	await _suite("bots fill the empty seats", _test_bots)
+	await _suite("bots do their jobs", _test_bot_jobs)
 
 # ------------------------------------------------------------- harness
 
@@ -187,6 +190,35 @@ func _test_guard() -> void:
 	check_near(Combat.apply_damage(null, tank, 100.0, {"from_position": behind}), 100.0, "and nothing from behind")
 	check_near(Combat.apply_damage(null, tank, 100.0), 100.0, "a room-wide pulse cannot be blocked")
 	tank.queue_free()
+
+## The sign error that cost the Striker every swing.
+##
+## Godot's forward is -Z. Facing a target with the intuitive
+## atan2(dx, dz) points a body exactly backwards, and nothing complains --
+## it just quietly means melee arcs never connect and the boss's frontal
+## cone fires into the people standing behind it.
+func _test_facing() -> void:
+	var body := _combatant()
+	for target in [Vector3(0, 0, -10), Vector3(0, 0, 10), Vector3(7, 0, 3), Vector3(-4, 0, -9)]:
+		body.global_position = Vector3.ZERO
+		body.rotation.y = Combatant.yaw_toward(body.global_position, target)
+		var forward := -body.global_transform.basis.z
+		forward.y = 0.0
+		var to_target: Vector3 = target
+		to_target.y = 0.0
+		var error := rad_to_deg(forward.normalized().angle_to(to_target.normalized()))
+		check(error < 0.5, "facing %v points forward at it (off by %.2f deg)" % [target, error])
+
+	# The consequence, stated directly: a 110 degree swing arc has to
+	# contain what the body is facing.
+	body.global_position = Vector3.ZERO
+	var enemy_at := Vector3(0, 0, -3)
+	body.rotation.y = Combatant.yaw_toward(body.global_position, enemy_at)
+	var facing := -body.global_transform.basis.z
+	facing.y = 0.0
+	check(rad_to_deg(facing.normalized().angle_to(enemy_at.normalized())) <= 55.0,
+		"a target dead ahead is inside a 110 degree arc")
+	body.queue_free()
 
 func _test_threat() -> void:
 	var boss := _combatant("enemy")
@@ -476,7 +508,170 @@ func _test_integration() -> void:
 	for i in 3:
 		await get_tree().process_frame
 
+## A solo run must still be a four-person fight, because every boss
+## ability is answered by a specific seat.
+func _test_bots() -> void:
+	Net.roster = {1: {"name": "You", "role": "field_medic", "ready": true}}
+	var level: FloorLevel = preload("res://scenes/floor/Floor.tscn").instantiate()
+	add_child(level)
+	for i in 4:
+		await get_tree().process_frame
+
+	var players := get_tree().get_nodes_in_group("players")
+	check(players.size() == 4, "one human still makes a party of four")
+	var humans := 0
+	var bots := 0
+	var seats := {}
+	for player in players:
+		seats[player.role_id] = player
+		if player.is_bot:
+			bots += 1
+		else:
+			humans += 1
+	check(humans == 1, "exactly one seat is the player's")
+	check(bots == 3, "and three are bots")
+	check(seats.size() == 4, "covering all four roles")
+	check(seats["field_medic"].is_bot == false, "the human kept the role they picked")
+	check(seats["enforcer"].is_bot, "and a bot took the tank")
+
+	for role_id in ["enforcer", "kinetic_striker", "railgun_specialist"]:
+		var bot: PlayerCharacter = seats[role_id]
+		check(bot.brain != null, "%s has a brain" % role_id)
+		check(bot.get_multiplayer_authority() == 1, "%s is driven by the server" % role_id)
+		check(not bot.camera_rig.camera.current, "%s does not steal the camera" % role_id)
+
+	level.queue_free()
+	Net.roster = {}
+	for i in 3:
+		await get_tree().process_frame
+
+## The three behaviours the encounter cannot be finished without.
+func _test_bot_jobs() -> void:
+	_ground()
+
+	# 1. The Striker kicks Core Overcharge. This is the whole reason the
+	#    seat exists: the channel wipes the party if it completes.
+	var boss: IronCenturion = preload("res://scenes/enemies/IronCenturion.tscn").instantiate()
+	add_child(boss)
+	boss.global_position = Vector3.ZERO
+	var striker := _bot("kinetic_striker", Vector3(0, 0.5, 3.0))
+	for i in 4:
+		await get_tree().process_frame
+
+	var wiped := [false]
+	boss.cast_component.begin("core_overcharge", 4.0, true, func() -> void: wiped[0] = true)
+	check(boss.cast_component.is_casting, "the channel starts")
+	await get_tree().create_timer(1.6).timeout
+	check(not boss.cast_component.is_casting, "the Striker bot kicks it")
+	check(not wiped[0], "so the party is not wiped")
+	check(boss.status_component.has("interrupt_lockout"), "and the boss is locked out")
+
+	# It must not fire the kick into nothing -- that would waste the one
+	# cooldown that matters on a 12 second timer.
+	striker.ability_component._ready_at.clear()
+	await get_tree().create_timer(0.8).timeout
+	check(striker.ability_component.is_ready("kick"), "and holds the kick when nothing is casting")
+
+	# The kick is not the only thing the Striker owes the party. If the
+	# swing arc is wrong it lands nothing at all, silently -- which is
+	# exactly what happened before facing was fixed.
+	var boss_hp_before: float = boss.health_component.current_health
+	await get_tree().create_timer(1.5).timeout
+	check(boss.health_component.current_health < boss_hp_before,
+		"the Striker bot actually connects with the boss (%.0f damage in 1.5s)"
+			% (boss_hp_before - boss.health_component.current_health))
+
+	striker.queue_free()
+	boss.queue_free()
+	for i in 3:
+		await get_tree().process_frame
+
+	# 2. The Medic bot heals whoever is lowest.
+	var medic := _bot("field_medic", Vector3(0, 0.5, 0))
+	var patient := _bot("enforcer", Vector3(3, 0.5, 0))
+	patient.health_component.reduce(patient.health_component.max_health * 0.6)
+	var before: float = patient.health_component.current_health
+	for i in 4:
+		await get_tree().process_frame
+	await get_tree().create_timer(1.6).timeout
+	check(patient.health_component.current_health > before,
+		"the Medic bot heals the wounded (%.0f -> %.0f)" % [before, patient.health_component.current_health])
+
+	# 3. And purges what it is allowed to purge.
+	patient.status_component.apply("system_corroded")
+	await get_tree().create_timer(1.6).timeout
+	check(not patient.status_component.has("system_corroded"), "and purges System Corroded off the tank")
+
+	medic.queue_free()
+	patient.queue_free()
+	for i in 3:
+		await get_tree().process_frame
+
+	# 4. The tank bot takes aggro back when it loses it.
+	var mob: TrashMob = preload("res://scenes/enemies/TrashMob.tscn").instantiate()
+	mob.mob_type = "sentry_drone"
+	add_child(mob)
+	mob.global_position = Vector3(0, 0.5, -6)
+	var tank := _bot("enforcer", Vector3(0, 0.5, 0))
+	var squishy := _bot("railgun_specialist", Vector3(4, 0.5, 0))
+	for i in 4:
+		await get_tree().process_frame
+	mob.threat_component.add_threat(squishy, 5000.0)
+	check(mob.threat_component.get_leader() == squishy, "the sniper pulled aggro")
+	await get_tree().create_timer(2.0).timeout
+	check(mob.threat_component.get_leader() == tank, "the Enforcer bot pulls it back")
+
+	tank.queue_free()
+	squishy.queue_free()
+	mob.queue_free()
+	for i in 3:
+		await get_tree().process_frame
+
+	# 5. Deployables land where the caster is standing, not at the world
+	#    origin. Setting global_position before parenting fails silently,
+	#    so this is asserted rather than eyeballed.
+	var deployer := _bot("field_medic", Vector3(12, 0.5, -7))
+	for i in 3:
+		await get_tree().process_frame
+	check(deployer.kit.server_fire("overclock_surge", deployer.kit.bot_payload(deployer)),
+		"Overclock Surge deploys")
+	var field: GroundField = null
+	for node in get_children():
+		if node is GroundField:
+			field = node
+	check(field != null, "and puts a field in the world")
+	if field != null:
+		check(field.global_position.distance_to(deployer.global_position) < 0.5,
+			"under the Medic rather than at the origin")
+		field.queue_free()
+	deployer.queue_free()
+	for i in 3:
+		await get_tree().process_frame
+
 # -------------------------------------------------------------- fixtures
+
+## Bots fall through an empty test scene and drift out of range, so the
+## behavioural tests need something to stand on.
+func _ground() -> void:
+	var body := StaticBody3D.new()
+	body.collision_layer = 1
+	body.collision_mask = 0
+	var shape := CollisionShape3D.new()
+	var box := BoxShape3D.new()
+	box.size = Vector3(200, 1, 200)
+	shape.shape = box
+	body.add_child(shape)
+	add_child(body)
+	body.global_position = Vector3(0, -0.5, 0)
+
+func _bot(role_id: String, where: Vector3) -> PlayerCharacter:
+	var bot: PlayerCharacter = preload("res://scenes/player/PlayerCharacter.tscn").instantiate()
+	bot.role_id = role_id
+	bot.peer_id = 0
+	bot.is_bot = true
+	add_child(bot)
+	bot.global_position = where
+	return bot
 
 func _combatant(team_id: String = "party") -> Combatant:
 	var body := Combatant.new()

@@ -26,20 +26,34 @@ func _ready() -> void:
 
 # -------------------------------------------------------------- players
 
+## Humans first, then bots for whatever is left over. The fight is designed
+## around four seats and every one of the boss's abilities is answered by a
+## specific one of them, so a short party is not a harder game -- it is an
+## unfinishable one.
 func _spawn_players() -> void:
+	# No roster at all means nobody is playing -- a headless soak or an
+	# attract run. Give every seat to a bot rather than inventing a human
+	# who is not there to drive it.
 	var roster := Net.roster
-	if roster.is_empty():
-		roster = {1: {"name": "Operative", "role": Net.local_role}}
 	var slot := 0
+	var taken := {}
 	for peer_id in roster:
-		_spawn_player(int(peer_id), roster[peer_id].get("role", "field_medic"), slot)
+		var role_id: String = roster[peer_id].get("role", "field_medic")
+		taken[role_id] = true
+		_spawn_player(int(peer_id), role_id, slot, false)
+		slot += 1
+	for role_id in Content.ROLE_ORDER:
+		if taken.has(role_id):
+			continue
+		_spawn_player(0, role_id, slot, true)
 		slot += 1
 
-func _spawn_player(peer_id: int, role_id: String, slot: int) -> void:
+func _spawn_player(peer_id: int, role_id: String, slot: int, as_bot: bool) -> void:
 	var player: PlayerCharacter = PLAYER_SCENE.instantiate()
-	player.name = "Player_%d" % peer_id
+	player.name = "Player_%d" % peer_id if not as_bot else "Bot_%s" % role_id
 	player.peer_id = peer_id
 	player.role_id = role_id
+	player.is_bot = as_bot
 	spawn_root.add_child(player, true)
 	# The elevator mouth: the party arrives together, spread across the
 	# doorway rather than stacked inside one another.

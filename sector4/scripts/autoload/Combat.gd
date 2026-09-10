@@ -69,7 +69,8 @@ func apply_damage(source: Node, target: Node, amount: float, opts: Dictionary = 
 		if not opts.get("suppress_threat", false):
 			_feed_threat(source, target, dealt * float(opts.get("threat_mult", 1.0)))
 		_apply_lifesteal(source, dealt)
-		_broadcast_damage.rpc(_path_of(source), _path_of(target), dealt, is_crit)
+		if Net.online():
+			_broadcast_damage.rpc(_path_of(source), _path_of(target), dealt, is_crit)
 		_report_damage(source, target, dealt, is_crit)
 	return dealt
 
@@ -96,7 +97,8 @@ func apply_heal(source: Node, target: Node, amount: float, opts: Dictionary = {}
 	if healed > 0.0:
 		if not opts.get("suppress_threat", false):
 			_feed_heal_threat(source, healed)
-		_broadcast_heal.rpc(_path_of(source), _path_of(target), healed)
+		if Net.online():
+			_broadcast_heal.rpc(_path_of(source), _path_of(target), healed)
 		_report_heal(source, target, healed)
 	return healed
 
@@ -168,7 +170,8 @@ func _apply_lifesteal(source: Node, dealt: float) -> void:
 		return
 	var healed := health.restore(dealt * share)
 	if healed > 0.0:
-		_broadcast_heal.rpc(_path_of(source), _path_of(source), healed)
+		if Net.online():
+			_broadcast_heal.rpc(_path_of(source), _path_of(source), healed)
 		_report_heal(source, source, healed)
 
 func _feed_threat(source: Node, target: Node, amount: float) -> void:

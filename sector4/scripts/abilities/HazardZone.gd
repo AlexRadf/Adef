@@ -29,6 +29,7 @@ func configure(id: String, source: Node) -> void:
 	_source = source
 
 func _ready() -> void:
+	add_to_group("hazards")
 	var def: Dictionary = Content.ability(ability_id)
 	_radius = float(def.get("radius", 4.5))
 	_delay = float(def.get("delay", 1.5))

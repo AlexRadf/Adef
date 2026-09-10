@@ -15,13 +15,20 @@ const FRICTION := 52.0
 @export var role_id: String = "field_medic"
 
 var kit: RoleKit = null
+var brain: BotBrain = null
 var dash_velocity: Vector3 = Vector3.ZERO
 var is_local: bool = false
+## True for a seat nobody is sitting in. A bot is driven by the server and
+## has no camera, so it supplies its own movement and facing.
+var is_bot: bool = false
+var ai_move_intent: Vector3 = Vector3.ZERO
+var ai_face_target: Vector3 = Vector3.ZERO
 
 @onready var camera_rig: CameraRig = $CameraRig
 @onready var ally_targeting: SoftLockTargeting = $AllyTargeting
 @onready var enemy_targeting: SoftLockTargeting = $EnemyTargeting
 @onready var body_mesh: MeshInstance3D = $BodyMesh
+@onready var synchronizer: MultiplayerSynchronizer = $MultiplayerSynchronizer
 
 var _gravity: float = float(ProjectSettings.get_setting("physics/3d/default_gravity", 24.0))
 var _bindings: Dictionary = {}
@@ -32,8 +39,10 @@ func _ready() -> void:
 	super._ready()
 	add_to_group("players")
 	_configure_role()
-	is_local = peer_id == Net.local_id()
-	set_multiplayer_authority(peer_id if peer_id != 0 else 1)
+	is_local = not is_bot and peer_id == Net.local_id()
+	# A bot's authority is the server, because there is nobody else to give
+	# it to.
+	set_multiplayer_authority(1 if is_bot or peer_id == 0 else peer_id)
 
 	camera_rig.set_active(is_local)
 	ally_targeting.bind_camera(camera_rig.camera)
@@ -49,6 +58,19 @@ func _ready() -> void:
 		if ability_component != null:
 			ability_component.energy_changed.connect(_on_local_energy_changed)
 		Input.mouse_mode = Input.MOUSE_MODE_CAPTURED
+
+	# A solo run has no peers, and Godot's default offline peer has no
+	# unique id -- so a synchronizer left running there polls every physics
+	# tick and errors every time. There is nothing to replicate to, so it
+	# goes away entirely.
+	if not Net.online():
+		synchronizer.queue_free()
+
+	if is_bot and Net.is_server():
+		brain = BotBrain.new()
+		brain.name = "Brain"
+		add_child(brain)
+		brain.bind(self)
 
 func _configure_role() -> void:
 	var def: Dictionary = Content.role(role_id)
@@ -108,7 +130,7 @@ func _poll_abilities() -> void:
 # ---------------------------------------------------------- movement
 
 func _physics_process(delta: float) -> void:
-	if not is_multiplayer_authority():
+	if not drives_this_body():
 		return
 	if is_dead:
 		velocity = Vector3.ZERO
@@ -121,6 +143,8 @@ func _physics_process(delta: float) -> void:
 		wish = (camera_rig.right_flat() * stick.x + camera_rig.forward_flat() * -stick.y)
 		if wish.length_squared() > 1.0:
 			wish = wish.normalized()
+	elif is_bot:
+		wish = ai_move_intent
 
 	var speed_scale := status_component.get_stat("move_speed")
 	var target := wish * move_speed * speed_scale
@@ -149,10 +173,28 @@ func _physics_process(delta: float) -> void:
 ## The body turns to face where the camera is pointing, which is what makes
 ## the frontal cone and the backstab arc readable to everyone else.
 func _face_movement(delta: float) -> void:
-	if not is_local:
+	if is_local:
+		rotation.y = lerp_angle(rotation.y, camera_rig.yaw, clampf(14.0 * delta, 0.0, 1.0))
 		return
-	var desired := camera_rig.yaw
-	rotation.y = lerp_angle(rotation.y, desired, clampf(14.0 * delta, 0.0, 1.0))
+	if not is_bot:
+		return
+	# A bot faces what it is fighting, which is what makes the Striker's
+	# backstab arc and the Enforcer's shield arc mean anything.
+	var offset := ai_face_target - global_position
+	offset.y = 0.0
+	if offset.is_zero_approx():
+		return
+	rotation.y = lerp_angle(
+		rotation.y, Combatant.yaw_toward(Vector3.ZERO, offset), clampf(9.0 * delta, 0.0, 1.0)
+	)
+
+## Whether this machine is the one moving this body.
+##
+## `is_multiplayer_authority()` asks the peer for its unique id, and a solo
+## run has no peer to ask -- so calling it unguarded errors once per
+## physics tick, forever. Offline, this body is always ours.
+func drives_this_body() -> bool:
+	return not Net.online() or is_multiplayer_authority()
 
 func apply_dash(direction: Vector3, impulse: float) -> void:
 	var dir := direction
@@ -164,6 +206,8 @@ func apply_dash(direction: Vector3, impulse: float) -> void:
 ## Rocket Dash uses this so a dash goes where you are already going rather
 ## than where the camera happens to look.
 func move_intent() -> Vector3:
+	if is_bot:
+		return ai_move_intent
 	if not is_local:
 		return Vector3.ZERO
 	var stick := Input.get_vector("move_left", "move_right", "move_forward", "move_back")
@@ -172,10 +216,10 @@ func move_intent() -> Vector3:
 	return (camera_rig.right_flat() * stick.x + camera_rig.forward_flat() * -stick.y).normalized()
 
 func aim_origin() -> Vector3:
-	return camera_rig.camera.global_position
+	return aim_point() if is_bot else camera_rig.camera.global_position
 
 func aim_direction() -> Vector3:
-	return camera_rig.aim_forward()
+	return -global_transform.basis.z if is_bot else camera_rig.aim_forward()
 
 # ------------------------------------------------------------ signals
 

@@ -27,6 +27,17 @@ func _ready() -> void:
 	health_component.died.connect(_on_died)
 	health_component.revived.connect(_on_revived)
 
+## The yaw that points this body's forward at `to`.
+##
+## Godot's forward is -Z, so a body rotated by `y` faces
+## (-sin y, 0, -cos y). Facing a target therefore needs atan2(-dx, -dz):
+## the intuitive atan2(dx, dz) points the body exactly backwards, which is
+## silent until something depends on facing -- a melee arc, a frontal cone,
+## a directional shield -- and then it is total.
+static func yaw_toward(from: Vector3, to: Vector3) -> float:
+	var offset := to - from
+	return atan2(-offset.x, -offset.z)
+
 func is_hostile_to(other: Node) -> bool:
 	if other == null or not is_instance_valid(other):
 		return false

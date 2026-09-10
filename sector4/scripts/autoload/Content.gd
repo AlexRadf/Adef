@@ -515,6 +515,77 @@ const MOB_TYPES := {
 	},
 }
 
+# ------------------------------------------------------------------ bots
+#
+# A bot is a priority list, read top to bottom: the first rule that both
+# matches and produces a usable action wins. Writing the rotation down
+# like this is the fastest way to tell whether a kit actually interlocks --
+# if it does, the list reads like a sentence.
+#
+# `do` is either "use:<ability>", "channel:<ability>" or a movement verb.
+# Movement runs every frame underneath the list; the list only decides
+# what to press.
+
+const BOT_PRIORITIES := {
+	"enforcer": [
+		# Aggro first, always. A tank that is doing damage while the boss
+		# eats the healer is a tank that has lost the fight politely.
+		{"if": "lost_aggro", "do": "use:dart_pull"},
+		{"if": "marked_target_loose", "do": "use:dart_pull"},
+		{"if": "adds_loose", "do": "use:bulwark_slam"},
+		{"if": "self_in_hazard", "do": "use:rocket_dash"},
+		# The shield is directional, so it is only worth raising when
+		# something is actually pointed at us.
+		{"if": "boss_casting_frontal", "do": "use:directional_shield"},
+		{"if": "self_below_pct:55", "do": "use:directional_shield"},
+		{"else": true, "do": "use:riot_carbine"},
+	],
+	"field_medic": [
+		{"if": "self_in_hazard", "do": "use:rocket_dash"},
+		{"if": "ally_dispellable", "do": "use:system_purge"},
+		# Smart Nano-Pulse is the answer to System Shockwave, which hits
+		# everyone at once -- so it waits for more than one person to be
+		# hurt rather than being spent on the first scratch.
+		{"if": "party_wounded:2", "do": "use:smart_nano_pulse"},
+		{"if": "ally_below_pct:35", "do": "use:smart_nano_pulse"},
+		{"if": "party_wounded:3", "do": "use:overclock_surge"},
+		{"if": "ally_below_pct:80", "do": "channel:nano_injector"},
+		{"else": true, "do": "use:disruptor_pistol"},
+	],
+	"kinetic_striker": [
+		# The whole reason this seat exists. Nothing outranks the kick.
+		{"if": "enemy_casting_interruptible", "do": "use:kick"},
+		{"if": "self_in_hazard", "do": "use:rocket_dash"},
+		{"if": "caster_add_up", "do": "use:static_snare"},
+		{"if": "boss_enraged", "do": "use:blur_step"},
+		{"else": true, "do": "use:mono_blade"},
+	],
+	"railgun_specialist": [
+		{"if": "self_in_hazard", "do": "use:rocket_dash"},
+		{"if": "add_on_healer", "do": "use:concussion_round"},
+		{"if": "drone_ready", "do": "use:seeker_drone"},
+		{"if": "boss_enraged", "do": "use:orbital_lance"},
+		{"else": true, "do": "use:railgun"},
+	],
+}
+
+## Bots do not see a hazard on the tick it appears, and they do not react
+## to a cast bar instantly. One number, varied per seat, and it is the
+## single biggest reason a party of bots reads as people rather than as a
+## machine. The interrupt gets a much shorter fuse, because a 4 second
+## window is not forgiving enough for a human-shaped delay.
+const BOT_REACTION := {"min": 0.35, "max": 0.95}
+const BOT_INTERRUPT_REACTION := {"min": 0.25, "max": 0.55}
+
+## How each role wants to stand. Movement is steering, not a rotation, so
+## it lives beside the priority list rather than inside it.
+const BOT_POSITIONING := {
+	"enforcer": {"role": "anchor", "range": 3.6},
+	"field_medic": {"role": "backline", "range": 16.0},
+	"kinetic_striker": {"role": "flank", "range": 2.6},
+	"railgun_specialist": {"role": "backline", "range": 22.0},
+}
+
 # ---------------------------------------------------------------- floors
 
 const AGGRO_LINK_RADIUS := 9.0

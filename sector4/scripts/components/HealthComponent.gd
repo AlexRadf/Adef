@@ -61,7 +61,8 @@ func revive(pct: float = 0.35) -> void:
 	is_dead = false
 	_set_health(max_health * clampf(pct, 0.05, 1.0))
 	revived.emit()
-	_replicate.rpc(current_health, max_health, is_dead)
+	if Net.online() and multiplayer.is_server():
+		_replicate.rpc(current_health, max_health, is_dead)
 
 func _set_health(value: float) -> void:
 	current_health = clampf(value, 0.0, max_health)
@@ -69,7 +70,7 @@ func _set_health(value: float) -> void:
 	if current_health <= 0.0 and not is_dead:
 		is_dead = true
 		died.emit()
-	if multiplayer.has_multiplayer_peer() and multiplayer.is_server():
+	if Net.online() and multiplayer.is_server():
 		_replicate.rpc(current_health, max_health, is_dead)
 
 @rpc("authority", "call_remote", "unreliable_ordered")

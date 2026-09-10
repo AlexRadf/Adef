@@ -169,8 +169,11 @@ func _smart_pulse() -> bool:
 func _overclock_surge() -> bool:
 	var field: GroundField = preload("res://scenes/abilities/GroundField.tscn").instantiate()
 	field.configure("overclock_surge", player.peer_id)
-	field.global_position = player.global_position
+	# Parent first: global_position on a node outside the tree silently
+	# falls back to local coordinates, which would drop the field at the
+	# world origin instead of under the Medic's feet.
 	_spawn_root().add_child(field, true)
+	field.global_position = player.global_position
 	return true
 
 func _focus_marker(payload: Dictionary) -> bool:
