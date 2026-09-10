@@ -104,6 +104,8 @@ function buildBar(refs) {
       <div class="bar"><i data-r="resFill"></i><span><b data-r="resText"></b></span></div>
       <div class="lbl" data-r="stamLbl" hidden>Stamina</div>
       <div class="bar stam" data-r="stamBar" hidden><i data-r="stamFill"></i></div>
+      <div class="lbl ult" data-r="ultLbl" hidden>Ultimate</div>
+      <div class="bar ult" data-r="ultBar" hidden><i data-r="ultFill"></i><span><b data-r="ultText"></b></span></div>
       <div class="tgt" data-r="tgt"></div>
     </div>
     <div class="btns" data-r="btns"></div>`;
@@ -293,6 +295,15 @@ function paintActions(view, content, hud) {
   setClass(h.health, 'hurt', !player.alive || player.hpPct < 35);
   setText(h.resName, player.resourceName);
   // Stamina only exists when the style has something to spend it on.
+  const hasUlt = player.hasUltimate;
+  h.ultLbl.hidden = !hasUlt;
+  h.ultBar.hidden = !hasUlt;
+  if (hasUlt) {
+    setWidth(h.ultFill, pct(player.ultimate, 100));
+    setText(h.ultText, player.ultimate >= 100 ? 'READY' : `${player.ultimate}%`);
+    setClass(h.ultBar, 'ready', player.ultimate >= 100);
+    setClass(h.ultLbl, 'ready', player.ultimate >= 100);
+  }
   const hasStamina = player.maxStamina > 0;
   h.stamLbl.hidden = !hasStamina;
   h.stamBar.hidden = !hasStamina;
@@ -322,6 +333,7 @@ function paintActions(view, content, hud) {
     setClass(r.node, 'off', !player.alive || cd > 0 || poor);
     setClass(r.node, 'gcd', player.gcdRemaining > 0 && cd <= 0);
     setClass(r.node, 'queued', hud.queued === id);
+    setClass(r.node, 'ready', !!a.ultimate && player.ultimate >= 100);
     if (r.cost) r.cost.style.color = poor ? '#ff6b6b' : '';
     r.sweep.hidden = cd <= 0;
     if (cd > 0) setText(r.sweep, cd.toFixed(1));

@@ -30,6 +30,49 @@ room you can actually run across — and none of the balance work had to be redo
 that fits. That fixes the mashing; it does not reduce the number of *decisions*, which is
 an ability-design change rather than a control one, and is the obvious next thing to do.
 
+## Four buttons that feed each other
+
+A hard limit of four buttons per role. The problem with four buttons is that they collapse
+into "spam 1, occasionally press 2" unless they are wired to each other, so each role runs
+the same four-beat shape with different content:
+
+| | **1 · Builder** | **2 · Spender** | **3 · Payoff** | **4 · Ultimate** |
+|---|---|---|---|---|
+| **Vanguard** | Shotgun — free, +20 Fury | Super Shotgun — 45 Fury, leaves the boss **Rattled** (hits 15% softer) | Grappling Hook — taunt, and hands back 35 Fury *while Rattled* | **Pentagram** — charges from damage taken; the party takes 35% less for 6s |
+| **Slayer** | Nailgun — free, +20 Charge | Rocket Launcher — 45 Charge, leaves the target **Cracked** (takes 18% more) | Thunderbolt — interrupt, **double damage into a Cracked target** | **Quad Damage** — charges from damage dealt; everything doubles for 10s |
+| **Field Medic** | Stimpack — free, +20 Bio | Medkit — 45 Bio, leaves them **Regenerating** (a HoT, +25% healing taken) | Biosuit — cleanse, and dumps 95k more *into a Regenerating ally* | **Megahealth** — charges from healing done; a wall of health across the party |
+
+So button 2 is what makes button 3 worth pressing, button 1 is what pays for button 2, and
+button 4 arrives because you did your job — the ultimate charges from damage dealt, damage
+taken or healing done, depending on which job that is.
+
+**The loop is measured, not asserted.** Over 60 headless pulls:
+
+```
+Thunderbolts into a Cracked target : 94%   (38 bolts per pull)
+Grapples taken during Rattled      : 100%
+Biosuits onto a Regenerating ally  : 95%
+builder : spender presses          : 325 : 156     (build, build, spend)
+ultimates per pull                 : Quad 2.1 · Pentagram 1.5 · Megahealth 1.5
+```
+
+A Thunderbolt is 38,000 on its own and 89,680 inside the window. That number is the whole
+design in one line.
+
+The bot priority lists are the rotation written down, which is the fastest way to tell
+whether a kit actually interlocks — if it does, the list reads like a sentence:
+
+```json
+{ "if": "bossCastingInterruptible", "do": "cast:lightning" },
+{ "if": "ultimateReady",            "do": "cast:quad" },
+{ "if": "targetHasAura:cracked",    "do": "cast:lightning" },
+{ "if": "resourceAbovePct:45",      "do": "cast:rocket" },
+{ "else": true,                     "do": "cast:nailgun" }
+```
+
+All four play styles were re-tuned around the new kits and sit at Raid 49%, Arena 41%,
+Souls 43%, Action 33%, killing in 3:26–3:46 against a 4:30 enrage.
+
 ### What is real and what is not
 
 Real: the arena, the four cameras, mouse-look and camera-relative movement, telegraphs and

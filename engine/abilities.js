@@ -121,6 +121,11 @@ export function applyDamage(state, sourceId, targetId, baseAmount, school = 'phy
   state.stats.damageBy[sourceId || 'environment'] =
     (state.stats.damageBy[sourceId || 'environment'] || 0) + afterAbsorb;
 
+  // Ultimates charge from doing your job: the slayer by dealing it, the
+  // vanguard by standing in front of it.
+  if (source && source.team === 'party' && target.team === 'enemy') chargeUltimate(source, 'damage', afterAbsorb);
+  if (target.team === 'party') chargeUltimate(target, 'taken', afterAbsorb);
+
   const label = meta.name || 'damage';
   const src = source ? source.name : 'The arena';
   log(
@@ -153,6 +158,7 @@ export function applyHeal(state, sourceId, targetId, baseAmount, meta = {}) {
 
   state.stats.healBy[sourceId || 'environment'] =
     (state.stats.healBy[sourceId || 'environment'] || 0) + effective;
+  if (source) chargeUltimate(source, 'healing', effective);
 
   const overheal = amount - effective;
   log(
@@ -165,9 +171,28 @@ export function applyHeal(state, sourceId, targetId, baseAmount, meta = {}) {
   return effective;
 }
 
+export function chargeUltimate(unit, kind, amount) {
+  const gain = unit.ultimateGain;
+  if (!gain || gain.from !== kind || !unit.alive) return;
+  unit.ultimate = Math.min(100, unit.ultimate + (amount / gain.per) * 100);
+}
+
 export const fmt = (n) => Math.round(n).toLocaleString('en-US');
 
 /* -------------------------------------------------------------- effects */
+
+// An effect can depend on the state the previous button left behind --
+// this is what makes four buttons a loop instead of four buttons.
+function effectApplies(ctx, e) {
+  if (!e.requireTargetAura) return true;
+  return !!ctx.target && ctx.target.auras.some((a) => a.id === e.requireTargetAura);
+}
+
+function effectScale(ctx, e) {
+  if (!e.ifTargetAura) return 1;
+  const has = !!ctx.target && ctx.target.auras.some((a) => a.id === e.ifTargetAura);
+  return has ? e.ifBonus ?? 1 : 1;
+}
 
 function resolveEffectTargets(state, ctx, spec) {
   const { caster, target, cell } = ctx;
@@ -206,8 +231,10 @@ function resolveEffectTargets(state, ctx, spec) {
 
 const effectHandlers = {
   damage(state, content, ctx, e) {
+    if (!effectApplies(ctx, e)) return;
+    const scale = effectScale(ctx, e);
     for (const t of resolveEffectTargets(state, ctx, e.target)) {
-      applyDamage(state, ctx.caster.id, t, e.amount, e.school || 'physical', {
+      applyDamage(state, ctx.caster.id, t, e.amount * scale, e.school || 'physical', {
         name: e.name || ctx.abilityName,
         threatMult: e.threatMult ?? ctx.ability.threatMult ?? 1,
       });
@@ -215,8 +242,10 @@ const effectHandlers = {
   },
 
   heal(state, content, ctx, e) {
+    if (!effectApplies(ctx, e)) return;
+    const scale = effectScale(ctx, e);
     for (const t of resolveEffectTargets(state, ctx, e.target)) {
-      applyHeal(state, ctx.caster.id, t, e.amount, { name: e.name || ctx.abilityName });
+      applyHeal(state, ctx.caster.id, t, e.amount * scale, { name: e.name || ctx.abilityName });
     }
   },
 
@@ -229,6 +258,7 @@ const effectHandlers = {
   },
 
   aura(state, content, ctx, e) {
+    if (!effectApplies(ctx, e)) return;
     for (const t of resolveEffectTargets(state, ctx, e.target)) {
       applyAura(state, content, ctx.caster.id, t, e.aura, {
         durationTicks: e.durationTicks,
@@ -296,6 +326,7 @@ const effectHandlers = {
   },
 
   resource(state, content, ctx, e) {
+    if (!effectApplies(ctx, e)) return;
     for (const t of resolveEffectTargets(state, ctx, e.target || 'self')) {
       t.resource = Math.min(t.maxResource, t.resource + e.amount);
     }
@@ -401,6 +432,10 @@ export function makeUnit(state, content, def) {
     team: def.team || 'party',
     hp: def.maxHp,
     maxHp: def.maxHp,
+    ultimate: 0,
+    // How this role earns its ultimate: dealing it, taking it, or
+    // healing it. The number is how much of that fills the bar.
+    ultimateGain: def.ultimateGain || null,
     stamina: def.maxStamina ?? 0,
     maxStamina: def.maxStamina ?? 0,
     staminaRegen: def.staminaRegen ?? 0,
@@ -447,6 +482,7 @@ export function canUseAbility(state, content, unit, abilityId, target) {
   if (unit.castAbility) return false;
   if (!ability.offGcd && unit.gcdUntil > state.tick) return false;
   if (onCooldown(state, unit, abilityId)) return false;
+  if (ability.ultimate && unit.ultimate < 100) return false;
   // You cannot cast on the move -- so do not start one that movement is
   // about to cancel, paying the cost and the cooldown for nothing.
   if (ability.castTicks > 0 && (unit.moveTarget || unit.moveDir)) return false;
@@ -512,6 +548,9 @@ const hasAuraId = (unit, id) => unit.auras.some((a) => a.id === id);
 export function castBlockedReason(state, content, unit, abilityId, target) {
   const ability = abilityDef(content, abilityId);
   if (!unit.alive) return 'you are dead';
+  if (ability.ultimate && unit.ultimate < 100) {
+    return `${ability.name} needs a full charge (${Math.floor(unit.ultimate)}%)`;
+  }
   if (ability.castTicks > 0 && (unit.moveTarget || unit.moveDir)) {
     return `${ability.name} cannot be cast while moving`;
   }
@@ -533,6 +572,10 @@ export function castBlockedReason(state, content, unit, abilityId, target) {
 export function startAbility(state, content, unit, abilityId, target, cell = null, overrides = null) {
   const ability = abilityDef(content, abilityId);
   unit.resource = Math.max(0, unit.resource - (ability.cost || 0));
+  if (ability.ultimate) {
+    unit.ultimate = 0;
+    log(state, `${unit.name} — ${ability.name.toUpperCase()}!`, 'enrage');
+  }
   if (!ability.offGcd) unit.gcdUntil = state.tick + (ability.gcdTicks ?? gcdTicksOf(state));
   if (ability.cooldownTicks) unit.cooldowns[abilityId] = state.tick + ability.cooldownTicks;
 

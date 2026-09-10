@@ -90,6 +90,14 @@ function hydrateAuras(auras) {
 
 const asArray = (v) => (Array.isArray(v) ? v : [v]);
 
+function scaleAmounts(effect, k) {
+  const out = { ...effect };
+  for (const key of ['amount', 'damage', 'raidDamage']) {
+    if (out[key]) out[key] = Math.round(out[key] * k);
+  }
+  return out;
+}
+
 /* ----------------------------------------------------- play styles */
 
 // Four independent axes -- how you move, how you attack, how you heal,
@@ -124,7 +132,20 @@ export function applyStyle(content, choice = 'raid') {
 
   const abilities = {};
   for (const [id, def] of Object.entries(content.abilities)) {
-    abilities[id] = overrides[id] ? hydrateAbilities({ [id]: { ...def, ...overrides[id] } })[id] : def;
+    const override = overrides[id];
+    if (!override) {
+      abilities[id] = def;
+      continue;
+    }
+    const merged = { ...def, ...override };
+    // `scale` is how a style re-times an ability honestly: fire it twice
+    // as fast and each shot is worth half, so the loop keeps its shape
+    // and the damage per second stays where it was tuned.
+    if (override.scale && !override.effects) {
+      merged.effects = (def.effects || []).map((e) => scaleAmounts(e, override.scale));
+    }
+    delete merged.scale;
+    abilities[id] = hydrateAbilities({ [id]: merged })[id];
   }
 
   // The flat fields the engine reads every tick, composed from the axes.

@@ -3,32 +3,104 @@
     "name": "Slipgate Strike Team",
     "members": [
       {
-        "id": "ranger", "name": "Ranger", "role": "tank", "title": "Vanguard",
-        "maxHp": 980000, "maxResource": 100, "resourceRegen": 0.45,
-        "resourceName": "Shells", "cell": 11, "ai": "tank", "reactionTicks": 7,
-        "abilities": ["shotgun", "superShotgun", "grapple", "pentagram"],
-        "passives": ["vanguardStance"]
+        "id": "ranger",
+        "name": "Ranger",
+        "role": "tank",
+        "title": "Vanguard",
+        "maxHp": 980000,
+        "maxResource": 100,
+        "resourceRegen": 0.08,
+        "resourceName": "Fury",
+        "cell": 11,
+        "ai": "tank",
+        "reactionTicks": 7,
+        "abilities": [
+          "shotgun",
+          "superShotgun",
+          "grapple",
+          "pentagram"
+        ],
+        "passives": [
+          "vanguardStance"
+        ],
+        "ultimateGain": {
+          "from": "taken",
+          "per": 3400000
+        }
       },
       {
-        "id": "crash", "name": "Crash", "role": "healer", "title": "Field Medic",
-        "maxHp": 520000, "maxResource": 100, "resourceRegen": 0.6,
-        "resourceName": "Bio-Cells", "cell": 0, "ai": "healer", "reactionTicks": 9,
-        "abilities": ["stimpack", "medkit", "biosuit", "megahealth"],
-        "passives": ["fieldMedicine"]
+        "id": "crash",
+        "name": "Crash",
+        "role": "healer",
+        "title": "Field Medic",
+        "maxHp": 520000,
+        "maxResource": 100,
+        "resourceRegen": 0.08,
+        "resourceName": "Bio",
+        "cell": 0,
+        "ai": "healer",
+        "reactionTicks": 9,
+        "abilities": [
+          "stimpack",
+          "medkit",
+          "biosuit",
+          "megahealth"
+        ],
+        "passives": [
+          "fieldMedicine"
+        ],
+        "ultimateGain": {
+          "from": "healing",
+          "per": 4200000
+        }
       },
       {
-        "id": "visor", "name": "Visor", "role": "dps", "title": "Slayer",
-        "maxHp": 560000, "maxResource": 100, "resourceRegen": 0.5,
-        "resourceName": "Cells", "cell": 4, "ai": "dps", "reactionTicks": 11,
-        "abilities": ["nailgun", "rocket", "lightning", "grenade"],
-        "passives": []
+        "id": "visor",
+        "name": "Visor",
+        "role": "dps",
+        "title": "Slayer",
+        "maxHp": 560000,
+        "maxResource": 100,
+        "resourceRegen": 0.08,
+        "resourceName": "Charge",
+        "cell": 4,
+        "ai": "dps",
+        "reactionTicks": 11,
+        "abilities": [
+          "nailgun",
+          "rocket",
+          "lightning",
+          "quad"
+        ],
+        "passives": [],
+        "ultimateGain": {
+          "from": "damage",
+          "per": 4600000
+        }
       },
       {
-        "id": "anarki", "name": "Anarki", "role": "dps", "title": "Slayer",
-        "maxHp": 540000, "maxResource": 100, "resourceRegen": 0.5,
-        "resourceName": "Cells", "cell": 24, "ai": "dps", "reactionTicks": 14,
-        "abilities": ["nailgun", "rocket", "lightning", "grenade"],
-        "passives": []
+        "id": "anarki",
+        "name": "Anarki",
+        "role": "dps",
+        "title": "Slayer",
+        "maxHp": 540000,
+        "maxResource": 100,
+        "resourceRegen": 0.08,
+        "resourceName": "Charge",
+        "cell": 24,
+        "ai": "dps",
+        "reactionTicks": 14,
+        "abilities": [
+          "nailgun",
+          "rocket",
+          "lightning",
+          "quad"
+        ],
+        "passives": [],
+        "ultimateGain": {
+          "from": "damage",
+          "per": 4600000
+        }
       }
     ]
   }

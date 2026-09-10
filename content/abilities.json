@@ -6,16 +6,21 @@
     "cast": 0,
     "gcd": 1.5,
     "cooldown": 0,
-    "cost": 5,
+    "cost": 0,
     "targeting": "enemy",
     "range": 1,
-    "threatMult": 1,
-    "desc": "Point blank filler. Cheap, always available.",
+    "threatMult": 1.4,
+    "desc": "Builder. Cheap, always up, and every shell is 20 Fury for the one that matters.",
     "effects": [
       {
         "type": "damage",
-        "amount": 26000,
+        "amount": 18000,
         "school": "shell"
+      },
+      {
+        "type": "resource",
+        "amount": 20,
+        "target": "self"
       }
     ]
   },
@@ -25,17 +30,22 @@
     "icon": "▮▮",
     "cast": 0,
     "gcd": 1.5,
-    "cooldown": 6,
-    "cost": 12,
+    "cooldown": 0,
+    "cost": 45,
     "targeting": "enemy",
     "range": 1,
-    "threatMult": 2.5,
-    "desc": "Both barrels. Heavy threat.",
+    "threatMult": 2.6,
+    "desc": "Spender. Both barrels, heavy threat, and it leaves the boss RATTLED — hitting 15% softer for 6s.",
     "effects": [
       {
         "type": "damage",
-        "amount": 72000,
+        "amount": 50000,
         "school": "shell"
+      },
+      {
+        "type": "aura",
+        "aura": "rattled",
+        "target": "target"
       }
     ]
   },
@@ -49,38 +59,44 @@
     "cost": 0,
     "targeting": "enemy",
     "range": 5,
-    "desc": "Taunt. Rips the target's attention back to you for 4s.",
+    "desc": "Taunt. Free — and if the boss is still Rattled it hands you 35 Fury back.",
     "effects": [
       {
         "type": "taunt"
       },
       {
         "type": "damage",
-        "amount": 12000,
-        "school": "physical",
-        "threatMult": 1
+        "amount": 10000,
+        "school": "physical"
+      },
+      {
+        "type": "resource",
+        "amount": 35,
+        "target": "self",
+        "requireTargetAura": "rattled"
       }
     ]
   },
   "pentagram": {
     "id": "pentagram",
-    "name": "Pentagram of Protection",
+    "name": "Pentagram",
     "icon": "⛨",
     "cast": 0,
-    "gcd": 0,
+    "gcd": 1.5,
     "offGcd": true,
-    "cooldown": 42,
+    "cooldown": 0,
     "cost": 0,
     "targeting": "self",
     "range": 0,
-    "desc": "Take 65% less damage for 9s.",
+    "desc": "ULTIMATE. Charges from damage taken. The whole party takes half damage for 8s.",
     "effects": [
       {
         "type": "aura",
         "aura": "pentagram",
-        "target": "self"
+        "target": "party"
       }
-    ]
+    ],
+    "ultimate": true
   },
   "stimpack": {
     "id": "stimpack",
@@ -89,14 +105,19 @@
     "cast": 0,
     "gcd": 1.5,
     "cooldown": 0,
-    "cost": 10,
+    "cost": 0,
     "targeting": "ally",
     "range": 5,
-    "desc": "Fast, cheap heal. Click a raid frame to pick a target, or let it find the lowest.",
+    "desc": "Builder. Small, instant, free — and 20 Bio towards the one that matters.",
     "effects": [
       {
         "type": "heal",
-        "amount": 105000
+        "amount": 46000
+      },
+      {
+        "type": "resource",
+        "amount": 20,
+        "target": "self"
       }
     ]
   },
@@ -107,14 +128,19 @@
     "cast": 2,
     "gcd": 1.5,
     "cooldown": 0,
-    "cost": 22,
+    "cost": 45,
     "targeting": "ally",
     "range": 5,
-    "desc": "2s cast, big heal. Moving cancels it.",
+    "desc": "Spender. A big heal that leaves them REGENERATING — a heal over time, and 25% more healing lands on them for 8s.",
     "effects": [
       {
         "type": "heal",
-        "amount": 235000
+        "amount": 125000
+      },
+      {
+        "type": "aura",
+        "aura": "regenerating",
+        "target": "target"
       }
     ]
   },
@@ -124,18 +150,19 @@
     "icon": "❤",
     "cast": 0,
     "gcd": 1.5,
-    "cooldown": 20,
-    "cost": 30,
+    "cooldown": 0,
+    "cost": 0,
     "targeting": "self",
     "range": 0,
-    "desc": "Heals the whole party.",
+    "desc": "ULTIMATE. Charges from healing done. A wall of health across the whole party.",
     "effects": [
       {
         "type": "heal",
         "amount": 105000,
         "target": "party"
       }
-    ]
+    ],
+    "ultimate": true
   },
   "biosuit": {
     "id": "biosuit",
@@ -144,10 +171,10 @@
     "cast": 0,
     "gcd": 1.5,
     "cooldown": 8,
-    "cost": 12,
+    "cost": 0,
     "targeting": "dispelTarget",
     "range": 5,
-    "desc": "Cleanses one magic effect. This is how you beat Slipgate Rift.",
+    "desc": "Cleanses one magic effect — and if they are Regenerating it dumps another 95,000 into them.",
     "effects": [
       {
         "type": "dispel",
@@ -159,7 +186,13 @@
       },
       {
         "type": "heal",
-        "amount": 30000
+        "amount": 22000
+      },
+      {
+        "type": "heal",
+        "amount": 70000,
+        "ifTargetAura": "regenerating",
+        "ifBonus": 1
       }
     ]
   },
@@ -170,15 +203,20 @@
     "cast": 0,
     "gcd": 1.5,
     "cooldown": 0,
-    "cost": 6,
+    "cost": 0,
     "targeting": "enemy",
     "range": 5,
-    "desc": "Filler. No cooldown, cheap, boring, essential.",
+    "desc": "Builder. Hold it down. 20 Charge a burst, and Charge is what loads the rocket.",
     "effects": [
       {
         "type": "damage",
-        "amount": 46000,
+        "amount": 28000,
         "school": "nail"
+      },
+      {
+        "type": "resource",
+        "amount": 20,
+        "target": "self"
       }
     ]
   },
@@ -189,15 +227,20 @@
     "cast": 1.5,
     "gcd": 1.5,
     "cooldown": 0,
-    "cost": 20,
+    "cost": 45,
     "targeting": "enemy",
     "range": 5,
-    "desc": "1.5s cast, your hardest hit. Moving cancels it.",
+    "desc": "Spender. Your hardest hit, and it leaves the target CRACKED — taking 18% more for 8s.",
     "effects": [
       {
         "type": "damage",
-        "amount": 118000,
+        "amount": 84000,
         "school": "rocket"
+      },
+      {
+        "type": "aura",
+        "aura": "cracked",
+        "target": "target"
       }
     ]
   },
@@ -207,11 +250,11 @@
     "icon": "⚡",
     "cast": 0,
     "gcd": 1.5,
-    "cooldown": 12,
-    "cost": 15,
+    "cooldown": 9,
+    "cost": 0,
     "targeting": "enemy",
     "range": 5,
-    "desc": "Interrupts a cast in progress. Save it for Rune of Black Magic.",
+    "desc": "Payoff and interrupt. Double damage into a Cracked target — so the rocket is what makes this worth pressing.",
     "effects": [
       {
         "type": "interrupt",
@@ -219,8 +262,10 @@
       },
       {
         "type": "damage",
-        "amount": 62000,
-        "school": "shock"
+        "amount": 38000,
+        "school": "shock",
+        "ifTargetAura": "cracked",
+        "ifBonus": 2
       }
     ]
   },
@@ -265,7 +310,7 @@
       {
         "type": "damage",
         "target": "party",
-        "amount": 28000,
+        "amount": 30240,
         "school": "lava",
         "name": "Unopposed"
       }
@@ -273,7 +318,7 @@
     "effects": [
       {
         "type": "damage",
-        "amount": 76000,
+        "amount": 82080,
         "school": "lava"
       }
     ]
@@ -293,7 +338,7 @@
       {
         "type": "damage",
         "target": "targetAndAdjacent",
-        "amount": 112000,
+        "amount": 120960,
         "school": "lava"
       },
       {
@@ -319,7 +364,7 @@
         "type": "markCells",
         "count": 6,
         "delay": 3,
-        "damage": 195000,
+        "damage": 210600,
         "kind": "blast",
         "name": "Lava Geyser",
         "aura": "seared"
@@ -360,8 +405,8 @@
       {
         "type": "markRandomArea",
         "delay": 5,
-        "damage": 520000,
-        "raidDamage": 340000,
+        "damage": 561600,
+        "raidDamage": 367200,
         "kind": "split",
         "name": "Chain of Souls"
       }
@@ -382,8 +427,8 @@
       {
         "type": "markRandomArea",
         "delay": 6,
-        "damage": 330000,
-        "raidDamage": 300000,
+        "damage": 356400,
+        "raidDamage": 324000,
         "minSoakers": 2,
         "kind": "soak",
         "name": "Void Well"
@@ -412,7 +457,7 @@
       {
         "type": "damage",
         "target": "party",
-        "amount": 165000,
+        "amount": 178200,
         "school": "void",
         "name": "Rune of Black Magic"
       }
@@ -450,8 +495,28 @@
     "effects": [
       {
         "type": "damage",
-        "amount": 30000,
+        "amount": 32400,
         "school": "acid"
+      }
+    ]
+  },
+  "quad": {
+    "id": "quad",
+    "name": "Quad Damage",
+    "icon": "◆",
+    "cast": 0,
+    "gcd": 1.5,
+    "cooldown": 0,
+    "cost": 0,
+    "ultimate": true,
+    "targeting": "self",
+    "range": 0,
+    "desc": "ULTIMATE. Charges from damage dealt. Everything you hit takes double for 10s.",
+    "effects": [
+      {
+        "type": "aura",
+        "aura": "quadPickup",
+        "target": "self"
       }
     ]
   }

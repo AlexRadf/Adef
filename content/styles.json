@@ -92,38 +92,28 @@
       "flankBonus": 1,
       "abilities": {
         "shotgun": {
-          "cooldown": 0.8,
-          "cost": 5
+          "cooldown": 0.8
         },
         "superShotgun": {
-          "cooldown": 6
+          "cooldown": 1.2
         },
         "nailgun": {
-          "cooldown": 1.2,
-          "cost": 6
+          "cooldown": 0.55
         },
         "rocket": {
           "cast": 0,
-          "cooldown": 3,
-          "cost": 20
+          "cooldown": 1.4
         },
         "lightning": {
-          "cooldown": 12
-        },
-        "grenade": {
-          "cooldown": 11
+          "cooldown": 9
         },
         "stimpack": {
-          "cooldown": 0.9,
-          "cost": 10
+          "cooldown": 0.7,
+          "scale": 0.7
         },
         "medkit": {
           "cast": 0,
-          "cooldown": 3.5,
-          "cost": 22
-        },
-        "megahealth": {
-          "cooldown": 20
+          "cooldown": 2.2
         },
         "biosuit": {
           "cooldown": 8
@@ -141,17 +131,20 @@
       "facingArc": 100,
       "flankBonus": 1.2,
       "abilities": {
+        "shotgun": {
+          "scale": 0.8
+        },
+        "nailgun": {
+          "scale": 0.8
+        },
+        "stimpack": {
+          "scale": 0.8
+        },
         "rocket": {
           "cast": 1
         },
         "medkit": {
           "cast": 1.4
-        },
-        "nailgun": {
-          "cooldown": 0
-        },
-        "shotgun": {
-          "cooldown": 0
         }
       },
       "bots": "42%"
@@ -197,17 +190,22 @@
           "targeting": "cell",
           "range": 5,
           "cast": 0,
-          "cooldown": 1.5,
-          "cost": 12,
-          "desc": "Drops a small healing field where you are pointing.",
+          "cooldown": 1.2,
+          "cost": 0,
+          "desc": "Builder. Drops a small healing field where you are pointing, and still builds Bio.",
           "effects": [
             {
               "type": "healField",
-              "amount": 13800,
+              "amount": 5200,
               "interval": 0.5,
               "duration": 3,
               "half": 0.62,
               "name": "Field Dressing"
+            },
+            {
+              "type": "resource",
+              "amount": 20,
+              "target": "self"
             }
           ]
         },
@@ -216,36 +214,17 @@
           "targeting": "cell",
           "range": 5,
           "cast": 1,
-          "cooldown": 6,
-          "cost": 24,
-          "desc": "A heavy healing field. Stand in it.",
+          "cooldown": 4,
+          "cost": 45,
+          "desc": "Spender. A heavy field. Stand in it.",
           "effects": [
             {
               "type": "healField",
-              "amount": 26500,
+              "amount": 10800,
               "interval": 0.5,
               "duration": 5,
               "half": 0.62,
               "name": "Med Station"
-            }
-          ]
-        },
-        "megahealth": {
-          "name": "Megahealth Drop",
-          "targeting": "cell",
-          "range": 5,
-          "cast": 0,
-          "cooldown": 20,
-          "cost": 30,
-          "desc": "A big field that heals everyone standing in it.",
-          "effects": [
-            {
-              "type": "healField",
-              "amount": 14200,
-              "interval": 0.5,
-              "duration": 6,
-              "half": 1.1,
-              "name": "Megahealth"
             }
           ]
         }

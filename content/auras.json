@@ -29,14 +29,14 @@
     ]
   },
   "pentagram": {
-    "name": "Pentagram of Protection",
-    "duration": 9,
+    "name": "Pentagram",
+    "duration": 6,
     "harmful": false,
     "modifiers": [
       {
         "stat": "damageTaken",
         "op": "mult",
-        "value": 0.35
+        "value": 0.65
       }
     ]
   },
@@ -81,7 +81,7 @@
       "interval": 1,
       "effect": {
         "type": "damage",
-        "amount": 12000,
+        "amount": 12960,
         "school": "lava"
       }
     },
@@ -96,7 +96,7 @@
       "interval": 1,
       "effect": {
         "type": "damage",
-        "amount": 13000,
+        "amount": 14040,
         "school": "void"
       }
     },
@@ -105,14 +105,14 @@
       {
         "type": "damage",
         "target": "target",
-        "amount": 90000,
+        "amount": 97200,
         "school": "void",
         "name": "Rift Collapse"
       },
       {
         "type": "damage",
         "target": "nearTarget",
-        "amount": 230000,
+        "amount": 248400,
         "school": "void",
         "name": "Rift Collapse"
       }
@@ -222,6 +222,61 @@
         "stat": "damageTaken",
         "op": "mult",
         "value": 1.3
+      }
+    ]
+  },
+  "cracked": {
+    "name": "Cracked",
+    "duration": 8,
+    "harmful": true,
+    "modifiers": [
+      {
+        "stat": "damageTaken",
+        "op": "mult",
+        "value": 1.18
+      }
+    ]
+  },
+  "rattled": {
+    "name": "Rattled",
+    "duration": 6,
+    "harmful": true,
+    "modifiers": [
+      {
+        "stat": "damageDealt",
+        "op": "mult",
+        "value": 0.85
+      }
+    ]
+  },
+  "regenerating": {
+    "name": "Regenerating",
+    "duration": 8,
+    "harmful": false,
+    "periodic": {
+      "interval": 1,
+      "effect": {
+        "type": "heal",
+        "amount": 7000
+      }
+    },
+    "modifiers": [
+      {
+        "stat": "healingTaken",
+        "op": "mult",
+        "value": 1.25
+      }
+    ]
+  },
+  "quadPickup": {
+    "name": "QUAD DAMAGE",
+    "duration": 10,
+    "harmful": false,
+    "modifiers": [
+      {
+        "stat": "damageDealt",
+        "op": "mult",
+        "value": 2
       }
     ]
   }

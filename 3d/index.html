@@ -60,6 +60,12 @@
   .meter { height:9px; background:#0a0705; border:1px solid #000; margin:2px 0 3px; }
   .meter span { display:block; height:100%; background:linear-gradient(180deg,#6fa8cf,var(--ammo)); }
   #stamWrap span { background:linear-gradient(180deg,#d8c169,#8a6a2a); }
+  #ultWrap span { background:linear-gradient(180deg,#b07bff,#5a2ea8); }
+  #ultWrap.ready span { background:linear-gradient(180deg,#ffe89a,var(--lava)); }
+  #ultWrap.ready .lbl { color:var(--lava); }
+  #ultText { color:var(--gold); }
+  .ab.ready { box-shadow:inset 0 0 0 2px var(--lava); animation:ultpulse .7s steps(2,end) infinite alternate; }
+  @keyframes ultpulse { to { box-shadow:inset 0 0 0 2px var(--lava-hot), 0 0 16px rgba(255,138,30,.6); } }
   #stamWrap.blocking span { background:linear-gradient(180deg,#9fe8ff,#1f7fa8); }
 
   #abilities { bottom:14px; left:50%; transform:translateX(-50%); display:flex; gap:6px; }
@@ -139,6 +145,8 @@
     <div class="lbl" id="ammoLbl">Ammo</div>
     <div class="meter"><span id="ammoFill"></span></div>
     <div id="stamWrap" hidden><div class="lbl">Stamina</div><div class="meter"><span id="stamFill"></span></div></div>
+    <div id="ultWrap" hidden><div class="lbl">Ultimate <b id="ultText"></b></div>
+      <div class="meter"><span id="ultFill"></span></div></div>
   </div>
   <div id="abilities"></div>
   <div id="target"></div>

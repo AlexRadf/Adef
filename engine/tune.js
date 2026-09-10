@@ -37,15 +37,34 @@ export function tuneEncounter(content, encounter, options = {}) {
 
   onProgress('measuring the party against it');
   encounter.boss.hp = MEASURE_HP;
+
+  // Measure against a boss that cannot kill anybody. Otherwise the window
+  // is whatever happens before the first death -- which, with kits that
+  // build a resource and charge an ultimate, is the weakest the party
+  // will ever be, and produced a boss that died in 48 seconds.
+  applyScale(encounter, pristine, 0);
+  const harmless = withEncounter(content, encounter);
   let damage = 0;
   let seconds = 0;
-  for (let i = 0; i < 5; i++) {
-    const state = run(withEncounter(content, encounter), bossId, seed + i * 7919);
-    const boss = state.units.find((u) => u.id === bossId);
-    damage += boss.maxHp - boss.hp;
+  for (let i = 0; i < 3; i++) {
+    const state = createState(harmless, {
+      seed: seed + i * 7919,
+      headless: true,
+      boss: bossId,
+      hardStopSeconds: 120,
+    });
+    while (!state.over) step(state, harmless, []);
+    // Count what the party dealt, not what the boss is missing: an
+    // encounter with a self-heal heals a percentage of the measuring
+    // pool, which made "missing hp" measure nothing at all.
+    for (const unit of state.units) {
+      if (unit.team === 'party') damage += state.stats.damageBy[unit.id] || 0;
+    }
     seconds += state.tick / 10;
   }
-  const dps = damage / seconds;
+  const dps = seconds > 5 ? damage / seconds : 1;
+  applyScale(encounter, pristine, 1);
+
   encounter.boss.hp = Math.round((dps * targetKill) / 100000) * 100000;
   log.push(`party does ${Math.round(dps).toLocaleString('en-US')} dps → ${(encounter.boss.hp / 1e6).toFixed(1)}M hp for a ${targetKill}s kill`);
 
@@ -69,7 +88,9 @@ export function tuneEncounter(content, encounter, options = {}) {
   // pass at either one leaves the other wrong. Search, correct, then
   // re-search in a narrow band around what the first search found.
 
-  let best = search(0.4, 3, 5, 20, 'balancing');
+  // A ceiling of 3 was not enough for the mildest rolls: seed 12 stayed
+  // at a 100% win rate with everything it had turned all the way up.
+  let best = search(0.4, 6, 6, 20, 'balancing');
 
   if (best.report.medianKill > 0) {
     const correction = Math.min(1.4, Math.max(0.65, targetKill / best.report.medianKill));

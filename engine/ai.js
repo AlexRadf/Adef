@@ -174,6 +174,15 @@ export const conditions = {
     return !!boss && distance(unit.pos, boss.pos) > 1;
   },
   resourceBelowPct: (state, content, unit, n) => (unit.resource / unit.maxResource) * 100 < Number(n),
+  resourceAbovePct: (state, content, unit, n) => (unit.resource / unit.maxResource) * 100 >= Number(n),
+  ultimateReady: (state, content, unit) => unit.ultimate >= 100,
+  // "Is the window I opened with the last button still open?"
+  targetHasAura: (state, content, unit, id) => {
+    const target = enemyFocus(state, unit);
+    return !!target && target.auras.some((a) => a.id === id);
+  },
+  allyHasAura: (state, content, unit, id) =>
+    livingParty(state).some((u) => u.auras.some((a) => a.id === id)),
   enrageSoon: (state, content, unit, seconds) => state.enrageTick - state.tick <= Number(seconds) * 10,
 };
 
@@ -198,6 +207,10 @@ export const CONDITION_SPECS = [
   { id: 'soakNeeded', label: 'a soak needs bodies', args: [] },
   { id: 'outOfMelee', label: 'I am out of melee range', args: [] },
   { id: 'resourceBelowPct', label: 'my resource is below', args: [{ suffix: '%', value: 30 }] },
+  { id: 'resourceAbovePct', label: 'my resource is at least', args: [{ suffix: '%', value: 45 }] },
+  { id: 'ultimateReady', label: 'my ultimate is charged', args: [] },
+  { id: 'targetHasAura', label: 'my target has', args: [{ value: 'cracked' }] },
+  { id: 'allyHasAura', label: 'an ally has', args: [{ value: 'regenerating' }] },
   { id: 'enrageSoon', label: 'enrage is within', args: [{ suffix: 's', value: 30 }] },
 ];
 
@@ -256,7 +269,7 @@ export function resolveTarget(state, content, unit, ability, preferred = null) {
     }
     case 'dispelTarget': {
       const hit = livingParty(state).find((u) => dispellable(u, DISPEL_TYPES).length);
-      return hit || preferred || unit;
+      return hit || preferred || lowestAlly(state) || unit;
     }
     case 'ally': {
       if (preferred && preferred.alive && preferred.team === 'party') return preferred;
@@ -365,7 +378,12 @@ export function runBot(state, content, unit) {
   for (const rule of script.priority) {
     if (!checkCondition(state, content, unit, rule.else ? 'always' : rule.if)) continue;
     if (!performAction(state, content, unit, rule.do)) continue;
-    unit.aiReadyAt = state.tick + Math.max(2, Math.round(unit.reactionTicks / 2));
+    // Reaction delay is for *deciding*, not for repeating. Holding the
+    // trigger on the same weapon should fire at the weapon's rate, the
+    // way it does for a person -- otherwise a fast style measures slow.
+    const repeat = unit.lastAction === rule.do;
+    unit.lastAction = rule.do;
+    unit.aiReadyAt = state.tick + (repeat ? 1 : Math.max(2, Math.round(unit.reactionTicks / 2)));
     return;
   }
 }

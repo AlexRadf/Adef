@@ -175,6 +175,12 @@
     background:radial-gradient(circle, rgba(126,162,60,.34), rgba(126,162,60,.06) 70%, transparent 72%);
     box-shadow:inset 0 0 0 1px rgba(147,184,74,.5); }
   .bar.stam > i { background:linear-gradient(180deg,#d8c169,#8a6a2a); }
+  .bar.ult > i { background:linear-gradient(180deg,#b07bff,#5a2ea8); }
+  .bar.ult.ready > i { background:linear-gradient(180deg,#ffe89a,var(--lava)); }
+  .hudstrip .lbl.ready { color:var(--lava); }
+  .btn.ready { box-shadow:inset 0 0 0 2px var(--lava), inset 1px 1px 0 var(--bevel-hi);
+    animation:ultpulse .7s steps(2,end) infinite alternate; }
+  @keyframes ultpulse { to { box-shadow:inset 0 0 0 2px var(--lava-hot), 0 0 14px rgba(255,138,30,.6); } }
   .bar.stam.blocking > i { background:linear-gradient(180deg,#9fe8ff,#1f7fa8); }
   .token.blocking { box-shadow:inset 1px 1px 0 rgba(255,255,255,.3), 0 0 0 2px #6fd2ff; }
   .crosshair { position:absolute; width:19px; height:19px; margin:-10px 0 0 -10px; pointer-events:none; }

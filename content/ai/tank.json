@@ -2,14 +2,45 @@
   "id": "tank",
   "reactionTicks": 7,
   "priority": [
-    { "if": "selfCellUnsafe",           "do": "moveToSafe" },
-    { "if": "stackMarkerActive",        "do": "moveToStack" },
-    { "if": "soakNeeded",               "do": "moveToSoak" },
-    { "if": "hasAuraStacks:scorched:2", "do": "cast:pentagram" },
-    { "if": "selfBelowPct:45",          "do": "cast:pentagram" },
-    { "if": "notThreatLeader",          "do": "cast:grapple" },
-    { "if": "outOfMelee",               "do": "moveToBoss" },
-    { "else": true,                     "do": "cast:superShotgun" },
-    { "else": true,                     "do": "cast:shotgun" }
+    {
+      "if": "selfCellUnsafe",
+      "do": "moveToSafe"
+    },
+    {
+      "if": "stackMarkerActive",
+      "do": "moveToStack"
+    },
+    {
+      "if": "soakNeeded",
+      "do": "moveToSoak"
+    },
+    {
+      "if": "partyAvgBelowPct:70",
+      "do": "cast:pentagram"
+    },
+    {
+      "if": "selfBelowPct:45",
+      "do": "cast:pentagram"
+    },
+    {
+      "if": "notThreatLeader",
+      "do": "cast:grapple"
+    },
+    {
+      "if": "targetHasAura:rattled",
+      "do": "cast:grapple"
+    },
+    {
+      "if": "resourceAbovePct:45",
+      "do": "cast:superShotgun"
+    },
+    {
+      "if": "outOfMelee",
+      "do": "moveToBoss"
+    },
+    {
+      "else": true,
+      "do": "cast:shotgun"
+    }
   ]
 }

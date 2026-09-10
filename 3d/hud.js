@@ -68,6 +68,13 @@ export function createHud(content) {
       el('hp').classList.toggle('hurt', !player.alive || player.hpPct < 35);
       el('ammoLbl').textContent = player.resourceName;
       el('ammoFill').style.width = pct(player.resource, player.maxResource);
+      const ult = player.hasUltimate;
+      el('ultWrap').hidden = !ult;
+      if (ult) {
+        el('ultFill').style.width = pct(player.ultimate, 100);
+        el('ultWrap').classList.toggle('ready', player.ultimate >= 100);
+        el('ultText').textContent = player.ultimate >= 100 ? 'READY' : `${player.ultimate}%`;
+      }
       const stam = player.maxStamina > 0;
       el('stamWrap').hidden = !stam;
       if (stam) {
@@ -77,7 +84,9 @@ export function createHud(content) {
       for (const [id, node] of Object.entries(abilityNodes())) {
         const cd = player.cooldowns[id] || 0;
         const a = content.abilities[id];
-        node.classList.toggle('off', !player.alive || cd > 0 || player.resource < (a.cost || 0));
+        const short = a.ultimate ? player.ultimate < 100 : player.resource < (a.cost || 0);
+        node.classList.toggle('off', !player.alive || cd > 0 || short);
+        node.classList.toggle('ready', !!a.ultimate && player.ultimate >= 100);
         node.querySelector('.cd').textContent = cd > 0 ? cd.toFixed(1) : '';
       }
     }

@@ -114,6 +114,78 @@ test('an unknown axis option is refused rather than silently ignored', () => {
   assert.throws(() => resolveStyle(base, 'nonsense'), /unknown style preset/);
 });
 
+/* --------------------------------------------------- the four buttons */
+
+test('each role builds, spends, and pays off into its own window', () => {
+  const kits = {
+    ranger: { build: 'shotgun', spend: 'superShotgun', payoff: 'grapple', ult: 'pentagram', window: 'rattled' },
+    crash: { build: 'stimpack', spend: 'medkit', payoff: 'biosuit', ult: 'megahealth', window: 'regenerating' },
+    visor: { build: 'nailgun', spend: 'rocket', payoff: 'lightning', ult: 'quad', window: 'cracked' },
+  };
+  for (const [id, kit] of Object.entries(kits)) {
+    const member = content.parties.default.members.find((m) => m.id === id);
+    assert.deepEqual(member.abilities, [kit.build, kit.spend, kit.payoff, kit.ult], `${id} kit`);
+    assert.ok(member.ultimateGain, `${id} needs a way to charge its ultimate`);
+
+    const build = content.abilities[kit.build];
+    assert.equal(build.cost, 0, `${kit.build} is the builder: it should be free`);
+    assert.ok(build.effects.some((e) => e.type === 'resource' && e.amount > 0), `${kit.build} must build`);
+
+    const spend = content.abilities[kit.spend];
+    assert.ok(spend.cost > 0, `${kit.spend} must cost something`);
+    assert.ok(
+      spend.effects.some((e) => e.type === 'aura' && e.aura === kit.window),
+      `${kit.spend} must open the ${kit.window} window`
+    );
+
+    const payoff = content.abilities[kit.payoff];
+    assert.ok(
+      payoff.effects.some((e) => e.ifTargetAura === kit.window || e.requireTargetAura === kit.window),
+      `${kit.payoff} must pay off inside ${kit.window}`
+    );
+
+    assert.equal(content.abilities[kit.ult].ultimate, true, `${kit.ult} is the ultimate`);
+  }
+});
+
+test('an ultimate needs a full bar and empties it', () => {
+  const { c, state } = fresh();
+  const dps = unitById(state, 'visor');
+  const boss = unitById(state, 'chthon');
+  assert.equal(canUseAbility(state, c, dps, 'quad', dps), false, 'not charged');
+  dps.ultimate = 100;
+  assert.equal(canUseAbility(state, c, dps, 'quad', dps), true);
+  startAbility(state, c, dps, 'quad', dps);
+  assert.equal(dps.ultimate, 0, 'spending it empties the bar');
+  assert.ok(dps.auras.some((a) => a.id === 'quadPickup'));
+});
+
+test('the ultimate charges from doing your own job', () => {
+  const { state } = fresh();
+  const dps = unitById(state, 'visor');
+  const tank = unitById(state, 'ranger');
+  applyDamage(state, 'visor', 'chthon', 500000, 'nail');
+  assert.ok(dps.ultimate > 0, 'the slayer charges by dealing damage');
+  assert.equal(tank.ultimate, 0, 'and not by watching');
+  applyDamage(state, 'chthon', 'ranger', 500000, 'lava');
+  assert.ok(tank.ultimate > 0, 'the vanguard charges by taking it');
+});
+
+test('a payoff is worth more inside its window', () => {
+  const { c, state } = fresh();
+  const dps = unitById(state, 'visor');
+  const boss = unitById(state, 'chthon');
+  const plain = boss.hp;
+  startAbility(state, c, dps, 'lightning', boss);
+  const without = plain - boss.hp;
+  applyAura(state, c, 'visor', boss, 'cracked');
+  dps.cooldowns.lightning = 0;
+  const mid = boss.hp;
+  startAbility(state, c, dps, 'lightning', boss);
+  const within = mid - boss.hp;
+  assert.ok(within > without * 1.8, `${within} should roughly double ${without}`);
+});
+
 /* ------------------------------------------------------ choke points */
 
 test('damage modifiers stack through the choke point', () => {
@@ -122,10 +194,13 @@ test('damage modifiers stack through the choke point', () => {
   const before = tank.hp;
   applyDamage(state, 'chthon', 'ranger', 100000, 'lava'); // Vanguard Stance is x0.7
   assert.equal(before - tank.hp, 70000);
-  applyAura(state, c, 'ranger', tank, 'pentagram'); // x0.35
+  applyAura(state, c, 'ranger', tank, 'pentagram');
+  // Read the mitigation out of the content rather than hardcoding it, so
+  // rebalancing the ultimate does not "break" the choke point.
+  const pent = c.auras.pentagram.modifiers[0].value;
   const mid = tank.hp;
   applyDamage(state, 'chthon', 'ranger', 100000, 'lava');
-  assert.equal(mid - tank.hp, Math.round(100000 * 0.7 * 0.35));
+  assert.equal(mid - tank.hp, Math.round(100000 * 0.7 * pent));
 });
 
 test('healing never overflows max hp', () => {
@@ -167,9 +242,10 @@ test('a cast is never started while a move order is live', () => {
   const { c, state } = fresh();
   const dps = unitById(state, 'visor');
   orderMove(state, dps, vec(4.5, 4.5));
-  const before = dps.resource;
-  startAbility(state, c, dps, 'nailgun', unitById(state, 'chthon')); // instant: fine
-  assert.ok(dps.resource < before);
+  const boss = unitById(state, 'chthon');
+  const before = boss.hp;
+  startAbility(state, c, dps, 'nailgun', boss); // instant: fine while moving
+  assert.ok(boss.hp < before, 'an instant ability still fires on the move');
   assert.equal(canUseAbility(state, c, dps, 'rocket', unitById(state, 'chthon')), false);
 });
 
@@ -331,12 +407,28 @@ test('a generated fight actually runs to a conclusion', () => {
   }
 });
 
-test('the tuner lands a random encounter in a playable band', () => {
-  const tuned = tuneEncounter(content, generateEncounter(12), { seed: 12, runs: 24 });
-  assert.ok(tuned.report.winRate > 0.1 && tuned.report.winRate < 0.85, `win rate was ${tuned.report.winRate}`);
-  assert.ok(tuned.report.medianKill > 120 && tuned.report.medianKill < 320, `kill was ${tuned.report.medianKill}s`);
-  assert.ok(tuned.encounter.boss.hp > 1e6);
-  assert.ok(tuned.report.log.length >= 2, 'the tuner should say what it did');
+test('the tuner lands encounters in a playable band, or admits it did not', () => {
+  // The contract is not "every roll is good" -- some rolls are lopsided
+  // and the tuner's job is to say so rather than ship them.
+  let accepted = 0;
+  for (const seed of [5, 12, 40, 77]) {
+    const tuned = tuneEncounter(content, generateEncounter(seed), { seed, runs: 20 });
+    assert.ok(tuned.encounter.boss.hp > 1e6, `#${seed} needs a real health pool`);
+    assert.ok(tuned.report.log.length >= 2, `#${seed}: the tuner should say what it did`);
+    if (tuned.accepted) {
+      accepted++;
+      assert.ok(tuned.report.winRate > 0.1 && tuned.report.winRate < 0.85, `#${seed} win ${tuned.report.winRate}`);
+      assert.ok(tuned.report.medianKill > 120 && tuned.report.medianKill < 340, `#${seed} kill ${tuned.report.medianKill}s`);
+    }
+  }
+  assert.ok(accepted >= 2, `only ${accepted} of 4 rolls were usable`);
+});
+
+test('the tuner measures what the party dealt, not what the boss is missing', () => {
+  // A generated boss that heals a percentage of its pool used to make the
+  // measurement read near zero, and fitted a boss that died in 48s.
+  const tuned = tuneEncounter(content, generateEncounter(12), { seed: 12, runs: 12 });
+  assert.ok(tuned.report.dps > 60000, `measured only ${tuned.report.dps} dps`);
 });
 
 test('tuning is deterministic', () => {

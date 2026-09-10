@@ -611,6 +611,8 @@ function unitView(state, content, u) {
     hpPct: (u.hp / u.maxHp) * 100,
     resource: Math.floor(u.resource),
     stamina: Math.floor(u.stamina),
+    ultimate: Math.floor(u.ultimate),
+    hasUltimate: !!u.ultimateGain,
     maxStamina: u.maxStamina,
     blocking: !!u.blocking,
     maxResource: u.maxResource,
