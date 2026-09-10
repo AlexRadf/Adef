@@ -1,0 +1,323 @@
+{
+  "movement": {
+    "click": {
+      "id": "click",
+      "name": "Click to move",
+      "tagline": "Point at a tile and walk there.",
+      "blurb": "The MMO default. You click where you want to be and your character walks — steadily, and slowly enough that leaving melee is a real decision.",
+      "input": "click",
+      "moveSpeed": 2.5,
+      "bots": "47%"
+    },
+    "free": {
+      "id": "free",
+      "name": "Free run",
+      "tagline": "WASD, quick, no commitment.",
+      "blurb": "Hold a direction and go. Twice the speed of clicking, and you can change your mind mid-step, so dodging costs almost nothing but standing still is entirely on you.",
+      "input": "wasd",
+      "moveSpeed": 5.2,
+      "bots": "47%"
+    },
+    "dodge": {
+      "id": "dodge",
+      "name": "Dodge roll",
+      "tagline": "WASD plus an i-frame roll on Shift.",
+      "blurb": "Souls-like. You move at a middling pace, but Shift throws you 1.6 cells in your facing with half a second of invulnerability — through a geyser, through a detonation, through anything, if you time it. It costs stamina, and stamina is not free.",
+      "input": "wasd",
+      "moveSpeed": 4.2,
+      "stamina": {
+        "max": 100,
+        "regen": 14
+      },
+      "dash": {
+        "name": "Roll",
+        "distance": 1.6,
+        "iframes": 0.5,
+        "cooldown": 0.8,
+        "stamina": 34
+      },
+      "bots": "57%"
+    },
+    "blink": {
+      "id": "blink",
+      "name": "Rocket jump",
+      "tagline": "WASD plus a long leap on Shift.",
+      "blurb": "No invulnerability, but a much longer hop: Shift launches you 2.8 cells instantly. Crossing the arena is cheap, so mechanics that ask you to be somewhere else become trivial and the ones that ask you to stay put become the problem.",
+      "input": "wasd",
+      "moveSpeed": 4.6,
+      "stamina": {
+        "max": 100,
+        "regen": 11
+      },
+      "dash": {
+        "name": "Rocket Jump",
+        "distance": 2.8,
+        "iframes": 0,
+        "cooldown": 1.2,
+        "stamina": 40
+      },
+      "bots": "53%"
+    }
+  },
+  "combat": {
+    "tab": {
+      "id": "tab",
+      "name": "Tab target",
+      "tagline": "Pick a target. It stays picked.",
+      "blurb": "Everything shares a 1.5s global cooldown and two of your abilities have cast times. Facing is irrelevant — what matters is whether you can afford to stand still long enough to finish a cast.",
+      "aim": "target",
+      "gcd": 1.5,
+      "facingArc": 0,
+      "flankBonus": 1,
+      "abilities": {},
+      "bots": "47%"
+    },
+    "crosshair": {
+      "id": "crosshair",
+      "name": "Crosshair",
+      "tagline": "Mouse aim. No target lock at all.",
+      "blurb": "You hit whatever the crosshair is nearest to. Nothing has a cast time and there is no global cooldown — only a 0.3s weapon switch and each weapon's own fire rate. Ammo becomes the limit instead of the rotation.",
+      "aim": "crosshair",
+      "gcd": 0.3,
+      "facingArc": 0,
+      "flankBonus": 1,
+      "abilities": {
+        "shotgun": {
+          "cooldown": 0.8,
+          "cost": 5
+        },
+        "superShotgun": {
+          "cooldown": 6
+        },
+        "nailgun": {
+          "cooldown": 1.2,
+          "cost": 6
+        },
+        "rocket": {
+          "cast": 0,
+          "cooldown": 3,
+          "cost": 20
+        },
+        "lightning": {
+          "cooldown": 12
+        },
+        "grenade": {
+          "cooldown": 11
+        },
+        "stimpack": {
+          "cooldown": 0.9,
+          "cost": 10
+        },
+        "medkit": {
+          "cast": 0,
+          "cooldown": 3.5,
+          "cost": 22
+        },
+        "megahealth": {
+          "cooldown": 20
+        },
+        "biosuit": {
+          "cooldown": 8
+        }
+      },
+      "bots": "45%"
+    },
+    "lockon": {
+      "id": "lockon",
+      "name": "Lock on",
+      "tagline": "Locked target, and facing matters.",
+      "blurb": "Souls-like. Tab locks you onto something and you keep facing it while you strafe. Abilities only land inside a 100° arc in front of you — and hitting something from behind does 30% more, which changes where the whole party wants to stand.",
+      "aim": "lock",
+      "gcd": 1,
+      "facingArc": 100,
+      "flankBonus": 1.2,
+      "abilities": {
+        "rocket": {
+          "cast": 1
+        },
+        "medkit": {
+          "cast": 1.4
+        },
+        "nailgun": {
+          "cooldown": 0
+        },
+        "shotgun": {
+          "cooldown": 0
+        }
+      },
+      "bots": "42%"
+    }
+  },
+  "healing": {
+    "frames": {
+      "id": "frames",
+      "name": "Party frames",
+      "tagline": "Click a portrait, then cast.",
+      "blurb": "The classic. Your eyes live on the raid frames, not the arena — which is exactly why healers walk into things.",
+      "mode": "frames",
+      "abilities": {},
+      "bots": "47%"
+    },
+    "aim": {
+      "id": "aim",
+      "name": "Aimed",
+      "tagline": "Heal whoever you are pointing at.",
+      "blurb": "No portraits to click: point the crosshair at a person and heal them. You have to look at the fight to heal the fight.",
+      "mode": "aim",
+      "abilities": {},
+      "bots": "47%"
+    },
+    "smart": {
+      "id": "smart",
+      "name": "Smart",
+      "tagline": "It always goes to whoever needs it.",
+      "blurb": "Press the button; the heal finds the lowest ally on its own. No targeting decisions at all — the only question left is which heal, and when.",
+      "mode": "smart",
+      "abilities": {},
+      "bots": "47%"
+    },
+    "ground": {
+      "id": "ground",
+      "name": "Ground fields",
+      "tagline": "Heals are places, not people.",
+      "blurb": "Your heals are dropped on the floor and tick on whoever stands in them. Healing becomes a positioning argument with your own party — and the enemy telegraph is competing for the same ground.",
+      "mode": "ground",
+      "abilities": {
+        "stimpack": {
+          "name": "Field Dressing",
+          "targeting": "cell",
+          "range": 5,
+          "cast": 0,
+          "cooldown": 1.5,
+          "cost": 12,
+          "desc": "Drops a small healing field where you are pointing.",
+          "effects": [
+            {
+              "type": "healField",
+              "amount": 13800,
+              "interval": 0.5,
+              "duration": 3,
+              "half": 0.62,
+              "name": "Field Dressing"
+            }
+          ]
+        },
+        "medkit": {
+          "name": "Med Station",
+          "targeting": "cell",
+          "range": 5,
+          "cast": 1,
+          "cooldown": 6,
+          "cost": 24,
+          "desc": "A heavy healing field. Stand in it.",
+          "effects": [
+            {
+              "type": "healField",
+              "amount": 26500,
+              "interval": 0.5,
+              "duration": 5,
+              "half": 0.62,
+              "name": "Med Station"
+            }
+          ]
+        },
+        "megahealth": {
+          "name": "Megahealth Drop",
+          "targeting": "cell",
+          "range": 5,
+          "cast": 0,
+          "cooldown": 20,
+          "cost": 30,
+          "desc": "A big field that heals everyone standing in it.",
+          "effects": [
+            {
+              "type": "healField",
+              "amount": 14200,
+              "interval": 0.5,
+              "duration": 6,
+              "half": 1.1,
+              "name": "Megahealth"
+            }
+          ]
+        }
+      },
+      "bots": "33%"
+    }
+  },
+  "tanking": {
+    "threat": {
+      "id": "threat",
+      "name": "Threat table",
+      "tagline": "Hold aggro, taunt when you lose it.",
+      "blurb": "Every point of damage and healing writes to a threat table and the boss hits whoever is top of it. Losing threat is a mistake you can see coming and fix with a taunt.",
+      "mode": "threat",
+      "abilities": {},
+      "bots": "47%"
+    },
+    "block": {
+      "id": "block",
+      "name": "Active block",
+      "tagline": "Hold to block. Stamina drains.",
+      "blurb": "Souls-like. The threat table still decides who gets hit, but mitigation is something you hold rather than something you have: hold right mouse or Ctrl to take 55% less, draining stamina the whole time. Run dry and the block breaks.",
+      "mode": "block",
+      "block": {
+        "reduction": 0.18,
+        "drain": 38,
+        "breakStun": 1.5
+      },
+      "stamina": {
+        "max": 100,
+        "regen": 10
+      },
+      "abilities": {},
+      "bots": "53%"
+    },
+    "guard": {
+      "id": "guard",
+      "name": "Body block",
+      "tagline": "It attacks whoever is closest. No threat.",
+      "blurb": "There is no threat table at all — the boss simply swings at whoever is nearest to it. Tanking becomes a physical job: stay closer than everyone else, and the rest of the party has to genuinely keep out of the way.",
+      "mode": "guard",
+      "abilities": {},
+      "bots": "35%"
+    }
+  },
+  "presets": {
+    "raid": {
+      "name": "Raid",
+      "desc": "The MMO baseline.",
+      "movement": "click",
+      "combat": "tab",
+      "healing": "frames",
+      "tanking": "threat",
+      "bots": "44%"
+    },
+    "arena": {
+      "name": "Arena",
+      "desc": "Quake with a party.",
+      "movement": "free",
+      "combat": "crosshair",
+      "healing": "aim",
+      "tanking": "threat",
+      "bots": "44%"
+    },
+    "souls": {
+      "name": "Souls",
+      "desc": "Roll, lock on, hold block.",
+      "movement": "dodge",
+      "combat": "lockon",
+      "healing": "smart",
+      "tanking": "block",
+      "bots": "66%"
+    },
+    "action": {
+      "name": "Action",
+      "desc": "Modern action MMO.",
+      "movement": "blink",
+      "combat": "crosshair",
+      "healing": "ground",
+      "tanking": "guard",
+      "bots": "21%"
+    }
+  }
+}

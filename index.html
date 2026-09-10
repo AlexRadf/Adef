@@ -171,6 +171,12 @@
   .token.moving { box-shadow:inset 1px 1px 0 rgba(255,255,255,.35), 0 0 10px rgba(255,255,255,.3); }
   .token[data-unit] { pointer-events:auto; cursor:pointer; }
   .token .aim { position:absolute; width:4px; height:4px; background:var(--gold); }
+  .field { position:absolute; transform:translate(-50%,-50%); pointer-events:none;
+    background:radial-gradient(circle, rgba(126,162,60,.34), rgba(126,162,60,.06) 70%, transparent 72%);
+    box-shadow:inset 0 0 0 1px rgba(147,184,74,.5); }
+  .bar.stam > i { background:linear-gradient(180deg,#d8c169,#8a6a2a); }
+  .bar.stam.blocking > i { background:linear-gradient(180deg,#9fe8ff,#1f7fa8); }
+  .token.blocking { box-shadow:inset 1px 1px 0 rgba(255,255,255,.3), 0 0 0 2px #6fd2ff; }
   .crosshair { position:absolute; width:19px; height:19px; margin:-10px 0 0 -10px; pointer-events:none; }
   .crosshair::before, .crosshair::after { content:""; position:absolute; background:var(--lava-hot);
     box-shadow:0 0 4px rgba(0,0,0,.9); }
@@ -252,9 +258,12 @@
   .role b { display:block; font:16px/1.3 Impact,sans-serif; letter-spacing:.06em; color:var(--gold);
     text-transform:uppercase; font-weight:400; }
   .role em { font-style:normal; font-size:11px; color:var(--dim); }
-  /* The card scrolls when a mode adds pickers, so Pull stays in reach. */
-  .card .go { position:sticky; bottom:-20px; z-index:2; }
-  .go { margin-top:8px; padding:10px 30px; font:20px/1 Impact,sans-serif; letter-spacing:.12em;
+  /* The card scrolls when a mode adds pickers, so Pull stays in reach --
+     as a footer band, not floating over the options underneath it. */
+  .card-foot { position:sticky; bottom:-20px; z-index:3; margin:10px -24px -22px;
+    padding:10px 24px 14px; background:linear-gradient(180deg, rgba(20,15,11,0), #14100c 35%, #14100c);
+    border-top:1px solid var(--edge); }
+  .go { padding:10px 30px; font:20px/1 Impact,sans-serif; letter-spacing:.12em;
     background:linear-gradient(180deg,#c8480f,#7d2606); color:#ffe9d5; cursor:pointer;
     border:1px solid var(--black); text-shadow:2px 2px 0 rgba(0,0,0,.6);
     box-shadow:inset 1px 1px 0 rgba(255,180,120,.5), inset -1px -1px 0 rgba(0,0,0,.6); }
@@ -270,6 +279,15 @@
   .result-stats em { font-style:normal; font-size:10px; color:var(--dim); letter-spacing:.12em; text-transform:uppercase; }
   .paused { position:fixed; top:10px; left:50%; transform:translateX(-50%); z-index:25;
     font:20px/1 Impact,sans-serif; color:var(--gold); letter-spacing:.18em; text-shadow:2px 2px 0 #000; }
+
+  #stylePanel { border:1px solid var(--black); background:#0d0a08; padding:8px; margin:6px 0 12px; text-align:left; }
+  .style-presets, .style-row { display:flex; gap:5px; align-items:stretch; margin-bottom:5px; }
+  .style-lbl { flex:0 0 74px; align-self:center; font:10px/1.4 Impact,sans-serif; letter-spacing:.18em;
+    color:var(--gold-dim); text-transform:uppercase; }
+  .style-row .chip { flex:1 1 0; max-width:none; margin:0; }
+  .g-btn.sel { color:var(--gold); border-color:var(--gold-dim); background:#241b12; }
+  .style-note { margin-top:7px; padding-top:6px; border-top:1px solid var(--edge); font-size:10px;
+    line-height:1.6; color:var(--dim); }
 
   .chips { display:flex; flex-wrap:wrap; gap:5px; justify-content:center; margin:6px 0 12px; }
   .chip { border:1px solid var(--black); background:#100c09; padding:5px 9px; cursor:pointer;
@@ -344,6 +362,7 @@
     <div class="panel arena">
       <div class="grid" id="grid">
         <div class="tiles" id="tiles"></div>
+        <div class="tokens" id="fields"></div>
         <div class="tokens" id="tokens"></div>
         <div class="crosshair" id="crosshair" hidden></div>
       </div>
@@ -372,15 +391,14 @@
     <div class="chips" id="modifierPicker"></div>
     <h2 id="roleHeading">Choose your role</h2>
     <div class="roles" id="rolePicker"></div>
-    <h2 id="schemeHeading">Choose your controls</h2>
-    <div class="roles" id="schemePicker" style="grid-template-columns:repeat(2,1fr)"></div>
-    <div class="keys" id="schemeHelp" style="margin-bottom:10px"></div>
+    <h2>How it plays</h2>
+    <div id="stylePanel"></div>
     <div class="keys">
       Orange tiles erupt. Purple tiles must be stacked. Blue tiles need two soakers.<br>
       <kbd>Space</kbd> pause &nbsp;·&nbsp; <kbd>R</kbd> reset
     </div>
     <div id="gambitPanel" hidden></div>
-    <button class="go" id="startBtn" disabled>Loading…</button>
+    <div class="card-foot"><button class="go" id="startBtn" disabled>Loading…</button></div>
   </div>
 </div>
 

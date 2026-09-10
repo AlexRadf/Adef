@@ -11,7 +11,7 @@ export function createGambitEditor(content) {
   const panel = document.getElementById('gambitPanel');
   const lists = structuredClone(content.ai);
   let openRole = 'healer';
-  let scheme = 'raid';
+  let style = { movement: 'click', combat: 'tab', healing: 'frames', tanking: 'threat' };
   let modifiers = [];
   let worker = null;
   let lastResult = null;
@@ -144,10 +144,10 @@ export function createGambitEditor(content) {
       lastResult = `
         <b>${r.winRate.toFixed(1)}% win</b> over ${r.runs} pulls ·
         median kill ${mmss} · ${r.deathsPerPull.toFixed(2)} deaths per pull<br>
-        <span class="mute">${[scheme, ...modifiers].join(' + ')} · ${r.causes.map(([c, n]) => `${c} ${n}`).join(' · ') || 'nobody died'}</span>`;
+        <span class="mute">${[Object.values(style).join('/'), ...modifiers].join(' + ')} · ${r.causes.map(([c, n]) => `${c} ${n}`).join(' · ') || 'nobody died'}</span>`;
       draw();
     };
-    worker.postMessage({ scheme, modifiers, ai: lists, runs, seed: 1 });
+    worker.postMessage({ style, modifiers, ai: lists, runs, seed: 1 });
   }
 
   draw();
@@ -159,8 +159,8 @@ export function createGambitEditor(content) {
       lastResult = null;
       if (!panel.hidden) draw();
     },
-    setScheme(id) {
-      scheme = id;
+    setStyle(id) {
+      style = id;
       lastResult = lastResult && `${lastResult}<br><span class="mute">(controls changed — simulate again)</span>`;
     },
     setVisible(on) {

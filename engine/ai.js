@@ -13,6 +13,7 @@ import {
   orderMove,
   abilityDef,
   onCooldown,
+  setBlocking,
 } from './abilities.js';
 
 const DISPEL_TYPES = ['magic', 'curse', 'poison'];
@@ -217,6 +218,9 @@ export function checkCondition(state, content, unit, expr) {
 
 /* ------------------------------------------------------- target logic */
 
+export const lowestAlly = (state) =>
+  livingParty(state).slice().sort((a, b) => a.hp / a.maxHp - b.hp / b.maxHp)[0] || null;
+
 export function enemyFocus(state, unit) {
   const add = adds(state).sort((a, b) => a.hp - b.hp)[0];
   if (add && unit.role !== 'tank') return add;
@@ -243,7 +247,7 @@ export function resolveTarget(state, content, unit, ability, preferred = null) {
     case 'self':
     case 'none':
     case 'cell':
-      return unit;
+      return lowestAlly(state) || unit;
     case 'enemy':
       return preferred && preferred.alive && preferred.team === 'enemy' ? preferred : enemyFocus(state, unit);
     case 'lowestAlly': {
@@ -296,7 +300,10 @@ export function performAction(state, content, unit, action) {
       }
       return false;
     }
-    startAbility(state, content, unit, abilityId, target);
+    // A ground-targeted heal needs a place, not a person: bots drop it on
+    // whoever it was going to heal.
+    const cell = ability.targeting === 'cell' ? { ...(lowestAlly(state) || unit).pos } : null;
+    startAbility(state, content, unit, abilityId, target, cell);
     return true;
   }
 
@@ -334,10 +341,22 @@ export function performAction(state, content, unit, action) {
   }
 }
 
+// A bot tank holds block while it has the stamina for it, and drops it
+// before the guard breaks -- otherwise "active mitigation" would just be
+// a tank with no mitigation at all.
+function botBlock(state, content, unit) {
+  const style = state.style;
+  if (!style.block || unit.role !== 'tank' || !unit.maxStamina) return;
+  const pct = (unit.stamina / unit.maxStamina) * 100;
+  if (!unit.blocking && pct > 55) setBlocking(state, content, unit, true);
+  else if (unit.blocking && pct < 18) setBlocking(state, content, unit, false);
+}
+
 // First rule that both matches AND produces a usable action wins, so a
 // priority list does not stall on an ability that happens to be on cooldown.
 export function runBot(state, content, unit) {
   if (!unit.ai || !unit.alive) return;
+  botBlock(state, content, unit);
   if (state.tick < unit.aiReadyAt) return;
   if (unit.castAbility) return;
 

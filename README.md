@@ -69,52 +69,47 @@ It is deliberately **not** in the game's UI: the handcrafted fight is the one wo
 playing, and a menu full of procedural options was getting in the way of that. The code is
 kept because the tuner is genuinely useful for balancing anything you add by hand.
 
-## Two control philosophies
+## Four axes of play style
 
-The same encounter, the same sim, two ways of playing it — pick one on the pull screen.
-They are content, not code: `content/schemes.json`.
+How you move, how you attack, how you heal and how you tank are four **independent**
+choices, not one setting. Any combination is legal — dodge rolls with party frames,
+click-to-move with body-block tanking — and the engine has no idea which is driving it.
+It all lives in `content/styles.json`.
 
-| | **Raid** | **Arena** |
-|---|---|---|
-| Move | Click a tile, 2.5 cells/s | `WASD`, 5.2 cells/s |
-| Aim | Tab-target; your target stays picked | Mouse. No target lock — you hit whatever the crosshair is nearest |
-| Pacing | 1.5s global cooldown on everything | 0.3s weapon switch, then each weapon's own fire rate |
-| Casting | Rocket and Medkit have cast bars, and **moving cancels a cast** | Nothing has a cast time |
-| The constraint | *When can I afford to stand still?* | *Am I going to run out of ammo?* |
-
-Both are honest to their genre and both are balanced: raid wins 52% of headless pulls,
-arena 59.6%, with a 3:40 median kill either way. Arena is a little more forgiving because
-free movement makes dodging cheap — that gap is the finding, not a bug.
-
-| Shared | |
+| Axis | Options |
 |---|---|
-| `1` `2` `3` `4` | Your four abilities |
-| Click a raid frame | Target that ally (raid scheme; click again for automatic) |
-| `Space` / `R` | Pause / restart |
+| **Movement** | *Click to move* · *Free run* (WASD) · *Dodge roll* (WASD + an i-frame roll on Shift, costs stamina) · *Rocket jump* (WASD + a long leap, no invulnerability) |
+| **Combat** | *Tab target* (target sticks, 1.5s GCD, cast bars) · *Crosshair* (no lock at all, weapon fire rates, no GCD) · *Lock on* (locked target, you strafe while facing it, hits only land in a 100° arc, +20% from behind) |
+| **Healing** | *Party frames* (click a portrait) · *Aimed* (heal who you point at) · *Smart* (always the lowest) · *Ground fields* (heals are dropped on the floor and tick on whoever stands in them) |
+| **Tanking** | *Threat table* (aggro and taunts) · *Active block* (hold Ctrl or right mouse, drains stamina, breaks if you run dry) · *Body block* (no threat table at all — it swings at whoever is nearest) |
 
-Pick Vanguard (tank), Field Medic (healer) or Slayer (dps). The three slots you don't take
-are run by bots off the same code path you are.
+The trinity survives all of it, which was the point of the exercise. Ground healing turns
+the healer into someone arguing with the party about where to stand; body-block tanking
+turns holding aggro into a physical job; lock-on makes "get behind it" worth 20% and gives
+the tank a reason to care which way the boss is facing.
 
-## The encounter
+**Every option is measured, not guessed.** Holding the other three axes at the raid
+baseline (47% of pulls survived) and varying one:
 
-**Chthon** — 22.5M HP, enrage at 4:30, three phases. Median kill is 3:39, so the enrage
-is close enough to feel.
+| | | | |
+|---|---|---|---|
+| movement | click 47% · free 47% | dodge 57% | blink 53% |
+| combat | tab 47% · crosshair 45% | lockon 42% | |
+| healing | frames / aimed / smart 47% | ground 33% | |
+| tanking | threat 47% | block 53% | guard 35% |
 
-| Mechanic | What it asks of you |
-|---|---|
-| **Lava Swipe** | Melee on the threat leader every 2s. Nobody in reach and he hits the whole party instead — you cannot kite him. |
-| **Magma Cleave** | Hits the tank *and everyone adjacent*, stacking **Scorched** (+12% damage taken each). Spread out; tank pops the Pentagram at 2 stacks. |
-| **Lava Geyser** | Six tiles glow, then erupt three seconds later. Telegraph → detonation. |
-| **Slipgate Rift** | A dispellable magic DoT that explodes onto everyone within one cell when it falls off. Cleanse it or spread out. |
-| **Rune of Black Magic** | 3s interruptible cast: heals Chthon and nukes the party. Thunderbolt it. |
-| **Chain of Souls** | Marks one tile; the damage splits between whoever is standing there. Solo it and you die. |
-| **Void Well** | Marks one tile that needs **two** bodies in it, or the whole raid eats it. |
-| **Scrags** | Adds with their own threat table. Kill them or drown in Acid Spit. |
-| **QUAD DAMAGE** | The enrage. ×10 boss damage, permanent. |
+Everything sits inside 33–57%, so feel dominates over difficulty when you compare them.
+The presets stack their axes though, and the numbers on the buttons say so: Raid 44%,
+Arena 44%, Souls 66%, Action 21%.
 
-Those nine primitives — telegraph, stack, spread, soak, interrupt, dispel, stacking tank
-debuff, adds, enrage — cover essentially all of raid design, which is why the engine has
-no mechanic-specific code in it.
+Tuning that took three real fixes the sim caught: lock-on **deadlocked** (you must face a
+target to cast, and facing only changed when casting — so nobody ever attacked), bot tanks
+**never blocked**, making active mitigation a tank with no mitigation, and the block
+strength lived hardcoded in the aura file so the number in `styles.json` was decorative.
+
+```
+node sim.js --style souls --runs 150
+```
 
 ## Architecture
 

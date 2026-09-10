@@ -102,6 +102,8 @@ function buildBar(refs) {
       <div class="big" data-r="health">—</div>
       <div class="lbl ammo" data-r="resName"></div>
       <div class="bar"><i data-r="resFill"></i><span><b data-r="resText"></b></span></div>
+      <div class="lbl" data-r="stamLbl" hidden>Stamina</div>
+      <div class="bar stam" data-r="stamBar" hidden><i data-r="stamFill"></i></div>
       <div class="tgt" data-r="tgt"></div>
     </div>
     <div class="btns" data-r="btns"></div>`;
@@ -236,11 +238,12 @@ function paintGrid(view) {
     setClass(token, 'you', u.id === view.playerId);
     setClass(token, 'mine', view.playerIds.includes(u.id) && u.id !== view.playerId);
     setClass(token, 'moving', u.moving);
+    setClass(token, 'blocking', u.blocking);
     token.style.left = `${(u.pos.x / 5) * 100}%`;
     token.style.top = `${(u.pos.y / 5) * 100}%`;
     // A facing pip, so the arena scheme shows where you are pointing.
     const pip = token.querySelector('.aim');
-    const showAim = u.id === view.playerId && view.scheme.aim === 'crosshair';
+    const showAim = u.id === view.playerId && view.style.aim !== 'target';
     pip.hidden = !showAim;
     if (showAim) {
       pip.style.left = `${10 + u.facing.x * 11}px`;
@@ -248,8 +251,21 @@ function paintGrid(view) {
     }
   }
 
+  // Healing fields are friendly ground: drawn under the tokens.
+  const layerFields = el('fields');
+  const sig = view.fields.map((f) => `${f.x.toFixed(1)},${f.y.toFixed(1)},${f.half}`).join('|');
+  if (layerFields.dataset.sig !== sig) {
+    layerFields.dataset.sig = sig;
+    layerFields.innerHTML = view.fields
+      .map(
+        (f) => `<div class="field" style="left:${(f.x / 5) * 100}%; top:${(f.y / 5) * 100}%;
+          width:${(f.half * 2 * 100) / 5}%; height:${(f.half * 2 * 100) / 5}%"></div>`
+      )
+      .join('');
+  }
+
   const cross = el('crosshair');
-  if (view.scheme.aim === 'crosshair' && !view.over) {
+  if (view.style.aim !== 'target' && !view.over) {
     cross.hidden = false;
     cross.style.left = `${(view.aim.x / 5) * 100}%`;
     cross.style.top = `${(view.aim.y / 5) * 100}%`;
@@ -276,11 +292,19 @@ function paintActions(view, content, hud) {
   setText(h.health, player.alive ? num(player.hp) : 'DEAD');
   setClass(h.health, 'hurt', !player.alive || player.hpPct < 35);
   setText(h.resName, player.resourceName);
+  // Stamina only exists when the style has something to spend it on.
+  const hasStamina = player.maxStamina > 0;
+  h.stamLbl.hidden = !hasStamina;
+  h.stamBar.hidden = !hasStamina;
+  if (hasStamina) {
+    setWidth(h.stamFill, pct(player.stamina, player.maxStamina));
+    setClass(h.stamBar, 'blocking', player.blocking);
+  }
   setText(h.resText, `${player.resource} / ${player.maxResource}`);
   setWidth(h.resFill, pct(player.resource, player.maxResource));
   setClass(h.strip, 'dry', player.resource < 12);
   // What this ability set is pointed at, in the terms the scheme uses.
-  if (view.scheme.aim === 'crosshair') {
+  if (view.style.aim === 'crosshair') {
     setText(h.tgt, '▸ crosshair');
   } else if (player.role === 'healer') {
     const ally = view.party.find((u) => u.id === view.playerAllyTarget);

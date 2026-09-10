@@ -1,7 +1,7 @@
 // Plain node test runner, no dependencies: node --test tests/*.mjs
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { loadContent, applyScheme } from '../content/load.js';
+import { loadContent, applyStyle, resolveStyle } from '../content/load.js';
 import { createState } from '../engine/state.js';
 import { step, snapshot } from '../engine/tick.js';
 import {
@@ -29,16 +29,16 @@ import { tuneEncounter } from '../engine/tune.js';
 import { buildDrillBoss, gauntletStage, applyCarry } from '../engine/scenario.js';
 
 const base = await loadContent();
-const content = applyScheme(base, 'raid');
+const content = applyStyle(base, 'raid');
 
-const run = (seed, scheme = 'raid') => {
-  const c = applyScheme(base, scheme);
+const run = (seed, style = 'raid') => {
+  const c = applyStyle(base, style);
   const state = createState(c, { seed, headless: true });
   while (!state.over) step(state, c, []);
   return state;
 };
-const fresh = (scheme = 'raid') => {
-  const c = applyScheme(base, scheme);
+const fresh = (style = 'raid') => {
+  const c = applyStyle(base, style);
   return { c, state: createState(c, { seed: 1, headless: true }) };
 };
 
@@ -53,10 +53,10 @@ test('same seed produces an identical fight', () => {
   assert.deepEqual(a.stats.deaths, b.stats.deaths);
 });
 
-test('both control schemes are deterministic and both terminate', () => {
-  for (const scheme of ['raid', 'arena']) {
-    assert.equal(run(7, scheme).tick, run(7, scheme).tick);
-    const state = run(7, scheme);
+test('every style preset is deterministic and terminates', () => {
+  for (const preset of Object.keys(base.styles.presets)) {
+    assert.equal(run(7, preset).tick, run(7, preset).tick);
+    const state = run(7, preset);
     assert.ok(['kill', 'wipe', 'timeout'].includes(state.result));
     assert.ok(state.tick <= state.hardStopTick);
   }
@@ -76,12 +76,42 @@ test('content is authored in seconds and hydrated into ticks', () => {
   assert.equal(content.abilities.lavaGeyser.effects[0].delayTicks, toTicks(content.abilities.lavaGeyser.effects[0].delay));
 });
 
-test('a scheme overrides abilities without mutating the base content', () => {
-  const arena = applyScheme(base, 'arena');
+test('a style overrides abilities without mutating the base content', () => {
+  const arena = applyStyle(base, 'arena');
   assert.equal(arena.abilities.rocket.castTicks, 0);
-  assert.equal(arena.scheme.gcd, 0.3);
+  assert.equal(arena.style.gcd, 0.3);
   assert.equal(base.abilities.rocket.castTicks, toTicks(1.5), 'base content untouched');
-  assert.equal(applyScheme(base, 'raid').abilities.rocket.castTicks, toTicks(1.5));
+  assert.equal(applyStyle(base, 'raid').abilities.rocket.castTicks, toTicks(1.5));
+});
+
+/* ------------------------------------------------------- style axes */
+
+test('the four axes compose independently', () => {
+  const mixed = applyStyle(base, { movement: 'dodge', combat: 'tab', healing: 'ground', tanking: 'guard' });
+  assert.equal(mixed.style.id, 'custom');
+  assert.ok(mixed.style.dash, 'dodge brings a dash');
+  assert.equal(mixed.style.gcd, 1.5, 'tab keeps the global cooldown');
+  assert.equal(mixed.abilities.stimpack.effects[0].type, 'healField', 'ground rewrites the heals');
+  assert.equal(mixed.style.tanking.mode, 'guard');
+  assert.equal(mixed.style.facingArc, 0, 'tab does not care which way you face');
+});
+
+test('every option of every axis produces a runnable fight', () => {
+  const RAID = { movement: 'click', combat: 'tab', healing: 'frames', tanking: 'threat' };
+  for (const axis of ['movement', 'combat', 'healing', 'tanking']) {
+    for (const opt of Object.keys(base.styles[axis])) {
+      const c = applyStyle(base, { ...RAID, [axis]: opt });
+      const state = createState(c, { seed: 5, headless: true });
+      while (!state.over) step(state, c, []);
+      assert.ok(['kill', 'wipe', 'timeout'].includes(state.result), `${axis}=${opt} did not resolve`);
+      assert.ok(state.tick > 100, `${axis}=${opt} ended suspiciously early`);
+    }
+  }
+});
+
+test('an unknown axis option is refused rather than silently ignored', () => {
+  assert.throws(() => resolveStyle(base, { movement: 'moonwalk' }), /unknown movement style/);
+  assert.throws(() => resolveStyle(base, 'nonsense'), /unknown style preset/);
 });
 
 /* ------------------------------------------------------ choke points */
@@ -174,7 +204,7 @@ test('standing in a soak is a commitment', () => {
 /* --------------------------------------------------------- snapshot */
 
 test('snapshot is renderable and never leaks live units', () => {
-  const c = applyScheme(base, 'raid');
+  const c = applyStyle(base, 'raid');
   const state = createState(c, { seed: 5, headless: true });
   for (let i = 0; i < 200; i++) step(state, c, []);
   const view = snapshot(state, c);

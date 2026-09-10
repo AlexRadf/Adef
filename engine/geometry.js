@@ -76,6 +76,25 @@ export function moveToward(pos, target, step) {
   return { pos: { x: pos.x + (dx / d) * step, y: pos.y + (dy / d) * step }, arrived: false };
 }
 
+// Is `point` inside a cone of `arcDegrees` centred on `facing`? This is
+// what makes lock-on combat positional: you have to be pointed at it.
+export function withinArc(from, facing, point, arcDegrees) {
+  if (!arcDegrees) return true;
+  const to = normalize(sub(point, from));
+  const f = normalize(facing);
+  if ((!f.x && !f.y) || (!to.x && !to.y)) return true;
+  const dot = Math.max(-1, Math.min(1, f.x * to.x + f.y * to.y));
+  return (Math.acos(dot) * 180) / Math.PI <= arcDegrees / 2;
+}
+
+// Attacking something from behind: the defender's facing points away.
+export function isBehind(attackerPos, defender) {
+  const toAttacker = normalize(sub(attackerPos, defender.pos));
+  const f = normalize(defender.facing);
+  if ((!f.x && !f.y) || (!toAttacker.x && !toAttacker.y)) return false;
+  return f.x * toAttacker.x + f.y * toAttacker.y < -0.25;
+}
+
 export function moveAlong(pos, dir, step) {
   const n = normalize(dir);
   return clampToArena({ x: pos.x + n.x * step, y: pos.y + n.y * step });

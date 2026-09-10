@@ -12,7 +12,7 @@ const FILES = {
   auras: 'auras.json',
   units: 'units.json',
   parties: 'parties.json',
-  schemes: 'schemes.json',
+  styles: 'styles.json',
   modes: 'modes.json',
   modifiers: 'modifiers.json',
   drills: 'drills.json',
@@ -89,17 +89,57 @@ function hydrateAuras(auras) {
 
 const asArray = (v) => (Array.isArray(v) ? v : [v]);
 
-/* --------------------------------------------------- control schemes */
+/* ----------------------------------------------------- play styles */
 
-// Returns a content view with the scheme's ability overrides folded in.
-// Nothing is mutated, so two schemes can be compared in one process.
-export function applyScheme(content, schemeId) {
-  const scheme = content.schemes[schemeId];
-  if (!scheme) throw new Error(`unknown control scheme: ${schemeId}`);
+// Four independent axes -- how you move, how you attack, how you heal,
+// how you tank -- composed into one style. Each axis may override
+// abilities; later axes win, so a healing style can rewrite a heal that
+// the combat style only re-costed.
+export const AXES = ['movement', 'combat', 'healing', 'tanking'];
+
+export function resolveStyle(content, choice = {}) {
+  const preset = typeof choice === 'string' ? content.styles.presets[choice] : null;
+  if (typeof choice === 'string' && !preset) throw new Error(`unknown style preset: ${choice}`);
+  const picked = {};
+  for (const axis of AXES) {
+    const id = (preset ? preset[axis] : choice[axis]) || Object.keys(content.styles[axis])[0];
+    const option = content.styles[axis][id];
+    if (!option) throw new Error(`unknown ${axis} style: ${id}`);
+    picked[axis] = option;
+  }
+  return picked;
+}
+
+// Returns a content view with the style's ability overrides folded in.
+// Nothing is mutated, so several styles can be compared in one process.
+export function applyStyle(content, choice = 'raid') {
+  const picked = resolveStyle(content, choice);
+  const overrides = {};
+  for (const axis of AXES) {
+    for (const [id, def] of Object.entries(picked[axis].abilities || {})) {
+      overrides[id] = { ...(overrides[id] || {}), ...def };
+    }
+  }
+
   const abilities = {};
   for (const [id, def] of Object.entries(content.abilities)) {
-    const override = scheme.abilities[id];
-    abilities[id] = override ? hydrateAbilities({ [id]: { ...def, ...override } })[id] : def;
+    abilities[id] = overrides[id] ? hydrateAbilities({ [id]: { ...def, ...overrides[id] } })[id] : def;
   }
-  return { ...content, abilities, scheme };
+
+  // The flat fields the engine reads every tick, composed from the axes.
+  const style = {
+    id: typeof choice === 'string' ? choice : 'custom',
+    name: typeof choice === 'string' ? content.styles.presets[choice].name : 'Custom',
+    ...picked,
+    moveSpeed: picked.movement.moveSpeed,
+    gcd: picked.combat.gcd,
+    aim: picked.combat.aim,
+    facingArc: picked.combat.facingArc || 0,
+    flankBonus: picked.combat.flankBonus || 1,
+    telegraphScale: 1,
+    stamina: picked.movement.stamina || picked.tanking.stamina || null,
+    dash: picked.movement.dash || null,
+    block: picked.tanking.mode === 'block' ? picked.tanking.block : null,
+  };
+  return { ...content, abilities, style };
 }

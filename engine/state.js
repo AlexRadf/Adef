@@ -8,14 +8,37 @@ import { TICKS_PER_SECOND } from './clock.js';
 
 export { TICKS_PER_SECOND };
 
+// Headless callers may hand us raw content; fall back to the raid preset.
+function resolveDefaultStyle(content, choice) {
+  const preset = content.styles.presets[choice || 'raid'];
+  const picked = {};
+  for (const axis of ['movement', 'combat', 'healing', 'tanking']) {
+    picked[axis] = content.styles[axis][preset[axis]];
+  }
+  return {
+    id: choice || 'raid',
+    name: preset.name,
+    ...picked,
+    moveSpeed: picked.movement.moveSpeed,
+    gcd: picked.combat.gcd,
+    aim: picked.combat.aim,
+    facingArc: picked.combat.facingArc || 0,
+    flankBonus: picked.combat.flankBonus || 1,
+    telegraphScale: 1,
+    stamina: picked.movement.stamina || picked.tanking.stamina || null,
+    dash: picked.movement.dash || null,
+    block: picked.tanking.mode === 'block' ? picked.tanking.block : null,
+  };
+}
+
 export function createState(content, options = {}) {
   const seed = options.seed ?? 1234;
   const bossDef = content.bosses[options.boss || 'chthon'];
   const partyDef = content.parties[options.party || 'default'];
-  // applyScheme() folds the ability overrides in and sets content.scheme;
+  // applyStyle() folds the ability overrides in and sets content.style;
   // without it we still run, on the default raid rules.
-  const scheme = content.scheme || content.schemes[options.scheme || 'raid'];
-  if (!scheme) throw new Error(`unknown control scheme: ${options.scheme}`);
+  const style = content.style || resolveDefaultStyle(content, options.style);
+  if (!style) throw new Error('no play style resolved');
   const mode = content.modes[options.mode || 'solo'];
   if (!mode) throw new Error(`unknown play mode: ${options.mode}`);
 
@@ -42,8 +65,9 @@ export function createState(content, options = {}) {
     seed,
     units: [],
     hazards: [],
+    fields: [],
     hazardCounter: 0,
-    scheme,
+    style,
     mode,
     mods,
     modifiers: chosen.map((m) => m.id),
@@ -77,7 +101,13 @@ export function createState(content, options = {}) {
   let slotTaken = false;
 
   for (const member of partyDef.members) {
-    const unit = makeUnit(state, content, { ...member, team: 'party', speed: scheme.moveSpeed });
+    const unit = makeUnit(state, content, {
+      ...member,
+      team: 'party',
+      speed: style.moveSpeed,
+      maxStamina: style.stamina ? style.stamina.max : 0,
+      staminaRegen: style.stamina ? style.stamina.regen : 0,
+    });
     // Reaction delay varies per pull, seeded like everything else. The
     // same three bots, but never quite the same three people.
     unit.reactionTicks = Math.max(4, member.reactionTicks + nextInt(state, 7) - 3);

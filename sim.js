@@ -5,14 +5,14 @@
 //   node sim.js --runs 1000
 //   node sim.js --runs 200 --seed 7 --verbose
 
-import { loadContent, applyScheme } from './content/load.js';
+import { loadContent, applyStyle } from './content/load.js';
 import { createState } from './engine/state.js';
 import { step } from './engine/tick.js';
 import { generateEncounter } from './engine/generate.js';
 import { tuneEncounter } from './engine/tune.js';
 
 function parseArgs(argv) {
-  const args = { boss: 'chthon', party: 'default', scheme: 'raid', modifiers: '', runs: 100, seed: 1, verbose: false };
+  const args = { boss: 'chthon', party: 'default', style: 'raid', modifiers: '', runs: 100, seed: 1, verbose: false };
   for (let i = 0; i < argv.length; i++) {
     const a = argv[i];
     if (a === '--verbose') args.verbose = true;
@@ -31,7 +31,7 @@ export function runOnce(content, options) {
 }
 
 const args = parseArgs(process.argv.slice(2));
-let content = applyScheme(await loadContent(), args.scheme);
+let content = applyStyle(await loadContent(), args.style);
 
 // --boss random rolls a procedural encounter and tunes it first.
 if (args.boss === 'random') {
@@ -95,7 +95,7 @@ for (const r of results) {
 }
 
 console.log(
-  `\nboss ${args.boss} · party ${args.party} · ${content.scheme.name.toLowerCase()} controls` +
+  `\nboss ${args.boss} · party ${args.party} · ${content.style.name.toLowerCase()} style` +
     `${args.modifiers.length ? ` · ${args.modifiers.join('+')}` : ''} · ${args.runs} runs · ${Date.now() - started}ms`
 );
 console.log(`win rate ${((kills.length / results.length) * 100).toFixed(1)}%`);

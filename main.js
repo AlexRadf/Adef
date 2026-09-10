@@ -1,13 +1,14 @@
 // Browser entry point. Owns the 100ms clock, hands input to the sim and
 // snapshots to the renderer. No game rules live here.
 
-import { loadContent, applyScheme } from './content/load.js';
+import { loadContent, applyStyle } from './content/load.js';
 import { createState } from './engine/state.js';
 import { step, snapshot, applyOrders } from './engine/tick.js';
 import { render, renderEnd, resetRenderer } from './ui/render.js';
 import { createLog } from './ui/log.js';
 import { createInput } from './ui/input.js';
 import { createGambitEditor } from './ui/gambit.js';
+import { createStylePicker } from './ui/styles.js';
 import { buildDrillBoss, gauntletStage, applyCarry } from './engine/scenario.js';
 import { applyAura } from './engine/auras.js';
 
@@ -20,6 +21,10 @@ const ROLES = [
 
 const content = await loadContent();
 const gambit = createGambitEditor(content);
+const stylePicker = createStylePicker(content, (chosen) => {
+  style = chosen;
+  gambit.setStyle(chosen);
+});
 const logView = createLog(document.getElementById('combatLog'));
 const inputQueue = [];
 
@@ -28,7 +33,7 @@ let view = null;
 let timer = null;
 let paused = false;
 let role = 'dps';
-let scheme = 'raid';
+let style = { movement: 'click', combat: 'tab', healing: 'frames', tanking: 'threat' };
 let mode = 'solo';
 let drill = 'lavaGeyser';
 let drillCount = 0;
@@ -44,9 +49,9 @@ function resetRun() {
   run.carryHealthPct = 100;
   run.dead = false;
 }
-let active = null; // content with this scheme's ability overrides folded in
+let active = null; // content with this style's ability overrides folded in
 
-const input = createInput(inputQueue, () => view, {
+createInput(inputQueue, () => view, {
   togglePause: () => setPaused(!paused, ''),
   reset: () => start(),
 });
@@ -88,8 +93,8 @@ function describeMode() {
   document.getElementById('modifierHeading').hidden = mode === 'drill';
   document.getElementById('modifierPicker').hidden = mode === 'drill';
   resetRun();
-  // The control scheme still matters in gambit -- it sets how fast the
-  // bots move and whether they have a global cooldown.
+  // The play style still matters in gambit -- it sets how fast the bots
+  // move, whether they have a global cooldown, and how tanking works.
   gambit.setVisible(content.modes[mode].control === 'none');
 }
 
@@ -151,28 +156,8 @@ picker.addEventListener('click', (e) => {
   [...picker.children].forEach((c) => c.classList.toggle('sel', c.dataset.role === role));
 });
 
-const schemePicker = document.getElementById('schemePicker');
-schemePicker.innerHTML = Object.values(content.schemes)
-  .map(
-    (s) => `<div class="role ${s.id === scheme ? 'sel' : ''}" data-scheme="${s.id}">
-      <b>${s.name}</b><em>${s.tagline}</em>
-    </div>`
-  )
-  .join('');
-schemePicker.addEventListener('click', (e) => {
-  const card = e.target.closest('[data-scheme]');
-  if (!card) return;
-  scheme = card.dataset.scheme;
-  [...schemePicker.children].forEach((c) => c.classList.toggle('sel', c.dataset.scheme === scheme));
-  describeScheme();
-  gambit.setScheme(scheme);
-});
-function describeScheme() {
-  document.getElementById('schemeHelp').textContent = content.schemes[scheme].blurb;
-}
-describeScheme();
 describeMode();
-gambit.setScheme(scheme);
+gambit.setStyle(style);
 
 // The button is disabled in the markup until the content is in, so an
 // early click cannot silently do nothing.
@@ -204,9 +189,8 @@ function start() {
   document.getElementById('endOverlay').classList.add('hide');
   logView.reset();
   resetRenderer();
-  input.setScheme(scheme, mode);
 
-  active = { ...applyScheme(content, scheme), ai: gambit.lists() };
+  active = { ...applyStyle(content, style), ai: gambit.lists() };
 
   // Drill and Gauntlet rearrange the handcrafted fight rather than
   // replacing it -- what you practise is what you meet.

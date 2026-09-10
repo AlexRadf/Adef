@@ -188,5 +188,41 @@
         "value": 1.18
       }
     ]
+  },
+  "iframes": {
+    "name": "Roll",
+    "duration": 0.5,
+    "harmful": false,
+    "modifiers": [
+      {
+        "stat": "damageTaken",
+        "op": "mult",
+        "value": 0
+      }
+    ]
+  },
+  "blocking": {
+    "name": "Blocking",
+    "duration": 0.3,
+    "harmful": false,
+    "modifiers": [
+      {
+        "stat": "damageTaken",
+        "op": "mult",
+        "value": 0.55
+      }
+    ]
+  },
+  "guardBroken": {
+    "name": "Guard Broken",
+    "duration": 1.5,
+    "harmful": true,
+    "modifiers": [
+      {
+        "stat": "damageTaken",
+        "op": "mult",
+        "value": 1.3
+      }
+    ]
   }
 }

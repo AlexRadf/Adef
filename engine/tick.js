@@ -15,6 +15,7 @@ import {
 import { applyAura, removeAura } from './auras.js';
 import {
   applyDamage,
+  applyHeal,
   livingParty,
   livingEnemies,
   unitById,
@@ -23,6 +24,8 @@ import {
   startAbility,
   canUseAbility,
   cancelCast,
+  performDash,
+  setBlocking,
   castBlockedReason,
   orderMove,
   orderMoveDirection,
@@ -32,7 +35,7 @@ import {
   fmt,
 } from './abilities.js';
 import { pick } from './rng.js';
-import { runBot, resolveTarget, nearestTo } from './ai.js';
+import { runBot, resolveTarget, nearestTo, enemyFocus } from './ai.js';
 import { TICKS_PER_SECOND } from './clock.js';
 
 // Tactical pause: orders are given while the world is frozen and take
@@ -48,9 +51,10 @@ export function step(state, content, inputQueue = []) {
 
   state.tick++;                              // 1
   state.events = [];
-  regenResources(state);
+  regenResources(state, content);
   resolveCastsAndMoves(state, content);      // 2
   auraPass(state, content);                  // 3
+  fieldPass(state, content);
   hazardPass(state, content);                // 4
   bossPass(state, content);                  // 5
   aiPass(state, content);                    // 6
@@ -62,16 +66,63 @@ export function step(state, content, inputQueue = []) {
 
 /* ------------------------------------------------------------- 1.5 */
 
-function regenResources(state) {
+function regenResources(state, content) {
+  const block = state.style.block;
   for (const u of state.units) {
-    if (!u.alive || !u.resourceRegen) continue;
-    u.resource = Math.min(u.maxResource, u.resource + u.resourceRegen);
+    if (!u.alive) continue;
+    if (u.resourceRegen) u.resource = Math.min(u.maxResource, u.resource + u.resourceRegen);
+    if (!u.maxStamina) continue;
+
+    // Blocking spends stamina for as long as you hold it; running dry
+    // breaks the guard and leaves you worse off than not blocking.
+    if (u.blocking && block) {
+      u.stamina -= block.drain / TICKS_PER_SECOND;
+      if (u.stamina <= 0) {
+        u.stamina = 0;
+        u.blocking = false;
+        removeAura(state, u, 'blocking');
+        applyAura(state, content, u.id, u, 'guardBroken');
+        log(state, `${u.name}'s guard breaks!`, 'mechanic');
+      } else {
+        applyAura(state, content, u.id, u, 'blocking', { durationTicks: 3 });
+      }
+    } else {
+      u.stamina = Math.min(u.maxStamina, u.stamina + u.staminaRegen / TICKS_PER_SECOND);
+    }
   }
+}
+
+// Healing fields tick on whoever is standing in them.
+function fieldPass(state, content) {
+  if (!state.fields.length) return;
+  for (const field of state.fields) {
+    while (field.nextTick <= state.tick && field.nextTick <= field.expiresAt) {
+      for (const u of livingParty(state)) {
+        if (contains(field, u.pos)) applyHeal(state, field.sourceId, u, field.amount, { name: field.name });
+      }
+      field.nextTick += field.intervalTicks;
+    }
+  }
+  state.fields = state.fields.filter((f) => f.expiresAt > state.tick);
 }
 
 /* --------------------------------------------------------------- 2 */
 
+// With a lock, you are always pointed at what you locked -- which is
+// what lets the facing arc mean "that one and nothing else".
+function lockPass(state) {
+  if (state.style.aim !== 'lock') return;
+  for (const unit of state.units) {
+    if (unit.team !== 'party' || !unit.alive) continue;
+    const locked = unit.ai
+      ? enemyFocus(state, unit)
+      : unitById(state, unit.playerTarget) || enemyFocus(state, unit);
+    if (locked && locked.alive) faceToward(unit, locked.pos);
+  }
+}
+
 function resolveCastsAndMoves(state, content) {
+  lockPass(state);
   for (const unit of state.units) {
     if (!unit.alive) continue;
 
@@ -122,8 +173,10 @@ function moveUnit(state, unit) {
   const moved = Math.abs(unit.pos.x - from.x) > 1e-6 || Math.abs(unit.pos.y - from.y) > 1e-6;
   if (!moved) return;
   unit.movedThisTick = true;
+  // Lock-on keeps you facing the target while you strafe, so movement
+  // does not steer you. Everything else turns to where it is going.
   const heading = normalize(sub(unit.pos, from));
-  if (heading.x || heading.y) unit.facing = heading;
+  if ((heading.x || heading.y) && state.style.aim !== 'lock') unit.facing = heading;
   // Moving cancels a cast in progress.
   if (unit.castAbility && !unit.castWhileMoving) cancelCast(state, unit, 'moving');
 }
@@ -291,6 +344,7 @@ function bossPass(state, content) {
   // its anti-kite punishment the leading cause of death, which is not a
   // mechanic so much as a consequence of the tank having to soak.
   const leader = threatLeader(state, boss);
+  if (leader) faceToward(boss, leader.pos); // so "behind it" is a real place
   if (leader && distance(boss.pos, leader.pos) > 1) orderMove(state, boss, leader.pos);
   else boss.moveTarget = null;
 
@@ -333,6 +387,7 @@ function aiPass(state, content) {
 /* --------------------------------------------------------------- 7 */
 
 function playerPass(state, content, inputQueue) {
+  contentRef = content;
   if (!state.playerIds.length) return;
 
   // Selection is not an action. Target picks, aim, held movement keys and
@@ -370,13 +425,20 @@ function playerPass(state, content, inputQueue) {
       continue;
     }
 
+    if (input.type === 'dash') {
+      if (performDash(state, content, unit)) acted.add(unit.id);
+      continue;
+    }
+
     if (input.type === 'cast') {
       const ability = content.abilities[input.abilityId];
       if (!ability) continue;
       const target = resolveTarget(state, content, unit, ability, playerPreference(state, unit, ability));
+      // Ground-targeted healing lands where you are pointing.
+      const cell = ability.targeting === 'cell' ? { ...state.playerAim } : null;
       if (canUseAbility(state, content, unit, input.abilityId, target)) {
         if (target && target !== unit) faceToward(unit, target.pos);
-        startAbility(state, content, unit, input.abilityId, target);
+        startAbility(state, content, unit, input.abilityId, target, cell);
         acted.add(unit.id);
         continue;
       }
@@ -390,7 +452,7 @@ function playerPass(state, content, inputQueue) {
   for (const input of deferred) inputQueue.push(input);
 }
 
-const SELECTION_INPUTS = new Set(['targetEnemy', 'targetAlly', 'aim', 'moveDir', 'select']);
+const SELECTION_INPUTS = new Set(['targetEnemy', 'targetAlly', 'aim', 'moveDir', 'select', 'block']);
 
 // Which unit an input speaks for: the one it names, else whoever is
 // currently selected.
@@ -399,6 +461,8 @@ function commandedUnit(state, input) {
   const unit = unitById(state, id);
   return unit && state.playerIds.includes(unit.id) ? unit : null;
 }
+
+let contentRef = null;
 
 function applySelection(state, input) {
   if (input.type === 'select') {
@@ -422,15 +486,18 @@ function applySelection(state, input) {
     case 'moveDir':
       if (unit.alive) orderMoveDirection(state, unit, vec(input.x, input.y));
       return;
+    case 'block':
+      setBlocking(state, contentRef, unit, input.on);
+      return;
     default:
   }
 }
 
-// Raid scheme: whatever that unit selected. Arena scheme: whatever the
-// crosshair is nearest to -- no target lock at all.
+// Tab and lock-on use what that unit selected; the crosshair uses
+// whatever it is nearest to, with no target lock at all.
 function playerPreference(state, unit, ability) {
   const wantsAlly = ability.targeting === 'ally' || ability.targeting === 'lowestAlly';
-  if (state.scheme.aim === 'crosshair' && unit.id === state.activeId) {
+  if (state.style.aim === 'crosshair' && unit.id === state.activeId) {
     return nearestTo(wantsAlly ? livingParty(state) : livingEnemies(state), state.playerAim);
   }
   return wantsAlly ? unitById(state, unit.playerAllyTarget) : unitById(state, unit.playerTarget);
@@ -513,8 +580,18 @@ export function snapshot(state, content) {
       minSoakers: h.minSoakers,
     })),
     aim: { ...state.playerAim },
+    fields: state.fields.map((f) => ({ x: f.x, y: f.y, half: f.half, name: f.name })),
     events: state.events.slice(),
-    scheme: { id: state.scheme.id, name: state.scheme.name, aim: state.scheme.aim },
+    style: {
+      id: state.style.id,
+      name: state.style.name,
+      aim: state.style.aim,
+      movement: state.style.movement.id,
+      healing: state.style.healing.mode,
+      tanking: state.style.tanking.mode,
+      dash: state.style.dash ? state.style.dash.name : null,
+      blocking: !!state.style.block,
+    },
     hideTimers: !!state.mods.hideTimers,
     modifiers: state.modifiers.slice(),
     logLength: state.log.length,
@@ -533,6 +610,9 @@ function unitView(state, content, u) {
     maxHp: u.maxHp,
     hpPct: (u.hp / u.maxHp) * 100,
     resource: Math.floor(u.resource),
+    stamina: Math.floor(u.stamina),
+    maxStamina: u.maxStamina,
+    blocking: !!u.blocking,
     maxResource: u.maxResource,
     resourceName: u.resourceName,
     pos: { x: u.pos.x, y: u.pos.y },

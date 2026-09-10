@@ -2,7 +2,7 @@
 // numbers as `node sim.js` -- which is only possible because the sim
 // never touches the DOM.
 
-import { loadContent, applyScheme } from '../content/load.js';
+import { loadContent, applyStyle } from '../content/load.js';
 import { createState } from '../engine/state.js';
 import { step } from '../engine/tick.js';
 import { generateEncounter } from '../engine/generate.js';
@@ -11,9 +11,9 @@ import { tuneEncounter } from '../engine/tune.js';
 let content = null;
 
 self.onmessage = async (event) => {
-  const { type = 'batch', scheme = 'raid', modifiers = [], ai, runs = 200, seed = 1 } = event.data;
+  const { type = 'batch', style = 'raid', modifiers = [], ai, runs = 200, seed = 1 } = event.data;
   if (!content) content = await loadContent();
-  const c = { ...applyScheme(content, scheme), ai: ai || content.ai };
+  const c = { ...applyStyle(content, style), ai: ai || content.ai };
 
   // Roll a new encounter and tune it against this very sim before
   // anybody has to play it.

@@ -2,7 +2,10 @@
 // healing in the game must pass through.
 
 import {
+  clampToArena,
   distance,
+  isBehind,
+  withinArc,
   allCells,
   cellCenter,
   cellOf,
@@ -20,11 +23,12 @@ import { nextInt, pick, pickMany } from './rng.js';
 
 export const DEFAULT_GCD_TICKS = 15;
 
-// The control scheme decides the global cooldown and how fast bodies move.
-export const schemeOf = (state) => state.scheme || { gcd: 1.5, moveSpeed: 2.5, aim: 'target' };
-export const gcdTicksOf = (state) => Math.round(schemeOf(state).gcd * TICKS_PER_SECOND);
+// The play style decides the global cooldown, how fast bodies move,
+// whether facing matters, and how tanking works.
+export const styleOf = (state) => state.style || { gcd: 1.5, moveSpeed: 2.5, aim: 'target' };
+export const gcdTicksOf = (state) => Math.round(styleOf(state).gcd * TICKS_PER_SECOND);
 export const telegraphScaleOf = (state) =>
-  (schemeOf(state).telegraphScale ?? 1) * (state.mods?.telegraphScale ?? 1);
+  (styleOf(state).telegraphScale ?? 1) * (state.mods?.telegraphScale ?? 1);
 
 export const unitById = (state, id) => state.units.find((u) => u.id === id) || null;
 export const living = (state) => state.units.filter((u) => u.alive);
@@ -55,6 +59,21 @@ export function addThreat(enemy, unitId, amount) {
 }
 
 export function threatLeader(state, enemy) {
+  // Body-block tanking has no threat table at all: it swings at whoever
+  // is standing closest, so holding the boss is a physical job.
+  if (styleOf(state).tanking?.mode === 'guard') {
+    let best = null;
+    let bestDist = Infinity;
+    for (const u of livingParty(state)) {
+      const d = distance(u.pos, enemy.pos);
+      if (d < bestDist) {
+        bestDist = d;
+        best = u;
+      }
+    }
+    return best;
+  }
+
   const forced = enemy.auras.find((a) => a.id === 'taunted');
   if (forced) {
     const u = unitById(state, forced.sourceId);
@@ -81,6 +100,12 @@ export function applyDamage(state, sourceId, targetId, baseAmount, school = 'phy
 
   let amount = baseAmount;
   if (source) amount *= statMult(source, 'damageDealt');
+  // Hitting something from behind, when the style says facing exists.
+  const flank = styleOf(state).flankBonus || 1;
+  if (flank !== 1 && source && source.team === 'party' && isBehind(source.pos, target)) {
+    amount *= flank;
+    meta = { ...meta, flanked: true };
+  }
   amount *= statMult(target, 'damageTaken');
   amount = Math.max(0, Math.round(amount));
 
@@ -297,6 +322,24 @@ const effectHandlers = {
     log(state, `${ctx.caster.name} — ${ctx.abilityName} — the party must gather!`, 'telegraph');
   },
 
+  // A healing field: heals whoever stands in it, for as long as it lasts.
+  healField(state, content, ctx, e) {
+    const at = ctx.cell || ctx.caster.pos;
+    state.fields.push({
+      id: ++state.hazardCounter,
+      name: e.name || 'Field',
+      x: at.x,
+      y: at.y,
+      half: e.half ?? 0.6,
+      sourceId: ctx.caster.id,
+      amount: e.amount,
+      intervalTicks: Math.max(1, Math.round((e.interval ?? 0.5) * TICKS_PER_SECOND)),
+      nextTick: state.tick + Math.max(1, Math.round((e.interval ?? 0.5) * TICKS_PER_SECOND)),
+      expiresAt: state.tick + Math.round((e.duration ?? 4) * TICKS_PER_SECOND),
+    });
+    log(state, `${ctx.caster.name} drops ${e.name || 'a healing field'}`, 'heal');
+  },
+
   summon(state, content, ctx, e) {
     const total = Math.max(1, (e.count || 1) + (state.mods?.addCountDelta || 0));
     for (let i = 0; i < total; i++) {
@@ -358,6 +401,10 @@ export function makeUnit(state, content, def) {
     team: def.team || 'party',
     hp: def.maxHp,
     maxHp: def.maxHp,
+    stamina: def.maxStamina ?? 0,
+    maxStamina: def.maxStamina ?? 0,
+    staminaRegen: def.staminaRegen ?? 0,
+    blocking: false,
     resource: def.maxResource ?? 100,
     maxResource: def.maxResource ?? 100,
     resourceName: def.resourceName || 'Ammo',
@@ -407,9 +454,59 @@ export function canUseAbility(state, content, unit, abilityId, target) {
   if (ability.targeting !== 'self' && ability.targeting !== 'cell' && ability.targeting !== 'none') {
     if (!target || !target.alive) return false;
     if (distance(unit.pos, target.pos) > (ability.range ?? 5)) return false;
+    // Lock-on combat: it has to be in front of you.
+    const arc = styleOf(state).facingArc || 0;
+    if (arc && target !== unit && !withinArc(unit.pos, unit.facing, target.pos, arc)) return false;
   }
   return true;
 }
+
+/* ------------------------------------------------------------ stamina */
+
+export function spendStamina(unit, cost) {
+  if (unit.stamina < cost) return false;
+  unit.stamina -= cost;
+  return true;
+}
+
+// A roll, or a rocket jump: an instant displacement that can carry
+// invulnerability with it. Costs stamina and cancels whatever you were
+// casting, because of course it does.
+export function performDash(state, content, unit) {
+  const style = styleOf(state);
+  const dash = style.dash;
+  if (!dash || !unit.alive) return false;
+  if ((unit.cooldowns.__dash || 0) > state.tick) return false;
+  if (!spendStamina(unit, dash.stamina)) return false;
+
+  const dir = unit.moveDir && (unit.moveDir.x || unit.moveDir.y) ? unit.moveDir : unit.facing;
+  unit.pos = clampToArena({
+    x: unit.pos.x + dir.x * dash.distance,
+    y: unit.pos.y + dir.y * dash.distance,
+  });
+  unit.cooldowns.__dash = state.tick + Math.round(dash.cooldown * TICKS_PER_SECOND);
+  if (unit.castAbility) cancelCast(state, unit, dash.name.toLowerCase());
+  if (dash.iframes) {
+    applyAura(state, content, unit.id, unit, 'iframes', {
+      durationTicks: Math.round(dash.iframes * TICKS_PER_SECOND),
+    });
+  }
+  log(state, `${unit.name} — ${dash.name}`, 'cast');
+  return true;
+}
+
+// Active block: held, drains stamina, breaks when you run out.
+export function setBlocking(state, content, unit, on) {
+  const block = styleOf(state).block;
+  if (!block || !unit.alive) return;
+  unit.blocking = !!on && unit.stamina > 0 && !hasAuraId(unit, 'guardBroken');
+  if (!unit.blocking) return;
+  const aura = applyAura(state, content, unit.id, unit, 'blocking', { durationTicks: 3 });
+  // How much a block blocks lives in the style, not in the aura file.
+  if (aura) aura.modifiers = [{ stat: 'damageTaken', op: 'mult', value: 1 - block.reduction }];
+}
+
+const hasAuraId = (unit, id) => unit.auras.some((a) => a.id === id);
 
 // Player-facing feedback: why did that button do nothing?
 export function castBlockedReason(state, content, unit, abilityId, target) {
@@ -490,7 +587,7 @@ export function orderMove(state, unit, destination) {
   if (unit.castAbility) cancelCast(state, unit, 'moving');
 }
 
-// Held-direction movement: the arena scheme's WASD.
+// Held-direction movement: WASD.
 export function orderMoveDirection(state, unit, dir) {
   if (!unit.alive) return;
   const n = normalize(dir);
