@@ -1,0 +1,12 @@
+[gd_scene load_steps=3 format=3]
+
+[ext_resource type="Script" path="res://scripts/floor/Floor.gd" id="1_floor"]
+[ext_resource type="Script" path="res://scripts/floor/FloorDirector.gd" id="2_director"]
+
+[node name="Floor" type="Node3D"]
+script = ExtResource("1_floor")
+
+[node name="SpawnRoot" type="Node3D" parent="."]
+
+[node name="FloorDirector" type="Node" parent="."]
+script = ExtResource("2_director")

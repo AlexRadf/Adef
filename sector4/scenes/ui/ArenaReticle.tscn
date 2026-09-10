@@ -1,0 +1,28 @@
+[gd_scene load_steps=4 format=3]
+
+[ext_resource type="Script" path="res://scripts/ui/ReticleArcs.gd" id="1_reticle"]
+[ext_resource type="Script" path="res://scripts/ui/WorldFrames.gd" id="2_frames"]
+[ext_resource type="Script" path="res://scripts/ui/EncounterHud.gd" id="3_hud"]
+
+[node name="ArenaReticle" type="CanvasLayer"]
+
+[node name="WorldFrames" type="Control" parent="."]
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+mouse_filter = 2
+script = ExtResource("2_frames")
+
+[node name="EncounterHud" type="Control" parent="."]
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+mouse_filter = 2
+script = ExtResource("3_hud")
+
+[node name="ReticleArcs" type="Control" parent="."]
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+mouse_filter = 2
+script = ExtResource("1_reticle")

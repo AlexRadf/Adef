@@ -1,0 +1,130 @@
+extends Node3D
+class_name FloorLevel
+## One floor of the megastructure: geometry, players, and the director.
+##
+## The geometry is built in code rather than placed by hand, because the
+## layout is load-bearing rather than decorative. Line-of-sight pulling
+## only exists if there is something to break line of sight *with*, so the
+## pillars and the corridor doorway are gameplay, and they are generated
+## from the same numbers the director spawns packs at.
+
+const PLAYER_SCENE := preload("res://scenes/player/PlayerCharacter.tscn")
+const HUD_SCENE := preload("res://scenes/ui/ArenaReticle.tscn")
+
+@onready var spawn_root: Node3D = $SpawnRoot
+@onready var director: FloorDirector = $FloorDirector
+
+var _players: Dictionary = {}
+
+func _ready() -> void:
+	spawn_root.add_to_group("spawn_root")
+	_build_geometry()
+	_build_lighting()
+	add_child(HUD_SCENE.instantiate())
+	if Net.is_server():
+		_spawn_players()
+
+# -------------------------------------------------------------- players
+
+func _spawn_players() -> void:
+	var roster := Net.roster
+	if roster.is_empty():
+		roster = {1: {"name": "Operative", "role": Net.local_role}}
+	var slot := 0
+	for peer_id in roster:
+		_spawn_player(int(peer_id), roster[peer_id].get("role", "field_medic"), slot)
+		slot += 1
+
+func _spawn_player(peer_id: int, role_id: String, slot: int) -> void:
+	var player: PlayerCharacter = PLAYER_SCENE.instantiate()
+	player.name = "Player_%d" % peer_id
+	player.peer_id = peer_id
+	player.role_id = role_id
+	spawn_root.add_child(player, true)
+	# The elevator mouth: the party arrives together, spread across the
+	# doorway rather than stacked inside one another.
+	player.global_position = Vector3(-3.0 + 2.0 * float(slot), 0.4, 4.0)
+	_players[peer_id] = player
+
+# ------------------------------------------------------------- geometry
+
+func _build_geometry() -> void:
+	var pale := _material(Color(0.30, 0.33, 0.38), 0.65)
+	var dark := _material(Color(0.16, 0.17, 0.20), 0.8)
+	var accent := _material(Color(0.20, 0.45, 0.55), 0.4)
+
+	# The run itself: a long hall, a doorway, then the boss chamber.
+	_slab(Vector3(0, -0.5, -30), Vector3(46, 1, 100), dark)      # deck
+	_slab(Vector3(-23, 4, -30), Vector3(1, 9, 100), pale)        # west wall
+	_slab(Vector3(23, 4, -30), Vector3(1, 9, 100), pale)         # east wall
+	_slab(Vector3(0, 4, 20), Vector3(46, 9, 1), pale)            # behind the lift
+	_slab(Vector3(0, 4, -80), Vector3(46, 9, 1), pale)           # far wall
+
+	# The doorway into the boss chamber. Two stubs and a lintel, so the
+	# fight has a threshold you can stand behind.
+	_slab(Vector3(-14, 4, -56), Vector3(18, 9, 1.2), pale)
+	_slab(Vector3(14, 4, -56), Vector3(18, 9, 1.2), pale)
+	_slab(Vector3(0, 7.5, -56), Vector3(11, 2, 1.2), pale)
+
+	# Pillars. These are the LoS tool: a Code-Disruptor that can see you
+	# will stand and shoot, and the only way to make it move is to put one
+	# of these between the two of you.
+	for spot in [
+		Vector3(-9, 0, -14), Vector3(9, 0, -14),
+		Vector3(-9, 0, -26), Vector3(9, 0, -26),
+		Vector3(-9, 0, -38), Vector3(9, 0, -38),
+		Vector3(-15, 0, -44), Vector3(15, 0, -44),
+	]:
+		_slab(spot + Vector3(0, 4.0, 0), Vector3(2.4, 8, 2.4), accent)
+
+	# Cover either side of the terminal, so holding it is a position rather
+	# than a spot on the floor.
+	_slab(Vector3(-6, 1.2, -48), Vector3(4, 2.4, 1.2), pale)
+	_slab(Vector3(6, 1.2, -48), Vector3(4, 2.4, 1.2), pale)
+
+func _slab(centre: Vector3, size: Vector3, mat: StandardMaterial3D) -> void:
+	var body := StaticBody3D.new()
+	body.collision_layer = 1
+	body.collision_mask = 0
+	var shape := CollisionShape3D.new()
+	var box := BoxShape3D.new()
+	box.size = size
+	shape.shape = box
+	body.add_child(shape)
+	var mesh := MeshInstance3D.new()
+	var box_mesh := BoxMesh.new()
+	box_mesh.size = size
+	mesh.mesh = box_mesh
+	mesh.material_override = mat
+	body.add_child(mesh)
+	add_child(body)
+	body.global_position = centre
+
+func _material(colour: Color, roughness: float) -> StandardMaterial3D:
+	var mat := StandardMaterial3D.new()
+	mat.albedo_color = colour
+	mat.roughness = roughness
+	mat.metallic = 0.35
+	return mat
+
+func _build_lighting() -> void:
+	var sun := DirectionalLight3D.new()
+	sun.rotation_degrees = Vector3(-58, -35, 0)
+	sun.light_energy = 0.75
+	sun.light_color = Color(0.72, 0.82, 1.0)
+	sun.shadow_enabled = true
+	add_child(sun)
+
+	var env := WorldEnvironment.new()
+	var environment := Environment.new()
+	environment.background_mode = Environment.BG_COLOR
+	environment.background_color = Color(0.04, 0.05, 0.08)
+	environment.ambient_light_source = Environment.AMBIENT_SOURCE_COLOR
+	environment.ambient_light_color = Color(0.22, 0.26, 0.34)
+	environment.ambient_light_energy = 0.55
+	environment.fog_enabled = true
+	environment.fog_light_color = Color(0.06, 0.09, 0.14)
+	environment.fog_density = 0.012
+	environment.glow_enabled = true
+	env.environment = environment
+	add_child(env)

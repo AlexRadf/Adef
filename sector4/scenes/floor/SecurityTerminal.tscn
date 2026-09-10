@@ -1,0 +1,21 @@
+[gd_scene load_steps=3 format=3]
+
+[ext_resource type="Script" path="res://scripts/floor/SecurityTerminal.gd" id="1_terminal"]
+
+[sub_resource type="CylinderMesh" id="CylinderMesh_pillar"]
+top_radius = 0.5
+bottom_radius = 0.7
+height = 2.0
+
+[node name="SecurityTerminal" type="Area3D"]
+monitoring = true
+monitorable = false
+collision_layer = 0
+collision_mask = 2
+script = ExtResource("1_terminal")
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="."]
+
+[node name="Pillar" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1, 0)
+mesh = SubResource("CylinderMesh_pillar")
