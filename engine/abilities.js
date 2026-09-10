@@ -17,6 +17,7 @@ import {
   CELL_COUNT,
   TILE_HALF,
 } from './geometry.js';
+import { addHeat, addPoise, heatLocked, markUltimate, practiceOf, rulesOf } from './rules.js';
 import { TICKS_PER_SECOND } from './clock.js';
 import { applyAura, removeAura, statMult, consumeAbsorb, dispellable } from './auras.js';
 import { nextInt, pick, pickMany } from './rng.js';
@@ -101,6 +102,9 @@ export function applyDamage(state, sourceId, targetId, baseAmount, school = 'phy
   const target = typeof targetId === 'object' ? targetId : unitById(state, targetId);
   if (!target || !target.alive) return 0;
   const source = sourceId ? unitById(state, sourceId) : null;
+  // Training armour: the practice range lets you learn a mechanic
+  // without the mechanic ending the lesson.
+  if (target.team === 'party' && practiceOf(state).invulnerable) return 0;
 
   let amount = baseAmount;
   if (source) amount *= statMult(source, 'damageDealt');
@@ -124,6 +128,8 @@ export function applyDamage(state, sourceId, targetId, baseAmount, school = 'phy
     state.tick - (target.blockStartedAt ?? -999) <= parry.windowTicks
   ) {
     target.blockStartedAt = -999; // one parry per block
+    const poise = rulesOf(state).poise;
+    if (poise) addPoise(state, source, poise.fromParry ?? poise.max);
     applyAura(state, contentFor(state), source.id, source, 'staggered');
     log(state, `${target.name} PARRIES ${source.name}!`, 'interrupt');
     state.stats.parries = (state.stats.parries || 0) + 1;
@@ -137,6 +143,11 @@ export function applyDamage(state, sourceId, targetId, baseAmount, school = 'phy
   if (source && source.team === 'party' && target.team === 'enemy') {
     const mult = (meta.threatMult ?? 1) * statMult(source, 'threatMult');
     addThreat(target, source.id, afterAbsorb * mult);
+    // Every blow chips the guard; a blow from behind chips it harder.
+    const poise = rulesOf(state).poise;
+    if (poise && afterAbsorb > 0) {
+      addPoise(state, target, (poise.fromHit || 0) * (meta.flanked ? poise.flankMult || 1 : 1));
+    }
   }
 
   state.stats.damageBy[sourceId || 'environment'] =
@@ -154,6 +165,18 @@ export function applyDamage(state, sourceId, targetId, baseAmount, school = 'phy
     `${src} — ${label} — ${target.name} ${fmt(afterAbsorb)}${absorbed ? ` (${fmt(absorbed)} absorbed)` : ''}`,
     target.team === 'party' ? 'damage-taken' : 'damage-done'
   );
+
+  // Floating combat text reads this. It is a snapshot event rather than
+  // a renderer callback so the sim stays the only source of truth.
+  state.events.push({
+    kind: 'hit',
+    unitId: target.id,
+    sourceId: sourceId || null,
+    amount: afterAbsorb,
+    absorbed,
+    mine: !!source && state.playerIds.includes(source.id),
+    flanked: !!meta.flanked,
+  });
 
   if (target.hp <= 0) target.pendingDeath = { by: label, sourceId };
   return afterAbsorb;
@@ -182,6 +205,13 @@ export function applyHeal(state, sourceId, targetId, baseAmount, meta = {}) {
   if (source) chargeUltimate(source, 'healing', effective);
 
   const overheal = amount - effective;
+  state.events.push({
+    kind: 'healed',
+    unitId: target.id,
+    sourceId: sourceId || null,
+    amount: effective,
+    mine: !!source && state.playerIds.includes(source.id),
+  });
   log(
     state,
     `${source ? source.name : 'Something'} — ${meta.name || 'heal'} — ${target.name} +${fmt(effective)}${
@@ -488,6 +518,9 @@ export function makeUnit(state, content, def) {
     maxStamina: def.maxStamina ?? 0,
     staminaRegen: def.staminaRegen ?? 0,
     blocking: false,
+    poise: 0,
+    momentum: 0,
+    ultActiveUntil: 0,
     resource: def.maxResource ?? 100,
     maxResource: def.maxResource ?? 100,
     resourceName: def.resourceName || 'Ammo',
@@ -535,6 +568,8 @@ export function canUseAbility(state, content, unit, abilityId, target) {
   // about to cancel, paying the cost and the cooldown for nothing.
   if (ability.castTicks > 0 && (unit.moveTarget || unit.moveDir)) return false;
   if ((ability.cost || 0) > unit.resource) return false;
+  if (unit.stamina < attackStaminaCost(state, unit, abilityId, ability)) return false;
+  if (heatLocked(state, unit, abilityId, ability)) return false;
   if (ability.targeting !== 'self' && ability.targeting !== 'cell' && ability.targeting !== 'none') {
     if (!target || !target.alive) return false;
     if (distance(unit.pos, target.pos) > (ability.range ?? 5)) return false;
@@ -543,6 +578,17 @@ export function canUseAbility(state, content, unit, abilityId, target) {
     if (arc && target !== unit && !withinArc(unit.pos, unit.facing, target.pos, arc)) return false;
   }
   return true;
+}
+
+// Souls rules: a swing costs stamina, same as a roll or a guard. It is
+// the reason you cannot simply hold the attack button, and the reason
+// blocking through a whole phase leaves you unable to answer.
+export function attackStaminaCost(state, unit, abilityId, ability) {
+  const rule = rulesOf(state).attackStamina;
+  if (!rule || !unit.maxStamina || unit.team !== 'party') return 0;
+  if (rule.free && rule.free.includes(abilityId)) return 0;
+  if (ability.ultimate) return rule.ultimate ?? 0;
+  return rule.cost ?? 0;
 }
 
 /* ------------------------------------------------------------ stamina */
@@ -624,8 +670,12 @@ export function startAbility(state, content, unit, abilityId, target, cell = nul
   unit.resource = Math.max(0, unit.resource - (ability.cost || 0));
   if (ability.ultimate) {
     unit.ultimate = 0;
+    markUltimate(state, unit);
     log(state, `${unit.name} — ${ability.name.toUpperCase()}!`, 'enrage');
   }
+  const swing = attackStaminaCost(state, unit, abilityId, ability);
+  if (swing) unit.stamina = Math.max(0, unit.stamina - swing);
+  addHeat(state, unit, abilityId, ability);
   if (!ability.offGcd) unit.gcdUntil = state.tick + (ability.gcdTicks ?? gcdTicksOf(state));
   if (ability.cooldownTicks) unit.cooldowns[abilityId] = state.tick + ability.cooldownTicks;
 

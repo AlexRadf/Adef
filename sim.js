@@ -5,7 +5,7 @@
 //   node sim.js --runs 1000
 //   node sim.js --runs 200 --seed 7 --verbose
 
-import { loadContent, applyStyle, overrideAbilities } from './content/load.js';
+import { loadContent, applyStyle, applyGame } from './content/load.js';
 import { createState } from './engine/state.js';
 import { step } from './engine/tick.js';
 import { spawnPickup } from './engine/abilities.js';
@@ -37,8 +37,9 @@ const base = await loadContent();
 // --game runs a 3D game mode headlessly: its style plus its signature.
 const gameDef = args.game ? base.games[args.game] : null;
 if (args.game && !gameDef) throw new Error(`unknown game: ${args.game}`);
-let content = applyStyle(base, gameDef ? gameDef.style : args.style);
-if (gameDef) content = overrideAbilities(content, gameDef.abilities);
+// A game is style + signature + rules, assembled the same way the 3D
+// build assembles it, so what this measures is what you play.
+let content = gameDef ? applyGame(base, gameDef) : applyStyle(base, args.style);
 
 // --boss random rolls a procedural encounter and tunes it first.
 if (args.boss === 'random') {

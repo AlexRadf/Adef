@@ -37,6 +37,7 @@ import {
 import { pick } from './rng.js';
 import { runBot, resolveTarget, nearestTo, enemyFocus } from './ai.js';
 import { TICKS_PER_SECOND } from './clock.js';
+import { comboPass, heatOf, heatPass, momentumMult, momentumPass, poiseMax, poisePass, practicePass, rulesOf } from './rules.js';
 
 // Tactical pause: orders are given while the world is frozen and take
 // effect when it resumes. Same phase-7 code path, no tick advance.
@@ -53,8 +54,13 @@ export function step(state, content, inputQueue = []) {
   state.tick++;                              // 1
   state.events = [];
   regenResources(state, content);
+  practicePass(state);
   resolveCastsAndMoves(state, content);      // 2
+  momentumPass(state);
+  heatPass(state);
   auraPass(state, content);                  // 3
+  comboPass(state, content);
+  poisePass(state);
   fieldPass(state, content);
   pickupPass(state, content);
   hazardPass(state, content);                // 4
@@ -175,7 +181,7 @@ function moveUnit(state, unit) {
     return;
   }
 
-  const step = stepPerTick(unit.speed);
+  const step = stepPerTick(unit.speed * momentumMult(state, unit));
   const from = clonePos(unit.pos);
 
   if (unit.moveDir) {
@@ -620,6 +626,25 @@ export function snapshot(state, content) {
       dash: state.style.dash ? state.style.dash.name : null,
       blocking: !!state.style.block,
     },
+    // What is coming, and how long you have. Learning a fight means
+    // learning this list, so the practice range shows it too.
+    upcoming: state.schedule
+      .filter((slot) => slot.nextTick !== Infinity && content.abilities[slot.entry.ability])
+      .map((slot) => ({
+        name: content.abilities[slot.entry.ability].name,
+        in: Math.max(0, (slot.nextTick - state.tick) / TICKS_PER_SECOND),
+      }))
+      .sort((a, b) => a.in - b.in)
+      .slice(0, 4),
+    rules: {
+      poiseMax: poiseMax(state),
+      momentum: !!rulesOf(state).momentum,
+      threatMeter: !!rulesOf(state).threatMeter,
+      ultCombo: !!rulesOf(state).ultCombo,
+      combo: state.comboCount || 0,
+    },
+    practice: { ...(state.practice || {}) },
+    feed: state.log.slice(-6).map((l) => ({ text: l.text, kind: l.kind, seq: l.seq })),
     hideTimers: !!state.mods.hideTimers,
     modifiers: state.modifiers.slice(),
     logLength: state.log.length,
@@ -643,6 +668,10 @@ function unitView(state, content, u) {
     hasUltimate: !!u.ultimateGain,
     maxStamina: u.maxStamina,
     blocking: !!u.blocking,
+    poise: u.poise || 0,
+    heat: heatOf(state, u),
+    momentum: u.momentum || 0,
+    ultActive: (u.ultActiveUntil || 0) > state.tick,
     maxResource: u.maxResource,
     resourceName: u.resourceName,
     pos: { x: u.pos.x, y: u.pos.y },

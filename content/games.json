@@ -36,7 +36,16 @@
         ]
       }
     },
-    "bots": "36%"
+    "bots": "41%",
+    "rules": {
+      "threatMeter": {
+        "pullAt": 1.1
+      }
+    },
+    "extras": [
+      "Threat meter — everyone's threat against the tank's, live. Cross it and it comes for you.",
+      "Fight timeline — every telegraph is on a schedule, and the schedule is on screen."
+    ]
   },
   "quake": {
     "id": "quake",
@@ -76,9 +85,30 @@
           "x": 2.5,
           "y": 4.2
         }
+      },
+      {
+        "id": "armour",
+        "name": "Red Armour",
+        "aura": "redArmour",
+        "respawn": 45,
+        "firstAt": 20,
+        "at": {
+          "x": 0.8,
+          "y": 2.5
+        }
       }
     ],
-    "bots": "44%"
+    "bots": "56%",
+    "rules": {
+      "momentum": {
+        "rampTicks": 22,
+        "bonus": 0.13
+      }
+    },
+    "extras": [
+      "Momentum — hold a direction and you keep winding up to +13% speed. Stop and you lose all of it.",
+      "Item timers — the pickups respawn on a clock you can read, so the arena is a rotation."
+    ]
   },
   "overwatch": {
     "id": "overwatch",
@@ -110,7 +140,27 @@
         ]
       }
     },
-    "bots": "58%"
+    "bots": "59%",
+    "rules": {
+      "ultCombo": {
+        "need": 2,
+        "windowSeconds": 7,
+        "aura": "overloaded"
+      },
+      "overheat": {
+        "per": 6,
+        "perAbility": 26,
+        "max": 120,
+        "vent": 3,
+        "graceTicks": 8,
+        "lockSeconds": 1.6
+      }
+    },
+    "extras": [
+      "Ultimate combo — two ultimates live in the same window and the whole party gets Overloaded.",
+      "Team charge — everyone's ultimate meter is on screen, so you can hold yours for theirs.",
+      "Overheat — the held primary builds heat and locks out when it redlines. Holding the trigger is not a strategy."
+    ]
   },
   "souls": {
     "id": "souls",
@@ -128,6 +178,24 @@
     "holdFire": false,
     "sensitivity": 0.9,
     "signature": "Parry — raise your guard in the half second before a blow lands and you turn it aside completely, staggering the boss and leaving it taking 35% more for 2.5s.",
-    "bots": "43%"
+    "bots": "47%",
+    "rules": {
+      "poise": {
+        "max": 80,
+        "fromHit": 1,
+        "flankMult": 2.5,
+        "fromParry": 14,
+        "decay": 0.05,
+        "staggerSeconds": 2
+      },
+      "attackStamina": {
+        "cost": 7,
+        "ultimate": 0
+      }
+    },
+    "extras": [
+      "Poise — the boss has a guard bar. Hit it, hit it from behind, parry it, and it breaks open.",
+      "Swings cost stamina — attacking, rolling and blocking all draw on the same bar."
+    ]
   }
 }

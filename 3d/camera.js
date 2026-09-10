@@ -6,7 +6,23 @@ import { toWorld, ARENA } from './scene.js';
 
 // The camera has to stay in the room, or it ends up looking at the back
 // of a wall -- which is exactly what it did the first time.
-const LIMIT = ARENA / 2 - 0.7;
+export const LIMIT = ARENA / 2 - 0.7;
+
+// ...but clamping the position while keeping the framing is worse than
+// the wall: in a corner the camera ends up a metre behind your head and
+// six metres up, staring at your scalp while the boss sits off screen.
+// So shorten the boom instead. The shot keeps its angle and only loses
+// distance, which is what every third-person camera does at a wall.
+export function fitInside(from, dir, want, limit = LIMIT) {
+  let t = want;
+  for (const axis of ['x', 'z']) {
+    if (Math.abs(dir[axis]) < 1e-6) continue;
+    const bound = dir[axis] > 0 ? limit : -limit;
+    t = Math.min(t, (bound - from[axis]) / dir[axis]);
+  }
+  return Math.max(0, t);
+}
+
 function keepInside(camera, floor = 1.3) {
   camera.position.x = Math.max(-LIMIT, Math.min(LIMIT, camera.position.x));
   camera.position.z = Math.max(-LIMIT, Math.min(LIMIT, camera.position.z));
@@ -54,7 +70,11 @@ export function createRig() {
       if (away.lengthSq() < 0.01) away.set(0, 0, 1);
       away.normalize();
       yaw = Math.atan2(away.x, away.z); // look back down the lock line
-      camera.position.copy(smoothed).addScaledVector(away, 6.2).setY(3.6);
+      const boom = Math.max(2.4, fitInside(smoothed, away, 6.2));
+      camera.position
+        .copy(smoothed)
+        .addScaledVector(away, boom)
+        .setY(2 + boom * 0.26);
       keepInside(camera, 2);
       camera.lookAt(target.x, 1.4, target.z);
       return;
@@ -70,24 +90,32 @@ export function createRig() {
 
     if (mode === 'shoulder') {
       const right = new THREE.Vector3().crossVectors(forward, UP).normalize();
+      const offset = forward.clone().multiplyScalar(4.6).addScaledVector(right, -1.1);
+      const want = offset.length();
+      const boom = Math.max(1.8, fitInside(smoothed, offset.clone().normalize(), want));
       camera.position
         .copy(smoothed)
-        .addScaledVector(forward, 4.6)
-        .addScaledVector(right, -1.1)
+        .addScaledVector(offset.normalize(), boom)
         .setY(EYE + 1.15 - pitch * 2.6);
       keepInside(camera);
       camera.quaternion.setFromEuler(new THREE.Euler(pitch, yaw, 0, 'YXZ'));
       return;
     }
 
-    // orbit: the MMO camera, hanging back and above
-    const distance = 8.5;
+    // orbit: the MMO camera, hanging back and above. The height follows
+    // the boom, so a shortened boom is a lower camera rather than a
+    // top-down one.
+    const flat = 8.5 * Math.cos(-pitch);
+    const boom = Math.max(1.8, fitInside(smoothed, forward, flat));
     camera.position
       .copy(smoothed)
-      .addScaledVector(forward, distance * Math.cos(-pitch))
-      .setY(2.2 + distance * Math.sin(-pitch) * 1.15);
+      .addScaledVector(forward, boom)
+      .setY(1.5 + boom * Math.tan(-pitch) * 1.15);
     keepInside(camera, 1.6);
-    camera.lookAt(smoothed.x, 1.5, smoothed.z);
+    // Hold the rig's own pitch rather than staring at the character.
+    // Looking AT them from a boom the wall has cut to a metre points the
+    // camera almost straight down, and the boss leaves the screen.
+    camera.quaternion.setFromEuler(new THREE.Euler(pitch, yaw, 0, 'YXZ'));
   }
 
   // Point the camera at the middle of the room when a pull starts,

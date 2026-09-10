@@ -2,18 +2,20 @@
 // the renderer's frame rate. Everything between them is interpolation.
 //
 // The sim itself is untouched -- the same engine the 2D build and the
-// headless runner use. This file only decides where the camera is and
-// turns mouse-look into the inputs the tick already understood.
+// headless runner use. This file only decides where the camera is, turns
+// mouse-look into the inputs the tick already understood, and runs the
+// practice range on top of both.
 
-import { loadContent, applyStyle, overrideAbilities } from '../content/load.js';
+import { loadContent, applyGame } from '../content/load.js';
 import { createState } from '../engine/state.js';
 import { step, snapshot } from '../engine/tick.js';
 import { spawnPickup } from '../engine/abilities.js';
-import { buildLobbyBoss } from '../engine/scenario.js';
+import { buildLobbyBoss, buildDrillBoss } from '../engine/scenario.js';
 import { createScene, toSim } from './scene.js';
 import { createRig } from './camera.js';
 import { createControls } from './controls.js';
 import { createHud } from './hud.js';
+import { createFloaters } from './floaters.js';
 
 const TICK_MS = 100;
 const content = await loadContent();
@@ -21,6 +23,7 @@ const hud = createHud(content);
 const canvas = document.getElementById('view');
 const world = createScene(canvas);
 const rig = createRig();
+const floaters = createFloaters(document.getElementById('floaters'));
 
 let game = 'wow';
 let role = 'dps';
@@ -35,19 +38,26 @@ let lobbyStart = 0;
 let accumulator = 0;
 let last = performance.now();
 
+// The practice range: what the room is set up as, and what the rules of
+// the room are. None of it survives into an encounter pull.
+const practice = { invulnerable: false, infiniteResource: false, noCooldowns: false };
+let drill = '';        // '' is the plain dummy
+let timeScale = 1;     // slow motion is a render-clock thing, never a sim thing
+let screen = null;     // 'practice' | 'kit' | null
+
 /* --------------------------------------------------------- controls */
 
 const controls = createControls(canvas, rig, () => view, {
   onPointerLock: (locked) => {
-    document.getElementById('hint').hidden = locked;
-    if (!locked && running) paused = true;
+    document.getElementById('hint').hidden = locked || !!screen;
+    if (!locked && running && !screen) paused = true;
     if (locked) paused = false;
   },
   fire: (slot) => fireSlot(slot),
   dash: () => queue.push({ type: 'dash' }),
   setBlocking: (on) => queue.push({ type: 'block', on }),
   togglePause: () => (paused = !paused),
-  reset: () => start(),
+  reset: () => start(scenario),
   cycleTarget: () => {
     if (!view) return;
     const enemies = view.enemies.filter((u) => u.alive);
@@ -59,6 +69,7 @@ const controls = createControls(canvas, rig, () => view, {
 });
 
 function fireSlot(slot) {
+  if (screen) return;
   const player = view && view.party.find((u) => u.id === view.playerId);
   const id = player && player.abilities[slot];
   if (id) queue.push({ type: 'cast', abilityId: id });
@@ -69,14 +80,17 @@ function fireSlot(slot) {
 function start(which = 'encounter') {
   scenario = which;
   const def = content.games[game];
-  // A game's signature mechanic rides on top of its style.
-  active = overrideAbilities(applyStyle(content, def.style), def.abilities);
+  // A game is its style, its signature ability overrides and its rules,
+  // assembled exactly the way the headless runner assembles it.
+  active = applyGame(content, def);
 
   let bossId = 'chthon';
   if (scenario === 'lobby') {
-    const dummy = buildLobbyBoss(active);
-    active = { ...active, bosses: { ...active.bosses, [dummy.id]: dummy } };
-    bossId = dummy.id;
+    // The range is either a dummy that does nothing, or one boss ability
+    // on a loop -- so the thing you drill is the thing you will meet.
+    const target = drill ? buildDrillBoss(active, drill) : buildLobbyBoss(active);
+    active = { ...active, bosses: { ...active.bosses, [target.id]: target } };
+    bossId = target.id;
   }
 
   state = createState(active, {
@@ -84,6 +98,7 @@ function start(which = 'encounter') {
     playerRole: role,
     mode: 'solo',
     boss: bossId,
+    practice: scenario === 'lobby' ? practice : {},
     hardStopSeconds: scenario === 'lobby' ? 3600 : undefined,
   });
   // Quake's arena is a resource: put the pickups on the floor.
@@ -92,6 +107,7 @@ function start(which = 'encounter') {
   view = snapshot(state, active);
   queue = [];
   hud.reset();
+  floaters.reset();
   world.commit(view);
   running = true;
   paused = false;
@@ -101,12 +117,19 @@ function start(which = 'encounter') {
   if (me) rig.aimAtCentre(me, def.camera);
   controls.setSensitivity(def.sensitivity || 1);
   controls.setHoldFire(!!def.holdFire);
+  showScreen(null);
   document.getElementById('menu').hidden = true;
   document.getElementById('over').hidden = true;
   document.getElementById('crosshair').hidden = def.camera === 'orbit';
   document.getElementById('lobbyTag').hidden = scenario !== 'lobby';
   document.getElementById('signature').textContent = def.signature || '';
-  canvas.requestPointerLock();
+  lock();
+}
+
+// Asking for a lock we already hold logs a warning and does nothing
+// useful, and asking outside a gesture fails silently -- so ask once.
+function lock() {
+  if (!controls.state.locked && !screen) canvas.requestPointerLock();
 }
 
 function tick() {
@@ -141,18 +164,27 @@ let padStick = null;
 function frame(now) {
   requestAnimationFrame(frame);
   world.resize();
-  const dt = Math.min(0.1, (now - last) / 1000);
+  const real = Math.min(0.1, (now - last) / 1000);
   last = now;
-  padStick = controls.pollGamepad(dt);
+  padStick = controls.pollGamepad(real);
+  // Slow motion scales how fast the sim's clock is fed, never the tick
+  // itself: at 0.25x you get the same fight, four times as much time to
+  // read it, and the same deterministic result.
+  const dt = real * timeScale;
 
-  if (running && !paused) {
+  if (running && !paused && !screen) {
     accumulator += dt * 1000;
     while (accumulator >= TICK_MS) {
       accumulator -= TICK_MS;
       world.commit(view);
       tick();
       view = snapshot(state, active);
-          if (state.over && scenario !== 'lobby') finish();
+      floaters.ingest(view);
+      if (state.over) {
+        if (scenario === 'lobby') start('lobby'); // the range never ends
+        else finish();
+        break;
+      }
     }
   }
 
@@ -164,13 +196,15 @@ function frame(now) {
       hideSelf: def.camera === 'first',
       cameraPos: world.camera.position,
     });
-    if (player) rig.apply(world.camera, def.camera, player, locked, dt);
+    if (player) rig.apply(world.camera, def.camera, player, locked, real);
     hud.paint(view, {
       targetName: locked ? locked.name : '',
       modeName: def.name,
       lobby: scenario === 'lobby' ? lobbyStats() : null,
       pad: controls.state.pad,
+      practiceLabel: scenario === 'lobby' ? practiceLabel() : '',
     });
+    floaters.paint(world.camera, real, { w: canvas.clientWidth, h: canvas.clientHeight });
   }
   world.renderer.render(world.scene, world.camera);
 }
@@ -186,16 +220,170 @@ function lobbyStats() {
   return { dps: Math.round(dealt / seconds), hps: Math.round(healed / seconds), seconds };
 }
 
+function practiceLabel() {
+  const on = [];
+  if (practice.invulnerable) on.push('invulnerable');
+  if (practice.infiniteResource) on.push('infinite');
+  if (practice.noCooldowns) on.push('no cooldowns');
+  if (timeScale !== 1) on.push(`${timeScale}× speed`);
+  if (drill) on.push(content.drills[drill].name);
+  return on.join(' · ');
+}
+
 function finish() {
   running = false;
   document.exitPointerLock();
   const won = state.result === 'kill';
+  const player = state.units.find((u) => u.id === state.activeId);
+  const seconds = Math.max(1, state.tick / 10);
+  const dealt = Math.round((state.stats.damageBy[state.activeId] || 0) / seconds);
+  const healed = Math.round((state.stats.healBy[state.activeId] || 0) / seconds);
+  const mine = state.stats.deaths.find((d) => d.unit === state.activeId);
+  const nameOf = (id) => (state.units.find((u) => u.id === id) || {}).name || id;
   document.getElementById('over').hidden = false;
   document.getElementById('overTitle').textContent = won ? 'Chthon Falls' : 'Wipe';
   document.getElementById('overBody').textContent = won
-    ? `Killed in ${Math.floor(view.seconds / 60)}:${String(Math.floor(view.seconds % 60)).padStart(2, '0')}.`
+    ? `Killed in ${clock(view.seconds)}.`
     : `The party is dead with Chthon at ${view.boss.hpPct.toFixed(1)}%.`;
+  // What actually happened to you, not just whether it happened.
+  const lines = [
+    `<b>${dealt.toLocaleString('en-US')}</b> damage per second · <b>${healed.toLocaleString('en-US')}</b> healing per second`,
+    mine
+      ? `You died at ${clock(mine.tick / 10)} to <b>${mine.cause}</b>.`
+      : player && player.alive
+        ? 'You survived.'
+        : 'You died.',
+  ];
+  const order = state.stats.deaths
+    .slice(0, 4)
+    .map((d) => `${clock(d.tick / 10)} ${nameOf(d.unit)} — ${d.cause}`);
+  if (order.length) lines.push(`Deaths: ${order.join(' · ')}`);
+  document.getElementById('overStats').innerHTML = lines.map((l) => `<div>${l}</div>`).join('');
 }
+
+const clock = (s) => `${Math.floor(s / 60)}:${String(Math.floor(s % 60)).padStart(2, '0')}`;
+
+/* ------------------------------------------------- practice screens */
+
+function showScreen(which) {
+  screen = which;
+  document.getElementById('practice').hidden = which !== 'practice';
+  document.getElementById('kit').hidden = which !== 'kit';
+  document.getElementById('hint').hidden = which ? true : controls.state.locked;
+  if (which) {
+    document.exitPointerLock();
+    renderPractice();
+    if (which === 'kit') renderKit();
+  } else if (running) {
+    lock();
+  }
+}
+
+const chip = (on, label, key) =>
+  `<button class="chip ${on ? 'on' : ''}" data-v="${label.value}">${label.text}${
+    key ? `<kbd>${key}</kbd>` : ''
+  }</button>`;
+
+function renderPractice() {
+  const box = (id, html) => (document.getElementById(id).innerHTML = html);
+  box(
+    'pGames',
+    Object.values(content.games)
+      .map((g) => chip(g.id === game, { value: g.id, text: g.name }))
+      .join('')
+  );
+  box(
+    'pRoles',
+    [
+      { value: 'tank', text: 'Vanguard' },
+      { value: 'healer', text: 'Field Medic' },
+      { value: 'dps', text: 'Slayer' },
+    ]
+      .map((r) => chip(r.value === role, r))
+      .join('')
+  );
+  box(
+    'pDrills',
+    [{ value: '', text: 'Training dummy' }]
+      .concat(Object.entries(content.drills).map(([id, d]) => ({ value: id, text: d.name })))
+      .map((d) => chip(d.value === drill, d))
+      .join('')
+  );
+  box(
+    'pToggles',
+    [
+      { value: 'invulnerable', text: 'Invulnerable', key: 'V' },
+      { value: 'infiniteResource', text: 'Infinite resources', key: 'B' },
+      { value: 'noCooldowns', text: 'No cooldowns', key: 'N' },
+    ]
+      .map((t) => chip(practice[t.value], t, t.key))
+      .join('')
+  );
+  box(
+    'pSpeeds',
+    [0.25, 0.5, 1].map((s) => chip(timeScale === s, { value: String(s), text: `${s}×` }, s === 1 ? '' : '')).join('')
+  );
+}
+
+// What the four buttons are and how they feed each other -- the thing
+// that is otherwise only discoverable by pressing them for ten minutes.
+function renderKit() {
+  const def = content.games[game];
+  const player = view && view.party.find((u) => u.id === view.playerId);
+  const ids = player ? player.abilities : [];
+  document.getElementById('kitTitle').textContent = `${def.name} — ${role === 'dps' ? 'Slayer' : role === 'tank' ? 'Vanguard' : 'Field Medic'}`;
+  document.getElementById('kitLoop').textContent =
+    'Builder feeds spender, spender opens a window, payoff is worth more inside it, ultimate charges from doing your job.';
+  const roles = ['Builder', 'Spender', 'Payoff', 'Ultimate'];
+  document.getElementById('kitList').innerHTML = ids
+    .map((id, i) => {
+      const a = active.abilities[id] || content.abilities[id];
+      return `<div class="kitab"><em>${i + 1} — ${roles[i] || ''}</em><b>${a.name}</b>
+        <span>${a.desc || ''}</span></div>`;
+    })
+    .join('');
+  document.getElementById('kitExtras').innerHTML = [def.signature, ...(def.extras || [])]
+    .filter(Boolean)
+    .map((line) => {
+      const [head, ...rest] = line.split('—');
+      return `<div>· <b>${head.trim()}</b>${rest.length ? ` — ${rest.join('—').trim()}` : ''}</div>`;
+    })
+    .join('');
+}
+
+function onPracticeClick(id, handler) {
+  document.getElementById(id).addEventListener('click', (e) => {
+    const target = e.target.closest('[data-v]');
+    if (!target) return;
+    handler(target.dataset.v);
+    renderPractice();
+  });
+}
+
+onPracticeClick('pGames', (v) => {
+  game = v;
+  start('lobby');
+  showScreen('practice');
+});
+onPracticeClick('pRoles', (v) => {
+  role = v;
+  start('lobby');
+  showScreen('practice');
+});
+onPracticeClick('pDrills', (v) => {
+  drill = v;
+  start('lobby');
+  showScreen('practice');
+});
+onPracticeClick('pToggles', (v) => {
+  practice[v] = !practice[v];
+  if (state && scenario === 'lobby') state.practice = { ...practice };
+});
+onPracticeClick('pSpeeds', (v) => (timeScale = Number(v)));
+
+document.getElementById('pResume').addEventListener('click', () => showScreen(null));
+document.getElementById('pPull').addEventListener('click', () => start('encounter'));
+document.getElementById('kitClose').addEventListener('click', () => showScreen(null));
 
 /* ----------------------------------------------------------- menu */
 
@@ -214,11 +402,15 @@ menu.addEventListener('click', (e) => {
   if (!card) return;
   game = card.dataset.game;
   [...menu.children].forEach((c) => c.classList.toggle('sel', c.dataset.game === game));
-  const def = content.games[game];
-  document.getElementById('gameBlurb').textContent = `${def.blurb}  ${def.signature || ''}`;
+  blurb();
 });
-document.getElementById('gameBlurb').textContent =
-  `${content.games[game].blurb}  ${content.games[game].signature || ''}`;
+function blurb() {
+  const def = content.games[game];
+  document.getElementById('gameBlurb').innerHTML = [def.blurb, def.signature, ...(def.extras || [])]
+    .filter(Boolean)
+    .join('<br>');
+}
+blurb();
 
 const roles = document.getElementById('roles');
 roles.addEventListener('click', (e) => {
@@ -229,9 +421,30 @@ roles.addEventListener('click', (e) => {
 });
 document.getElementById('play').addEventListener('click', () => start('lobby'));
 document.getElementById('again').addEventListener('click', () => start('lobby'));
+document.getElementById('retry').addEventListener('click', () => start('encounter'));
+
+const SPEEDS = [1, 0.5, 0.25];
 window.addEventListener('keydown', (e) => {
-  if (e.key.toLowerCase() === 'e' && scenario === 'lobby' && running) start('encounter');
+  if (e.target.tagName === 'INPUT') return;
+  const key = e.key.toLowerCase();
+  if (key === 'escape' && screen) return showScreen(null);
+  if (key === 'p' && running) return showScreen(screen === 'practice' ? null : 'practice');
+  if (key === 'h' && running) return showScreen(screen === 'kit' ? null : 'kit');
+  if (key === 'e' && scenario === 'lobby' && running) return start('encounter');
+  if (!running || scenario !== 'lobby') return;
+  // Range switches, reachable without opening anything.
+  if (key === 'v' || key === 'b' || key === 'n') {
+    const field = key === 'v' ? 'invulnerable' : key === 'b' ? 'infiniteResource' : 'noCooldowns';
+    practice[field] = !practice[field];
+    state.practice = { ...practice };
+    if (screen) renderPractice();
+  }
+  if (key === 't') {
+    timeScale = SPEEDS[(SPEEDS.indexOf(timeScale) + 1) % SPEEDS.length];
+    if (screen) renderPractice();
+  }
 });
+
 document.getElementById('play').disabled = false;
 document.getElementById('play').textContent = 'Enter the pit';
 

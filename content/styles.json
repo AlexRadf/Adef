@@ -282,7 +282,7 @@
       "combat": "tab",
       "healing": "frames",
       "tanking": "threat",
-      "bots": "31%"
+      "bots": "37%"
     },
     "arena": {
       "name": "Arena",
@@ -291,7 +291,7 @@
       "combat": "crosshair",
       "healing": "aim",
       "tanking": "threat",
-      "bots": "57%"
+      "bots": "54%"
     },
     "souls": {
       "name": "Souls",
@@ -300,7 +300,7 @@
       "combat": "lockon",
       "healing": "smart",
       "tanking": "block",
-      "bots": "43%"
+      "bots": "50%"
     },
     "action": {
       "name": "Action",
@@ -309,7 +309,7 @@
       "combat": "crosshair",
       "healing": "ground",
       "tanking": "guard",
-      "bots": "42%"
+      "bots": "41%"
     }
   }
 }

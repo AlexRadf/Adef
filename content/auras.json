@@ -296,7 +296,36 @@
     "name": "Barrier",
     "duration": 8,
     "harmful": false,
-    "absorb": 150000,
+    "absorb": 110000,
+    "modifiers": []
+  },
+  "overloaded": {
+    "name": "Overloaded",
+    "duration": 0.3,
+    "harmful": false,
+    "modifiers": [
+      {
+        "stat": "damageDealt",
+        "op": "mult",
+        "value": 1.3
+      },
+      {
+        "stat": "healingDone",
+        "op": "mult",
+        "value": 1.3
+      },
+      {
+        "stat": "damageTaken",
+        "op": "mult",
+        "value": 0.85
+      }
+    ]
+  },
+  "redArmour": {
+    "name": "RED ARMOUR",
+    "duration": 25,
+    "harmful": false,
+    "absorb": 80000,
     "modifiers": []
   }
 }

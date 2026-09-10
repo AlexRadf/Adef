@@ -77,6 +77,10 @@ export function createState(content, options = {}) {
     style,
     mode,
     mods,
+    // A mode's rules (momentum, poise, ultimate combos) and the practice
+    // switches for this particular pull. Both read as absent when unset.
+    rules: content.rules || {},
+    practice: { ...(options.practice || {}) },
     modifiers: chosen.map((m) => m.id),
     phaseIndex: -1,
     phaseStartTick: 0,

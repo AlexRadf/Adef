@@ -70,26 +70,72 @@ whether a kit actually interlocks — if it does, the list reads like a sentence
 { "else": true,                     "do": "cast:nailgun" }
 ```
 
-All four play styles were re-tuned around the new kits and sit at Raid 49%, Arena 41%,
-Souls 43%, Action 33%, killing in 3:26–3:46 against a 4:30 enrage.
+All four 2D play styles were re-measured after the mode rules landed and sit at Raid 37%,
+Arena 54%, Souls 50%, Action 41%, killing in 3:26–3:46 against a 4:30 enrage.
 
-### The lobby
+### The practice range
 
-Every game starts you in a lobby: the same arena, your kit, and a training dummy that does
-not hit back, with a live damage-per-second readout so you can see whether the loop is
-working. Press `E` (or Start) when you are done and the real thing walks in.
+Every game starts you in a lobby, and the lobby is now a range you can set up. Press `P`
+(or the switches directly) and you get:
 
-### One signature mechanic per mode
+| | |
+|---|---|
+| **Dummy** | A training dummy that does not hit back, or **any one boss mechanic on a loop** — Lava Geyser, Chain of Souls, Void Well, Slipgate Rift, Rune of Black Magic, Magma Cleave. The drills are built out of Chthon's own abilities, so what you practise is exactly what you meet |
+| **Switches** | `V` invulnerable · `B` infinite resources · `N` no cooldowns. Learn the movement without the mechanic ending the lesson, or learn the rotation without waiting on the bars |
+| **Speed** | `T` cycles 1× / 0.5× / 0.25×. Slow motion scales how fast the sim's clock is *fed*, never the tick itself — same fight, same determinism, four times as long to read a telegraph |
+| **Game and role** | Switch mode or role without leaving the game. The range rebuilds around you |
+| **Kit card** | `H` shows your four buttons, what each one does, how they feed each other, and everything that makes this mode different |
 
-The camera alone was not enough to make the modes feel different, so each leans into
-something its genre actually does:
+A live damage- or healing-per-second readout tells you whether the loop is working. Press
+`E` (or Start) and the real thing walks in. Nothing you set in the range follows you into
+the pull.
 
-| | Signature | Measured |
+### Quality of life
+
+Things that were invisible and are now on screen:
+
+- **Floating combat numbers.** Your own hits are big and gold, other people's are small and
+  grey, damage taken is red, healing green, and a flanking hit is marked. They come out of
+  the sim as snapshot events, so the renderer cannot invent one.
+- **The fight timeline.** The next four boss abilities with countdowns, bottom right.
+  Learning a fight is learning that list; there is no reason to hide it.
+- **Threat, guard, heat, momentum, item timers** — each mode's own numbers, drawn only in
+  the mode that has them (see below).
+- **A combat log feed** — the last five lines, bottom left, colour-coded by kind.
+- **A wipe/kill report** that says what killed *you*, at what time, your damage and healing
+  per second, and the order the party went down in — with **Pull again** and **Back to the
+  range** rather than a walk back through the menu.
+- **The camera stops climbing over your head.** Backed into a corner, the boom now shortens
+  along its own line instead of clamping into the wall and pitching straight down (which
+  put the boss off the top of the screen), and your own body fades out when the camera ends
+  up against your back.
+
+### What makes each mode different
+
+The camera alone was not enough, and one signature each was not enough either. Each mode
+now carries a signature plus two more things its genre actually does — all of it declared
+as a `rules` block in `content/games.json` and read in exactly one file, `engine/rules.js`:
+
+| | Signature | And also |
 |---|---|---|
-| **Azeroth** | **Frontal cleave** — Magma Cleave comes out of the boss's face in a 130° cone. The tank's job becomes pointing it away from everyone else, and the bot tank now does exactly that: cleave went from hitting 2.8 people a cast to 1.6 | bots win 36% |
-| **Slipgate** | **Pickups** — Quad Damage and Megahealth spawn on the floor on a timer and you have to go and stand on them, which is why Quake maps are shaped the way they are. Bots take 7.9 a pull | 44% |
-| **Overload** | **Barrier** — the Vanguard's ultimate stops being a damage reduction and becomes a deployed shield: an absorb pool across the whole party, chewed through at about 574,000 a pull | 58% |
-| **The Pit** | **Parry** — raise your guard in the 0.35s before a blow lands and you turn it aside completely, staggering the boss into taking 35% more | 43% |
+| **Azeroth** | **Frontal cleave** — Magma Cleave comes out of the boss's face in a 130° cone, so the tank's job is pointing it away from everyone. The bot tank does exactly that: cleave went from hitting 2.8 people a cast to 1.6 | A **threat meter** — everyone's threat as a share of whoever is holding it, with a warning before you pull. The number a WoW player actually plays against · **cast bars** you have to stand still for |
+| **Slipgate** | **Pickups** — Quad Damage, Megahealth and now **Red Armour** spawn on the floor on a timer and you have to go and stand on them | **Momentum** — hold a direction and you wind up to +13% speed; stop and you lose all of it, instantly · **item timers** in the HUD, because timing the items *is* the map knowledge |
+| **Overload** | **Barrier** — the Vanguard's ultimate becomes a deployed absorb pool across the party rather than a damage reduction | **Overheat** — the held primary builds heat and redlines, locking the whole kit except the ultimate for 1.6s. Holding the trigger is not a strategy · **ultimate combos** — two ultimates live in the same 7s window and the whole party is Overloaded (+30% damage and healing, −15% taken), with everyone's charge on screen so you can hold yours for theirs |
+| **The Pit** | **Parry** — raise your guard in the 0.35s before a blow lands and you turn it aside completely | **Poise** — the boss has a guard bar. Ordinary hits chip it, hits from behind chip it 2.5× harder, a parry takes a chunk out of it, and breaking it opens a 3s window where it cannot act and takes 35% more · **swings cost stamina**, so attacking, rolling and blocking all draw on one bar |
+
+Poise is the clearest example of why this is a trinity game: the tank opens the window by
+reading the wind-up, and the damage dealer is the one who spends it.
+
+Measured over 600 headless pulls each — four bots, no human:
+
+```
+Azeroth 41%   Slipgate 56%   Overload 59%   The Pit 47%      kills 3:26-3:43 vs a 4:30 enrage
+```
+
+Overheat is the one mechanic the headless runner cannot see: bots are gated by their
+decision loop (one action every ~1.5s), not by fire rate, so they never build enough heat
+to redline. It is a player-facing rhythm, and Overload's 59% should be read as the most
+forgiving of the four rather than as evidence that heat costs nothing.
 
 ### Controller
 
@@ -103,6 +149,9 @@ Real: the arena, the four cameras, mouse-look and camera-relative movement, tele
 healing fields drawn on the floor, nameplates, the full HUD, dodge rolls with i-frames,
 held block with stamina, lock-on facing, and the entire encounter running underneath it at
 the tuned difficulty.
+
+Also real: the practice range with its drills and switches, floating combat numbers, the
+fight timeline, and each mode's own meters.
 
 Not yet: split screen, animations, sound, projectiles you can see, and any art beyond
 primitives. The end goal is two people on one couch with pads — controller support is in
@@ -198,8 +247,8 @@ baseline (47% of pulls survived) and varying one:
 | tanking | threat 47% | block 53% | guard 35% |
 
 Everything sits inside 33–57%, so feel dominates over difficulty when you compare them.
-The presets stack their axes though, and the numbers on the buttons say so: Raid 44%,
-Arena 44%, Souls 66%, Action 21%.
+The presets stack their axes though, and the numbers on the buttons say so: Raid 37%,
+Arena 54%, Souls 50%, Action 41% (400 pulls each).
 
 Tuning that took three real fixes the sim caught: lock-on **deadlocked** (you must face a
 target to cast, and facing only changed when casting — so nobody ever attacked), bot tanks
@@ -218,7 +267,8 @@ node sim.js --style souls --runs 150
           modifiers.json  bosses/*.json  ai/*.json  load.js
 /engine   generate.js  tune.js          procedural encounters and their auto-tuning
 /ui       render.js  input.js  log.js  gambit.js  styles.js  simworker.js
-/3d       game.js  scene.js  camera.js  controls.js  hud.js
+/engine   rules.js                         per-mode rules: momentum, poise, heat, ult combos
+/3d       game.js  scene.js  camera.js  controls.js  hud.js  floaters.js
 /vendor   three.module.js                three.js r160, committed rather than installed
 /tests    engine.test.mjs
 sim.js    headless balance runner (node)

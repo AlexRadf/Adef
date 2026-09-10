@@ -132,6 +132,16 @@ export function overrideAbilities(content, overrides = {}) {
   return { ...content, abilities };
 }
 
+// One game mode, fully assembled: its style axes, its signature ability
+// overrides, and its rules. This is what the 3D build hands the engine,
+// and what the headless runner measures, so the thing you tune is the
+// thing you play.
+export function applyGame(content, def) {
+  const withStyle = applyStyle(content, def.style);
+  const withSignature = overrideAbilities(withStyle, def.abilities);
+  return { ...withSignature, rules: def.rules || {} };
+}
+
 export function applyStyle(content, choice = 'raid') {
   const picked = resolveStyle(content, choice);
   const overrides = {};

@@ -165,7 +165,7 @@ export function createScene(canvas) {
   }
 
   const HAZARD_COLOUR = { blast: 0xff7a18, split: 0x7b4fd0, soak: 0x2f8fb4, heal: 0x7ea23c };
-  const PICKUP_COLOUR = { quad: 0x9a5cff, mega: 0xff3b3b };
+  const PICKUP_COLOUR = { quad: 0x9a5cff, mega: 0xff3b3b, armour: 0xd8302a };
 
   // Floating, spinning, unmistakable -- the way a pickup has looked
   // since 1996.
@@ -243,12 +243,29 @@ export function createScene(canvas) {
         drawPlate(actor.plate, unit.name, unit.hpPct, unit.team === 'party' ? '#e8dcc4' : '#ff9a7a');
       }
       const mine = unit.id === view.playerId;
+      // Your own body is never worth a third of the screen: a camera the
+      // wall has pushed up against your back hides you, the same way a
+      // first-person rig does.
+      const near = actor.group.position.distanceTo(opts.cameraPos || actor.group.position);
       actor.group.visible = !(mine && opts.hideSelf);
+      // Your own body is never worth a third of the screen. When a wall
+      // pushes the camera up against your back, fade yourself out rather
+      // than letting your head become the level.
+      const fade = mine ? Math.min(1, Math.max(0, (near - 1.8) / 2.2)) : 1;
+      if (actor.fade !== fade) {
+        const wasTransparent = actor.body.material.transparent;
+        actor.fade = fade;
+        actor.body.material.transparent = fade < 1;
+        actor.body.material.opacity = fade;
+        actor.body.material.depthWrite = fade > 0.98;
+        // Toggling `transparent` changes the shader, and three.js will
+        // not notice on its own.
+        if (wasTransparent !== actor.body.material.transparent) actor.body.material.needsUpdate = true;
+      }
       // Never label yourself, and let plates fade out up close so they
       // do not swallow the screen when somebody runs past the camera.
-      const toCamera = actor.group.position.distanceTo(opts.cameraPos || actor.group.position);
-      actor.plate.visible = !mine && toCamera > 2.4;
-      actor.plate.material.opacity = Math.min(1, Math.max(0, (toCamera - 2.4) / 2));
+      actor.plate.visible = !mine && near > 2.4;
+      actor.plate.material.opacity = Math.min(1, Math.max(0, (near - 2.4) / 2));
       actor.ring.material.opacity = mine ? 0.85 : unit.team === 'party' ? 0.25 : 0;
       actor.body.material.emissiveIntensity = unit.blocking ? 1 : 0;
       if (unit.blocking) actor.body.material.emissive.setHex(0x2f6fa8);

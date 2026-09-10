@@ -80,6 +80,85 @@
   .ab .cd { position:absolute; inset:0; display:flex; align-items:center; justify-content:center;
     font:18px/1 Impact,sans-serif; color:var(--gold); text-shadow:2px 2px 0 #000; }
 
+  /* ---- floating combat text ---- */
+  #floaters { position:fixed; inset:0; pointer-events:none; z-index:4; }
+  .float { position:absolute; left:0; top:0; font:600 20px/1 Impact,sans-serif; letter-spacing:.03em;
+    text-shadow:2px 2px 0 #000, 0 0 8px rgba(0,0,0,.9); will-change:transform,opacity; }
+  .float.mine { color:#ffd27a; font-size:26px; }
+  .float.other { color:#cbbfa8; font-size:17px; opacity:.8; }
+  .float.taken { color:#ff5a48; font-size:22px; }
+  .float.heal { color:#9fd46a; font-size:20px; }
+
+  /* ---- boss guard bar (The Pit) ---- */
+  #poiseWrap { margin-top:4px; }
+  #poiseWrap .pb { height:9px; background:#0a0705; border:1px solid #000; }
+  #poiseWrap .pb span { display:block; height:100%; background:linear-gradient(180deg,#cfd8e0,#68767f); }
+  #poiseWrap b { font:10px/1.4 Impact,sans-serif; letter-spacing:.2em; color:var(--gold-dim);
+    text-transform:uppercase; }
+  #poiseWrap.broken .pb span { background:linear-gradient(180deg,#ffe89a,var(--lava)); width:100% !important; }
+  #poiseWrap.broken b { color:var(--lava); }
+
+  /* ---- right rail: threat, ults, items, timeline ---- */
+  .rail { right:14px; width:216px; padding:6px 8px; }
+  .rail h4 { margin:0 0 4px; font:10px/1.4 Impact,sans-serif; letter-spacing:.2em; color:var(--gold-dim);
+    text-transform:uppercase; }
+  .tr { display:grid; grid-template-columns:64px 1fr 34px; align-items:center; gap:5px; font-size:10px;
+    margin-bottom:3px; color:var(--dim); }
+  .tr b { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .tr i { text-align:right; }
+  .trb { height:8px; background:#0a0705; border:1px solid #000; }
+  .trb span { display:block; height:100%; background:linear-gradient(180deg,#c8913c,#7d5310); }
+  .trb.ult span { background:linear-gradient(180deg,#b07bff,#5a2ea8); }
+  .tr.pull { color:var(--lava-hot); } .tr.pull .trb span { background:linear-gradient(180deg,#ff8a1e,#a83208); }
+  .tr.live .trb span { background:linear-gradient(180deg,#ffe89a,var(--lava)); }
+  #threat { top:44px; } #ults { top:44px; }
+  #comboTag { margin-top:4px; text-align:center; font:12px/1.3 Impact,sans-serif; letter-spacing:.14em;
+    color:var(--lava); text-transform:uppercase; }
+  #items { top:160px; }
+  .it { display:flex; justify-content:space-between; font-size:10px; color:var(--dim); margin-bottom:2px; }
+  .it.up { color:var(--lava-hot); }
+  #upcoming { bottom:56px; }
+  .up { display:flex; justify-content:space-between; font-size:11px; color:var(--dim); margin-bottom:2px;
+    border-left:2px solid #3a2f22; padding-left:5px; }
+  .up.soon { color:var(--lava-hot); border-left-color:var(--lava); }
+
+  /* ---- log feed ---- */
+  #feed { left:14px; bottom:172px; width:330px; }
+  .fl { font-size:10px; color:#6f6455; line-height:1.5; text-shadow:1px 1px 0 #000; }
+  .fl.mechanic, .fl.telegraph { color:#c8913c; }
+  .fl.enrage, .fl.interrupt { color:var(--lava-hot); }
+  .fl.death { color:#ff5a48; }
+  .fl.phase { color:var(--gold); }
+
+  #heatWrap span { background:linear-gradient(180deg,#ff9a4a,#8a2a06); }
+  #heatWrap.locked span { background:linear-gradient(180deg,#ff3b1a,#6a0d02); }
+  #heatWrap.locked .lbl { color:#ff5a2a; }
+  #moWrap span { background:linear-gradient(180deg,#9fe8ff,#1f7fa8); }
+  #practiceTag { left:50%; top:14px; transform:translate(-50%,0) translateY(-100%); }
+  #practiceTag { left:14px; top:auto; bottom:150px; transform:none; font:10px/1 Impact,sans-serif;
+    letter-spacing:.18em; color:#9fe8ff; text-transform:uppercase; }
+
+  /* ---- practice panel ---- */
+  #practice .card { width:min(760px,94vw); text-align:left; }
+  .prow { display:grid; grid-template-columns:150px 1fr; gap:10px; align-items:center; margin:8px 0; }
+  .prow > .lbl2 { font:12px/1.3 Impact,sans-serif; letter-spacing:.14em; color:var(--gold-dim);
+    text-transform:uppercase; }
+  .chips { display:flex; flex-wrap:wrap; gap:5px; }
+  .chip { padding:5px 10px; font:inherit; font-size:11px; cursor:pointer; color:var(--dim);
+    background:#100c09; border:1px solid #000; box-shadow:inset 1px 1px 0 rgba(120,100,72,.22); }
+  .chip:hover { background:#1a140e; }
+  .chip.on { border-color:var(--gold-dim); background:#241b13; color:var(--lava-hot); }
+  .chip kbd { color:var(--gold-dim); margin-left:5px; }
+  #kitList { display:grid; grid-template-columns:repeat(2,1fr); gap:8px; margin-top:6px; }
+  .kitab { padding:8px 10px; background:#100c09; border:1px solid #000; }
+  .kitab b { display:block; font:14px/1.3 Impact,sans-serif; color:var(--gold); letter-spacing:.05em;
+    text-transform:uppercase; }
+  .kitab em { display:block; font-size:10px; color:var(--lava); letter-spacing:.1em; text-transform:uppercase;
+    margin-bottom:3px; }
+  .kitab span { font-size:11px; color:var(--dim); }
+  .extras { margin-top:8px; font-size:11px; color:var(--dim); line-height:1.6; }
+  .extras b { color:var(--lava-hot); }
+
   #target { right:14px; top:14px; font:13px/1 Impact,sans-serif; letter-spacing:.1em;
     color:var(--gold-dim); text-transform:uppercase; }
   #mode { right:14px; bottom:14px; font:12px/1 Impact,sans-serif; letter-spacing:.16em;
@@ -91,7 +170,7 @@
   #crosshair::before { left:10px; top:0; width:2px; height:22px; }
   #crosshair::after { top:10px; left:0; height:2px; width:22px; }
 
-  #lobbyTag { left:50%; top:76px; transform:translateX(-50%); width:min(560px,60vw); text-align:center; }
+  #lobbyTag { left:50%; top:132px; transform:translateX(-50%); width:min(560px,60vw); text-align:center; }
   #lobbyTag b { font:15px/1 Impact,sans-serif; letter-spacing:.22em; color:var(--gold);
     text-transform:uppercase; text-shadow:2px 2px 0 #000; }
   #lobbyStats { font:26px/1.2 Impact,sans-serif; color:var(--lava-hot); text-shadow:2px 2px 0 #000; margin-top:2px; }
@@ -143,6 +222,8 @@
 <body>
 <canvas id="view"></canvas>
 
+<div id="floaters"></div>
+
 <div class="hud">
   <div id="frames"></div>
   <div id="bossbar" class="plate">
@@ -150,6 +231,7 @@
     <div class="bb"><span id="bossFill"></span><b id="bossPct"></b></div>
     <div id="bossCast" hidden><span id="bossCastFill"></span><b id="bossCastName"></b></div>
     <div id="enrage"></div>
+    <div id="poiseWrap" hidden><b id="poiseText">Guard</b><div class="pb"><span id="poiseFill"></span></div></div>
   </div>
   <div id="stats" class="plate">
     <div class="lbl">Health</div>
@@ -157,11 +239,22 @@
     <div class="lbl" id="ammoLbl">Ammo</div>
     <div class="meter"><span id="ammoFill"></span></div>
     <div id="stamWrap" hidden><div class="lbl">Stamina</div><div class="meter"><span id="stamFill"></span></div></div>
+    <div id="heatWrap" hidden><div class="lbl">Heat <b id="heatText"></b></div>
+      <div class="meter"><span id="heatFill"></span></div></div>
+    <div id="moWrap" hidden><div class="lbl">Momentum <b id="moText"></b></div>
+      <div class="meter"><span id="moFill"></span></div></div>
     <div id="ultWrap" hidden><div class="lbl">Ultimate <b id="ultText"></b></div>
       <div class="meter"><span id="ultFill"></span></div></div>
   </div>
   <div id="abilities"></div>
   <div id="target"></div>
+  <div id="threat" class="plate rail" hidden><h4>Threat</h4><div id="threatRows"></div></div>
+  <div id="ults" class="plate rail" hidden><h4>Team charge</h4><div id="ultRows"></div>
+    <div id="comboTag" hidden></div></div>
+  <div id="items" class="plate rail" hidden></div>
+  <div id="upcoming" class="plate rail" hidden></div>
+  <div id="feed"></div>
+  <div id="practiceTag" hidden></div>
   <div id="mode"></div>
   <div id="crosshair"></div>
   <div id="hint" hidden>Click to look — Esc releases the mouse</div>
@@ -169,7 +262,8 @@
     <b>Training</b>
     <div id="lobbyStats">Hit the dummy. Learn the loop.</div>
     <div id="signature"></div>
-    <div class="go-hint"><kbd>E</kbd> or <kbd>Start</kbd> — begin the encounter</div>
+    <div class="go-hint"><kbd>E</kbd> or <kbd>Start</kbd> begin the encounter &nbsp;·&nbsp;
+      <kbd>P</kbd> practice range &nbsp;·&nbsp; <kbd>H</kbd> your kit</div>
   </div>
   <div id="padTag" hidden>controller</div>
 </div>
@@ -192,6 +286,8 @@
       <kbd>WASD</kbd> move &nbsp;<kbd>mouse</kbd> look &nbsp;<kbd>LMB</kbd> primary &nbsp;<kbd>1-4</kbd> abilities<br>
       <kbd>Shift</kbd> dodge &nbsp;<kbd>RMB</kbd>/<kbd>Q</kbd> block &nbsp;<kbd>Tab</kbd> target &nbsp;<kbd>E</kbd> leave the lobby
       &nbsp;<kbd>Space</kbd> pause &nbsp;<kbd>R</kbd> restart<br>
+      <kbd>P</kbd> practice range &nbsp;<kbd>H</kbd> your kit &nbsp;<kbd>V</kbd> invulnerable
+      &nbsp;<kbd>B</kbd> infinite resources &nbsp;<kbd>N</kbd> no cooldowns &nbsp;<kbd>T</kbd> slow motion<br>
       <span style="color:var(--gold-dim)">Controller:</span> sticks move and look &nbsp;<kbd>A B X Y</kbd> abilities
       &nbsp;<kbd>RT</kbd> primary &nbsp;<kbd>LT</kbd> block &nbsp;<kbd>RB</kbd> dodge &nbsp;<kbd>LB</kbd> target
       &nbsp;<kbd>Start</kbd> pause
@@ -199,11 +295,48 @@
   </div>
 </div>
 
+<div class="screen" id="practice" hidden>
+  <div class="card plate">
+    <h1 style="font-size:28px">Practice Range</h1>
+    <p>Set the room up however you learn fastest. Nothing here follows you into the encounter.</p>
+
+    <h2>Game</h2>
+    <div class="chips" id="pGames"></div>
+    <h2>Role</h2>
+    <div class="chips" id="pRoles"></div>
+    <h2>Dummy</h2>
+    <div class="chips" id="pDrills"></div>
+    <h2>Switches</h2>
+    <div class="chips" id="pToggles"></div>
+    <h2>Speed</h2>
+    <div class="chips" id="pSpeeds"></div>
+
+    <div style="display:flex; gap:8px; margin-top:16px">
+      <button class="go" id="pResume">Back to the room</button>
+      <button class="go" id="pPull" style="background:linear-gradient(180deg,#7d2606,#3d1203)">Pull the boss</button>
+    </div>
+  </div>
+</div>
+
+<div class="screen" id="kit" hidden>
+  <div class="card plate">
+    <h1 style="font-size:28px" id="kitTitle">Your four buttons</h1>
+    <p id="kitLoop"></p>
+    <div id="kitList"></div>
+    <div class="extras" id="kitExtras"></div>
+    <button class="go" id="kitClose">Got it</button>
+  </div>
+</div>
+
 <div class="screen" id="over" hidden>
   <div class="card plate">
     <h1 id="overTitle"></h1>
     <p id="overBody"></p>
-    <button class="go" id="again">Again</button>
+    <div id="overStats" class="extras" style="margin:14px auto; max-width:520px"></div>
+    <div style="display:flex; gap:8px; justify-content:center">
+      <button class="go" id="again">Back to the range</button>
+      <button class="go" id="retry" style="background:linear-gradient(180deg,#7d2606,#3d1203)">Pull again</button>
+    </div>
   </div>
 </div>
 

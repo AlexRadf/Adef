@@ -1,7 +1,7 @@
 // Plain node test runner, no dependencies: node --test tests/*.mjs
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { loadContent, applyStyle, resolveStyle } from '../content/load.js';
+import { loadContent, applyGame, applyStyle, resolveStyle } from '../content/load.js';
 import { createState } from '../engine/state.js';
 import { step, snapshot } from '../engine/tick.js';
 import {
@@ -27,6 +27,7 @@ import {
   ACTION_SPECS,
 } from '../engine/ai.js';
 import { toTicks, TICKS_PER_SECOND } from '../engine/clock.js';
+import { addPoise, markUltimate, momentumMult } from '../engine/rules.js';
 import { generateEncounter, withEncounter } from '../engine/generate.js';
 import { tuneEncounter } from '../engine/tune.js';
 import { buildDrillBoss, buildLobbyBoss, gauntletStage, applyCarry } from '../engine/scenario.js';
@@ -601,4 +602,252 @@ test('every game names a signature mechanic', () => {
 test('the tick rate lives in exactly one place', () => {
   assert.equal(TICKS_PER_SECOND, 10);
   assert.equal(toTicks(2.5), 25);
+});
+
+/* ------------------------------------------------------- mode rules */
+
+test('a game assembles into style plus signature plus rules', async () => {
+  for (const def of Object.values(base.games)) {
+    const c = applyGame(base, def);
+    assert.ok(c.style, `${def.id} has no style`);
+    assert.deepEqual(c.rules, def.rules || {}, `${def.id} lost its rules`);
+    const state = createState(c, { seed: 3, headless: true });
+    assert.deepEqual(state.rules, def.rules || {});
+    while (!state.over) step(state, c, []);
+    assert.ok(state.tick > 100, `${def.id} ended instantly`);
+  }
+});
+
+test('every game names a signature and at least two more differences', () => {
+  for (const def of Object.values(base.games)) {
+    assert.ok(def.signature, `${def.id} has no signature`);
+    assert.ok((def.extras || []).length >= 2, `${def.id} has fewer than two extras`);
+  }
+});
+
+test('momentum builds while you move and is gone the moment you stop', () => {
+  const c = applyGame(base, base.games.quake);
+  const state = createState(c, { seed: 9, playerRole: 'dps' });
+  const me = unitById(state, state.activeId);
+  // Weave, so the wall never stops us and momentum is what is measured.
+  for (let i = 0; i < 40; i++) step(state, c, [{ type: 'moveDir', x: i % 8 < 4 ? 1 : -1, y: 0 }]);
+  const wound = me.momentum;
+  assert.equal(wound, c.rules.momentum.rampTicks, 'momentum never reached the cap');
+  const fast = momentumMult(state, me);
+  assert.ok(fast > 1.1, `momentum gave no speed: ${fast}`);
+  step(state, c, [{ type: 'moveDir', x: 0, y: 0 }]);
+  step(state, c, [{ type: 'moveDir', x: 0, y: 0 }]);
+  assert.equal(me.momentum, 0, 'momentum survived standing still');
+  assert.equal(momentumMult(state, me), 1);
+});
+
+test('a mode without momentum never gets any', () => {
+  const c = applyGame(base, base.games.wow);
+  const state = createState(c, { seed: 9, playerRole: 'dps' });
+  const me = unitById(state, state.activeId);
+  for (let i = 0; i < 40; i++) step(state, c, [{ type: 'moveDir', x: i % 8 < 4 ? 1 : -1, y: 0 }]);
+  assert.equal(momentumMult(state, me), 1);
+});
+
+test('poise breaks the boss guard, and a parry is worth a lot of it', () => {
+  const c = applyGame(base, base.games.souls);
+  const state = createState(c, { seed: 4, playerRole: 'tank' });
+  state.content = c;
+  const boss = unitById(state, state.bossId);
+  const me = unitById(state, state.activeId);
+  const rule = c.rules.poise;
+
+  addPoise(state, boss, rule.max - 1);
+  assert.ok(!boss.auras.some((a) => a.id === 'staggered'), 'staggered early');
+  addPoise(state, boss, 1);
+  assert.ok(boss.auras.some((a) => a.id === 'staggered'), 'the guard never broke');
+  assert.equal(boss.poise, 0, 'poise did not reset on the break');
+
+  // A parry pays out several ordinary hits' worth.
+  assert.ok(rule.fromParry > rule.fromHit * 5, 'a parry is not worth parrying for');
+  assert.ok(rule.flankMult > 1, 'hitting it from behind is worth nothing');
+  assert.ok(me.maxStamina > 0);
+});
+
+test('poise only exists in the mode that asks for it', () => {
+  const c = applyGame(base, base.games.quake);
+  const state = createState(c, { seed: 4 });
+  const boss = unitById(state, state.bossId);
+  addPoise(state, boss, 9999);
+  assert.equal(boss.poise || 0, 0);
+  assert.ok(!boss.auras.some((a) => a.id === 'staggered'));
+});
+
+test('swinging costs stamina where the mode says it does', () => {
+  const souls = applyGame(base, base.games.souls);
+  const state = createState(souls, { seed: 6, playerRole: 'dps' });
+  const me = unitById(state, state.activeId);
+  const before = me.stamina;
+  startAbility(state, souls, me, me.abilities[0], unitById(state, state.bossId));
+  assert.ok(me.stamina < before, 'a swing was free');
+
+  const quake = applyGame(base, base.games.quake);
+  const other = createState(quake, { seed: 6, playerRole: 'dps' });
+  const them = unitById(other, other.activeId);
+  const start = them.stamina;
+  startAbility(other, quake, them, them.abilities[0], unitById(other, other.bossId));
+  assert.equal(them.stamina, start, 'a mode without the rule charged for a swing');
+});
+
+test('a held primary overheats, locks the kit, and vents', () => {
+  const c = applyGame(base, base.games.overwatch);
+  const state = createState(c, { seed: 2, playerRole: 'dps' });
+  const me = unitById(state, state.activeId);
+  const boss = unitById(state, state.bossId);
+  const primary = me.abilities[0];
+  const rule = c.rules.overheat;
+
+  for (let i = 0; i < Math.ceil(rule.max / rule.per); i++) {
+    me.cooldowns = {};
+    me.gcdUntil = 0;
+    startAbility(state, c, me, primary, boss);
+  }
+  assert.ok(me.heatLockUntil > state.tick, 'the weapon never redlined');
+  me.cooldowns = {};
+  me.gcdUntil = 0;
+  assert.ok(!canUseAbility(state, c, me, primary, boss), 'redlined and still firing');
+  // The ultimate is the one thing venting leaves you.
+  const ultId = me.abilities[3];
+  me.ultimate = 100;
+  assert.ok(canUseAbility(state, c, me, ultId, boss), 'venting locked the ultimate too');
+
+  while (state.tick <= me.heatLockUntil) step(state, c, []);
+  me.cooldowns = {};
+  me.gcdUntil = 0;
+  assert.equal(me.heat, 0, 'venting did not empty the heat');
+  assert.ok(canUseAbility(state, c, me, primary, boss), 'never came back from venting');
+});
+
+test('two ultimates in the same window overload the party', () => {
+  const c = applyGame(base, base.games.overwatch);
+  const state = createState(c, { seed: 8 });
+  state.content = c;
+  const party = state.units.filter((u) => u.team === 'party');
+  const aura = c.rules.ultCombo.aura;
+
+  markUltimate(state, party[0]);
+  step(state, c, []);
+  assert.ok(!party[1].auras.some((a) => a.id === aura), 'one ultimate overloaded the party');
+  markUltimate(state, party[1]);
+  step(state, c, []);
+  for (const u of party) {
+    assert.ok(u.auras.some((a) => a.id === aura), `${u.name} missed the combo`);
+  }
+});
+
+/* -------------------------------------------------- practice range */
+
+test('training armour stops the party dying without touching the boss', () => {
+  const c = applyGame(base, base.games.wow);
+  const state = createState(c, { seed: 11, practice: { invulnerable: true } });
+  state.content = c;
+  const me = state.units.find((u) => u.team === 'party');
+  const boss = unitById(state, state.bossId);
+  assert.equal(applyDamage(state, boss.id, me, 5e6, 'lava', { name: 'test' }), 0);
+  assert.equal(me.hp, me.maxHp);
+  assert.ok(applyDamage(state, me.id, boss, 1000, 'physical', { name: 'test' }) > 0);
+});
+
+test('infinite resources and no cooldowns hold themselves open every tick', () => {
+  const c = applyGame(base, base.games.souls);
+  const state = createState(c, { seed: 12, practice: { infiniteResource: true, noCooldowns: true } });
+  const me = unitById(state, state.activeId); // the player: no bot to spend it again
+  me.resource = 0;
+  me.stamina = 0;
+  me.cooldowns = { rocket: 9999 };
+  me.gcdUntil = 9999;
+  step(state, c, []);
+  assert.equal(me.resource, me.maxResource);
+  assert.equal(me.stamina, me.maxStamina);
+  assert.deepEqual(me.cooldowns, {});
+  assert.equal(me.gcdUntil, 0);
+});
+
+test('the practice switches are off unless the range turns them on', () => {
+  const c = applyGame(base, base.games.wow);
+  const state = createState(c, { seed: 13 });
+  state.content = c;
+  const me = state.units.find((u) => u.team === 'party');
+  assert.deepEqual(state.practice, {});
+  assert.ok(applyDamage(state, state.bossId, me, 1000, 'lava', { name: 'test' }) > 0);
+});
+
+test('every drill the practice range offers builds and runs', () => {
+  const c = applyGame(base, base.games.souls);
+  for (const id of Object.keys(base.drills)) {
+    const boss = buildDrillBoss(c, id);
+    const withDrill = { ...c, bosses: { ...c.bosses, [boss.id]: boss } };
+    const state = createState(withDrill, { seed: 5, boss: boss.id, hardStopSeconds: 40, headless: true });
+    while (!state.over) step(state, withDrill, []);
+    assert.ok(state.tick > 50, `drill ${id} ended immediately`);
+  }
+});
+
+/* ------------------------------------------------------ hud feeds */
+
+test('the snapshot carries what the hud needs to teach a fight', () => {
+  const c = applyGame(base, base.games.wow);
+  const state = createState(c, { seed: 14 });
+  for (let i = 0; i < 60; i++) step(state, c, []);
+  const view = snapshot(state, c);
+  assert.ok(Array.isArray(view.upcoming));
+  assert.ok(view.upcoming.length, 'nothing is ever coming');
+  for (const u of view.upcoming) {
+    assert.equal(typeof u.name, 'string');
+    assert.ok(u.in >= 0);
+  }
+  assert.ok(Array.isArray(view.feed) && view.feed.length, 'the log feed is empty');
+  assert.equal(view.rules.threatMeter, true);
+  assert.ok(view.boss.threat, 'no threat table to draw a meter from');
+});
+
+test('damage and healing surface as events a renderer can float', () => {
+  const c = applyGame(base, base.games.wow);
+  const state = createState(c, { seed: 15 });
+  state.content = c;
+  state.events = [];
+  const me = state.units.find((u) => u.team === 'party');
+  const boss = unitById(state, state.bossId);
+  applyDamage(state, me.id, boss, 5000, 'physical', { name: 'test' });
+  me.hp = me.maxHp - 5000;
+  applyHeal(state, me.id, me, 3000, { name: 'test' });
+  const hit = state.events.find((e) => e.kind === 'hit');
+  const heal = state.events.find((e) => e.kind === 'healed');
+  assert.equal(hit.unitId, boss.id);
+  assert.equal(hit.amount, 5000);
+  assert.equal(heal.unitId, me.id);
+  assert.equal(heal.amount, 3000);
+});
+
+test('every element the 3D build reaches for exists in its page', async () => {
+  const { readFileSync, readdirSync } = await import('node:fs');
+  const page = readFileSync(new URL('../3d/index.html', import.meta.url), 'utf8');
+  const ids = new Set([...page.matchAll(/id="([^"]+)"/g)].map((m) => m[1]));
+  for (const file of readdirSync(new URL('../3d/', import.meta.url))) {
+    if (!file.endsWith('.js')) continue;
+    const src = readFileSync(new URL(`../3d/${file}`, import.meta.url), 'utf8');
+    for (const m of src.matchAll(/getElementById\('([^']+)'\)/g)) {
+      assert.ok(ids.has(m[1]), `3d/${file} reaches for #${m[1]}, which the page does not have`);
+    }
+  }
+});
+
+test('the camera boom shortens at a wall rather than climbing over your head', async () => {
+  const { fitInside, LIMIT } = await import('../3d/camera.js');
+  // Middle of the room: the boom gets everything it asked for.
+  assert.equal(fitInside({ x: 0, z: 0 }, { x: 0, z: 1 }, 4), 4);
+  // Backed into a corner: it gets only what is left before the wall.
+  const corner = { x: LIMIT - 1, z: -(LIMIT - 1) };
+  const away = { x: Math.SQRT1_2, z: -Math.SQRT1_2 };
+  const fitted = fitInside(corner, away, 8);
+  assert.ok(fitted > 0 && fitted < 2, `boom should be short in a corner, got ${fitted}`);
+  const landed = { x: corner.x + away.x * fitted, z: corner.z + away.z * fitted };
+  assert.ok(Math.abs(landed.x) <= LIMIT + 1e-9 && Math.abs(landed.z) <= LIMIT + 1e-9, 'boom left the room');
+  // Never negative, however far outside the caller already is.
+  assert.equal(fitInside({ x: LIMIT + 5, z: 0 }, { x: 1, z: 0 }, 4), 0);
 });
