@@ -1,22 +1,54 @@
 # Slipgate Raid — Chthon, Lord of the Lava Pit
 
-A WoW-style raid encounter simulator wearing Quake's skin. One wipe-able boss, one
-character you control, three bots filling the other roles. Plain HTML and ES modules —
-no framework, no bundler, no server, no dependencies.
-
-A raid fight is a rotation under pressure + telegraphed mechanics + role interdependence
-+ an enrage timer. None of that needs 3D, continuous movement, or networking, so none of
-those are here.
+A raid encounter wearing Quake's skin: one wipe-able boss, one character you control, three
+bots filling the rest of the trinity. Plain HTML and ES modules — no framework, no bundler,
+no build step, and (three.js aside, which is committed to `vendor/`) no dependencies.
 
 ```
 python3 -m http.server 8080     # or: npm run serve
-open http://localhost:8080
+open http://localhost:8080/3d/  # the 3D build
+open http://localhost:8080/     # the 2D build and balance lab
 ```
 
-(A static server is needed only because browsers refuse ES modules and `fetch` over
-`file://`. There is nothing to build.)
+## The 3D build — four games, one fight
 
-## Three ways to play it
+The same encounter, the same sim, played four ways. Each is a camera plus a control style,
+and **all four keep the holy trinity**: a tank holding the boss, a healer keeping four
+people alive, and damage racing an enrage timer.
+
+| | After | What changes |
+|---|---|---|
+| **Azeroth** | World of Warcraft | Orbit camera over your shoulder, tab-target, global cooldown, cast bars you have to stand still for, a threat table the tank manages |
+| **Slipgate** | Quake | First person. No target lock, no cast bars, no GCD — only fire rates and ammo. Every job becomes a shooting job, healer included |
+| **Overload** | Overwatch | Third person, primary fire **held** rather than tapped, the rest of the kit heavy cooldowns you spend at the right moment |
+| **The Pit** | Dark Souls | Camera locked on the boss while you circle it. Rolling costs stamina and grants i-frames; blocking costs stamina and breaks if you run dry |
+
+One sim cell is three metres, so the 5×5 grid the encounter was tuned on becomes a 15-metre
+room you can actually run across — and none of the balance work had to be redone.
+
+**On combat feeling spammy:** primary fire is now *held*, not tapped, in the modes where
+that fits. That fixes the mashing; it does not reduce the number of *decisions*, which is
+an ability-design change rather than a control one, and is the obvious next thing to do.
+
+### What is real and what is not
+
+Real: the arena, the four cameras, mouse-look and camera-relative movement, telegraphs and
+healing fields drawn on the floor, nameplates, the full HUD, dodge rolls with i-frames,
+held block with stamina, lock-on facing, and the entire encounter running underneath it at
+the tuned difficulty.
+
+Not yet: controller support, split screen, animations, sound, projectiles you can see, and
+any art beyond primitives. The end goal is two people on one couch with pads — the engine
+already runs on a list of controlled units, so that is a transport and input problem rather
+than an architectural one.
+
+## The 2D build
+
+The original grid version is still here, and still the place where balance gets decided —
+it runs the same engine, and the headless runner (below) is what tuned everything the 3D
+build inherits.
+
+### Three ways to play it
 
 All three are solo — you drive one character and three bots fill the rest. They differ in
 what a session *is*.
@@ -35,7 +67,7 @@ Two further modes — **Commander** (drive all four with tactical pause) and **G
 `"hidden": true` in `content/modes.json`, because neither is what this game is about.
 Delete that line to get them back.
 
-## Modifiers
+### Modifiers
 
 Stackable encounter tweaks, toggled on the pull screen (and rolled for you in Gauntlet). Each is a few numbers in
 `content/modifiers.json`, and each was calibrated against the headless runner rather than
@@ -54,7 +86,7 @@ Modifiers apply to generated encounters too. \* Fog of War costs the bots nothin
 squarely at you, which is the honest way to describe it. Modifiers stack: Volcanic + Swarm
 is 8.7%.
 
-## Procedural encounters (command line)
+### Procedural encounters (command line)
 
 There is also a generator: `engine/generate.js` rolls a whole boss from a seed —
 theme, name, four or five mechanics, two or three phases — allocating their numbers out of
@@ -69,7 +101,7 @@ It is deliberately **not** in the game's UI: the handcrafted fight is the one wo
 playing, and a menu full of procedural options was getting in the way of that. The code is
 kept because the tuner is genuinely useful for balancing anything you add by hand.
 
-## Four axes of play style
+### Four axes of play style
 
 How you move, how you attack, how you heal and how you tank are four **independent**
 choices, not one setting. Any combination is legal — dodge rolls with party frames,
@@ -118,7 +150,9 @@ node sim.js --style souls --runs 150
 /content  abilities.json  auras.json  units.json  parties.json  schemes.json  modes.json
           modifiers.json  bosses/*.json  ai/*.json  load.js
 /engine   generate.js  tune.js          procedural encounters and their auto-tuning
-/ui       render.js  input.js  log.js  gambit.js  encounter.js  simworker.js
+/ui       render.js  input.js  log.js  gambit.js  styles.js  simworker.js
+/3d       game.js  scene.js  camera.js  controls.js  hud.js
+/vendor   three.module.js                three.js r160, committed rather than installed
 /tests    engine.test.mjs
 sim.js    headless balance runner (node)
 main.js   browser entry: owns the 100ms clock, nothing else
@@ -153,9 +187,11 @@ modifiers — no new code in twelve places.
 absorb shields, delayed bombs and the enrage are one struct with `modifiers`, `periodic`,
 `onExpire`, `onDispel` and `dispelType`.
 
-## Porting this to a 3D engine
+## Porting this to a 3D engine — how it actually went
 
-The layout is deliberately arranged so the expensive half survives a port.
+The layout was arranged so the expensive half would survive a port, and then it was ported,
+so this section is a record rather than a prediction. It took one session, the sim was not
+touched, and the only real work was a renderer and four camera rigs.
 
 **Ports unchanged.** `auras.js` contains zero geometry — the whole buff/debuff/DoT/shield/
 stacking-debuff system is arithmetic. So do the damage and healing choke points, the threat
@@ -171,6 +207,12 @@ a 30Hz or 60Hz sim does not invalidate a single JSON file.
 coordinates, the win rate went from 48% to 88% overnight: continuous movement makes dodging
 far cheaper. The tuning *method* survived — `sim.js` found the new numbers in an
 afternoon — but the numbers themselves did not. Budget for that in any port.
+
+Going to actual 3D afterwards cost nothing further, because the coordinate work had already
+happened: one sim cell was declared to be three metres and the encounter came along
+unchanged. The bugs were all in the new code, and all of the same kind — sign errors in the
+camera basis. The camera sat *in front* of the player instead of behind, W ran backwards,
+and the Souls rig looked away from the thing it was locked onto.
 
 **What actually gets rewritten:** the renderer (always was disposable), the movement
 resolution, and the AI's movement verbs — `nearestSafeSpot` samples tile centres here and

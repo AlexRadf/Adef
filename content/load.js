@@ -16,6 +16,7 @@ const FILES = {
   modes: 'modes.json',
   modifiers: 'modifiers.json',
   drills: 'drills.json',
+  games: 'games.json',
 };
 
 const BOSSES = ['chthon'];

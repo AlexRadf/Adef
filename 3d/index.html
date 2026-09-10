@@ -1,0 +1,181 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Ctext y='14' font-size='14'%3E%F0%9F%94%A5%3C/text%3E%3C/svg%3E" />
+<title>SLIPGATE RAID — 3D</title>
+<style>
+  :root {
+    --plate:#2a2119; --plate-lo:#140f0b; --bevel-hi:#6b5943; --edge:#4a3b2b;
+    --lava:#ff8a1e; --lava-hot:#ffd27a; --gold:#e8c46a; --gold-dim:#a8863a;
+    --blood:#a01010; --text:#c9bda9; --dim:#7d7060; --hp:#7ea23c; --ammo:#4a7fa8;
+  }
+  * { box-sizing:border-box; }
+  [hidden] { display:none !important; }
+  html,body { height:100%; margin:0; background:#000; overflow:hidden;
+    font:13px/1.4 "Trebuchet MS","Segoe UI",system-ui,sans-serif; color:var(--text); }
+  canvas { position:fixed; inset:0; width:100%; height:100%; display:block; }
+  b,em,i { font-style:normal; font-weight:normal; }
+  .ttl { font-family:Impact,"Haettenschweiler","Arial Narrow",sans-serif; letter-spacing:.08em; text-transform:uppercase; }
+
+  /* ---------------- heads-up display ---------------- */
+  .hud { position:fixed; inset:0; pointer-events:none; z-index:5; }
+  .hud > * { position:absolute; }
+  .plate { background:linear-gradient(180deg,#2a2119cc,#140f0bdd); border:1px solid #000;
+    box-shadow:inset 1px 1px 0 var(--bevel-hi), inset -1px -1px 0 #0a0806; }
+
+  #frames { top:14px; left:14px; width:210px; display:flex; flex-direction:column; gap:5px; }
+  .f { padding:4px 6px; } .f.dead { opacity:.35; filter:grayscale(1); }
+  .f.me { border-color:var(--gold-dim); box-shadow:inset 0 0 0 1px rgba(232,196,106,.3); }
+  .fn { display:flex; justify-content:space-between; font-size:11px; margin-bottom:2px; }
+  .fn i { color:var(--dim); }
+  .fb { height:12px; background:#0a0705; border:1px solid #000; overflow:hidden; }
+  .fb span { display:block; height:100%; background:linear-gradient(180deg,#93b84a,var(--hp)); }
+  .fp { display:flex; gap:2px; margin-top:2px; min-height:12px; flex-wrap:wrap; }
+  .fp i { font-size:8px; padding:0 3px; border:1px solid #5f1c14; background:#25100c; color:#e88b78;
+    text-transform:uppercase; letter-spacing:.04em; }
+  .fp i.magic { border-color:#2f5f86; background:#0d1620; color:#9ec8ff; }
+  .fp i.help { border-color:#3b5320; background:#141c0e; color:#a9c47a; }
+
+  #bossbar { top:14px; left:50%; transform:translateX(-50%); width:min(560px,52vw); padding:6px 9px; }
+  #bossName { font:19px/1 Impact,sans-serif; letter-spacing:.06em; color:var(--gold);
+    text-shadow:2px 2px 0 #000; text-transform:uppercase; }
+  .bb { height:16px; background:#0a0705; border:1px solid #000; margin-top:4px; position:relative; }
+  .bb > span { display:block; height:100%; background:linear-gradient(180deg,#e03020,var(--blood) 50%,#5a0a06); }
+  .bb > b { position:absolute; right:6px; top:0; font-size:11px; text-shadow:1px 1px 0 #000; }
+  #bossCast { height:13px; margin-top:3px; background:#0a0705; border:1px solid #000; position:relative; }
+  #bossCast > span { display:block; height:100%; background:linear-gradient(180deg,var(--lava-hot),var(--gold-dim)); }
+  #bossCast.int > span { background:linear-gradient(180deg,#9fe8ff,#1f7fa8); }
+  #bossCast > b { position:absolute; inset:0; text-align:center; font-size:10px; line-height:13px;
+    letter-spacing:.1em; text-transform:uppercase; text-shadow:1px 1px 0 #000; }
+  #enrage { text-align:center; margin-top:3px; font:15px/1.2 Impact,sans-serif; color:var(--gold);
+    letter-spacing:.08em; }
+  #enrage.hot { color:#ff5a2a; }
+
+  #stats { left:14px; bottom:14px; padding:6px 10px; min-width:150px; }
+  #stats .lbl { font:10px/1.4 Impact,sans-serif; letter-spacing:.2em; color:var(--gold-dim); text-transform:uppercase; }
+  #hp { font:30px/1 Impact,sans-serif; color:var(--gold); text-shadow:2px 2px 0 #000; }
+  #hp.hurt { color:#ff5a2a; }
+  .meter { height:9px; background:#0a0705; border:1px solid #000; margin:2px 0 3px; }
+  .meter span { display:block; height:100%; background:linear-gradient(180deg,#6fa8cf,var(--ammo)); }
+  #stamWrap span { background:linear-gradient(180deg,#d8c169,#8a6a2a); }
+  #stamWrap.blocking span { background:linear-gradient(180deg,#9fe8ff,#1f7fa8); }
+
+  #abilities { bottom:14px; left:50%; transform:translateX(-50%); display:flex; gap:6px; }
+  .ab { width:70px; height:70px; position:relative; display:flex; flex-direction:column;
+    align-items:center; justify-content:center; gap:1px;
+    background:linear-gradient(180deg,#443729ee,#150f0aee); border:1px solid #000;
+    box-shadow:inset 1px 1px 0 var(--bevel-hi), inset -1px -1px 0 #0a0806; }
+  .ab.off { opacity:.4; } .ab.off .ic { filter:grayscale(1); }
+  .ab b { position:absolute; top:1px; left:4px; font:12px/1 Impact,sans-serif; color:var(--gold-dim); }
+  .ab .ic { font-size:19px; color:var(--lava-hot); text-shadow:1px 1px 0 #000; }
+  .ab em { font-size:8px; color:#cbbfa8; text-align:center; line-height:1.1; padding:0 3px; }
+  .ab .cd { position:absolute; inset:0; display:flex; align-items:center; justify-content:center;
+    font:18px/1 Impact,sans-serif; color:var(--gold); text-shadow:2px 2px 0 #000; }
+
+  #target { right:14px; top:14px; font:13px/1 Impact,sans-serif; letter-spacing:.1em;
+    color:var(--gold-dim); text-transform:uppercase; }
+  #mode { right:14px; bottom:14px; font:12px/1 Impact,sans-serif; letter-spacing:.16em;
+    color:var(--dim); text-transform:uppercase; }
+
+  #crosshair { left:50%; top:50%; width:22px; height:22px; margin:-11px 0 0 -11px; }
+  #crosshair::before, #crosshair::after { content:""; position:absolute; background:var(--lava-hot);
+    box-shadow:0 0 3px #000; }
+  #crosshair::before { left:10px; top:0; width:2px; height:22px; }
+  #crosshair::after { top:10px; left:0; height:2px; width:22px; }
+
+  #hint { left:50%; top:62%; transform:translateX(-50%); font:14px/1.7 Impact,sans-serif;
+    letter-spacing:.14em; color:var(--gold); text-shadow:2px 2px 0 #000; text-align:center; }
+
+  /* ---------------- menus ---------------- */
+  .screen { position:fixed; inset:0; z-index:10; background:rgba(4,3,2,.94); display:flex;
+    align-items:center; justify-content:center; }
+  .card { width:min(880px,94vw); max-height:94vh; overflow-y:auto; padding:24px 26px; text-align:center; }
+  .card h1 { font:40px/1 Impact,sans-serif; letter-spacing:.08em; color:var(--lava); margin:0;
+    text-transform:uppercase; text-shadow:3px 3px 0 #000; }
+  .card h2 { font:15px/1 Impact,sans-serif; letter-spacing:.18em; color:var(--gold); margin:18px 0 8px;
+    text-transform:uppercase; }
+  .card p { color:var(--dim); margin:6px 0 0; }
+  #games { display:grid; grid-template-columns:repeat(4,1fr); gap:8px; }
+  .game { padding:12px 10px; cursor:pointer; text-align:left; color:var(--dim); font:inherit;
+    background:#100c09; border:1px solid #000;
+    box-shadow:inset 1px 1px 0 rgba(120,100,72,.22), inset -1px -1px 0 rgba(0,0,0,.8); }
+  .game:hover { background:#1a140e; }
+  .game.sel { border-color:var(--gold-dim); background:#1e1710; color:var(--text); }
+  .game.sel b::before { content:"▸ "; color:var(--lava); }
+  .game b { display:block; font:17px/1.3 Impact,sans-serif; letter-spacing:.06em; color:var(--gold);
+    text-transform:uppercase; }
+  .game em { display:block; font-size:10px; color:var(--gold-dim); letter-spacing:.1em;
+    text-transform:uppercase; margin-bottom:5px; }
+  .game span { font-size:11px; }
+  #roles { display:grid; grid-template-columns:repeat(3,1fr); gap:8px; }
+  .role { padding:10px; cursor:pointer; background:#100c09; border:1px solid #000; color:var(--dim);
+    font:inherit; box-shadow:inset 1px 1px 0 rgba(120,100,72,.22); }
+  .role.sel { border-color:var(--gold-dim); background:#1e1710; color:var(--text); }
+  .role b { display:block; font:15px/1.3 Impact,sans-serif; color:var(--gold); text-transform:uppercase; letter-spacing:.06em; }
+  .go { margin-top:18px; padding:11px 32px; font:21px/1 Impact,sans-serif; letter-spacing:.12em;
+    background:linear-gradient(180deg,#c8480f,#7d2606); color:#ffe9d5; cursor:pointer; border:1px solid #000;
+    text-shadow:2px 2px 0 rgba(0,0,0,.6); box-shadow:inset 1px 1px 0 rgba(255,180,120,.5); }
+  .go:hover { filter:brightness(1.15); }
+  .keys { margin-top:14px; font-size:11px; color:var(--dim); line-height:1.9; }
+  .keys kbd { background:#241b13; border:1px solid #000; padding:1px 6px; color:var(--text); }
+</style>
+</head>
+<body>
+<canvas id="view"></canvas>
+
+<div class="hud">
+  <div id="frames"></div>
+  <div id="bossbar" class="plate">
+    <div id="bossName"></div>
+    <div class="bb"><span id="bossFill"></span><b id="bossPct"></b></div>
+    <div id="bossCast" hidden><span id="bossCastFill"></span><b id="bossCastName"></b></div>
+    <div id="enrage"></div>
+  </div>
+  <div id="stats" class="plate">
+    <div class="lbl">Health</div>
+    <div id="hp">—</div>
+    <div class="lbl" id="ammoLbl">Ammo</div>
+    <div class="meter"><span id="ammoFill"></span></div>
+    <div id="stamWrap" hidden><div class="lbl">Stamina</div><div class="meter"><span id="stamFill"></span></div></div>
+  </div>
+  <div id="abilities"></div>
+  <div id="target"></div>
+  <div id="mode"></div>
+  <div id="crosshair"></div>
+  <div id="hint" hidden>Click to look — Esc releases the mouse</div>
+</div>
+
+<div class="screen" id="menu">
+  <div class="card plate">
+    <h1>Slipgate Raid</h1>
+    <p>One boss. Four of you. The same fight, played four different ways.</p>
+    <h2>Choose the game</h2>
+    <div id="games"></div>
+    <p id="gameBlurb" style="margin-top:10px; font-size:12px"></p>
+    <h2>Choose your role</h2>
+    <div id="roles">
+      <button class="role" data-role="tank"><b>Vanguard</b>Hold it still. Keep it facing away.</button>
+      <button class="role" data-role="healer"><b>Field Medic</b>Four people alive, one pair of hands.</button>
+      <button class="role sel" data-role="dps"><b>Slayer</b>Burn it down before the timer does.</button>
+    </div>
+    <button class="go" id="play" disabled>Loading…</button>
+    <div class="keys">
+      <kbd>WASD</kbd> move &nbsp;<kbd>mouse</kbd> look &nbsp;<kbd>LMB</kbd> primary &nbsp;<kbd>1-4</kbd> abilities<br>
+      <kbd>Shift</kbd> dodge &nbsp;<kbd>RMB</kbd>/<kbd>Q</kbd> block &nbsp;<kbd>Tab</kbd> target &nbsp;<kbd>Space</kbd> pause &nbsp;<kbd>R</kbd> restart
+    </div>
+  </div>
+</div>
+
+<div class="screen" id="over" hidden>
+  <div class="card plate">
+    <h1 id="overTitle"></h1>
+    <p id="overBody"></p>
+    <button class="go" id="again">Again</button>
+  </div>
+</div>
+
+<script type="module" src="./game.js"></script>
+</body>
+</html>

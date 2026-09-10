@@ -391,6 +391,33 @@ test('every mode the menu offers is playable', () => {
   }
 });
 
+/* -------------------------------------------------------------- 3D */
+
+test('sim coordinates and world metres round-trip', async () => {
+  const { toWorld, toSim, CELL } = await import('../3d/scene.js');
+  for (const p of [{ x: 0.5, y: 0.5 }, { x: 2.5, y: 2.5 }, { x: 4.5, y: 4.5 }, { x: 1.25, y: 3.75 }]) {
+    const back = toSim(toWorld(p));
+    assert.ok(Math.abs(back.x - p.x) < 1e-9 && Math.abs(back.y - p.y) < 1e-9, `${JSON.stringify(p)}`);
+  }
+  // The centre of the arena is the origin, and a cell is a few metres.
+  const middle = toWorld({ x: 2.5, y: 2.5 });
+  assert.equal(middle.x, 0);
+  assert.equal(middle.z, 0);
+  assert.equal(toWorld({ x: 3.5, y: 2.5 }).x, CELL);
+});
+
+test('every 3D game names a camera and a legal style', async () => {
+  const { resolveStyle } = await import('../content/load.js');
+  for (const game of Object.values(base.games)) {
+    assert.ok(['first', 'shoulder', 'orbit', 'lock'].includes(game.camera), `${game.id} camera`);
+    const picked = resolveStyle(base, game.style);
+    assert.ok(picked.movement && picked.combat && picked.healing && picked.tanking);
+    // The trinity is the whole point: no game may drop a role.
+    assert.ok(game.blurb.length > 40, `${game.id} needs to say what it is`);
+  }
+  assert.deepEqual(Object.keys(base.games), ['wow', 'quake', 'overwatch', 'souls']);
+});
+
 test('the tick rate lives in exactly one place', () => {
   assert.equal(TICKS_PER_SECOND, 10);
   assert.equal(toTicks(2.5), 25);

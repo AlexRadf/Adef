@@ -1,0 +1,66 @@
+{
+  "wow": {
+    "id": "wow",
+    "name": "Azeroth",
+    "inspiration": "World of Warcraft",
+    "tagline": "Orbit camera, tab target, cast bars, threat.",
+    "blurb": "The camera hangs behind your shoulder and you turn it with the mouse. You pick a target and it stays picked; abilities share a global cooldown and two of them have cast bars you have to stand still for. The tank holds a threat table, the healer lives in the party frames, and the whole fight is a question of when you can afford to stop moving.",
+    "camera": "orbit",
+    "style": {
+      "movement": "run",
+      "combat": "tab",
+      "healing": "frames",
+      "tanking": "threat"
+    },
+    "holdFire": false,
+    "sensitivity": 1
+  },
+  "quake": {
+    "id": "quake",
+    "name": "Slipgate",
+    "inspiration": "Quake",
+    "tagline": "First person. Fast. Aim is everything.",
+    "blurb": "Eyes in the front of your head, and nothing between you and the arena. No target lock, no cast bars, no global cooldown — only fire rates and ammo. The healer aims heals like a weapon and the tank holds aggro by out-damaging you, so the trinity survives, but every job is now a shooting job.",
+    "camera": "first",
+    "style": {
+      "movement": "free",
+      "combat": "crosshair",
+      "healing": "aim",
+      "tanking": "threat"
+    },
+    "holdFire": true,
+    "sensitivity": 1.15
+  },
+  "overwatch": {
+    "id": "overwatch",
+    "name": "Overload",
+    "inspiration": "Overwatch",
+    "tagline": "Third person, held primary, big cooldowns.",
+    "blurb": "Over the shoulder. Your primary is something you hold rather than something you tap, and the rest of the kit is two or three heavy cooldowns you spend at the right moment. Healing is a beam you keep pointed at someone while the fight moves around both of you.",
+    "camera": "shoulder",
+    "style": {
+      "movement": "free",
+      "combat": "crosshair",
+      "healing": "aim",
+      "tanking": "threat"
+    },
+    "holdFire": true,
+    "sensitivity": 1
+  },
+  "souls": {
+    "id": "souls",
+    "name": "The Pit",
+    "inspiration": "Dark Souls",
+    "tagline": "Lock on, roll, block, watch stamina.",
+    "blurb": "The camera locks onto the thing trying to kill you and you circle it. Rolling costs stamina and gives you half a second of invulnerability; blocking costs stamina and breaks if you run dry. Slow, deliberate, and unforgiving — the tank's job becomes reading the wind-up rather than reading a threat meter.",
+    "camera": "lock",
+    "style": {
+      "movement": "dodge",
+      "combat": "lockon",
+      "healing": "smart",
+      "tanking": "block"
+    },
+    "holdFire": false,
+    "sensitivity": 0.9
+  }
+}

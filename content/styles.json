@@ -9,6 +9,15 @@
       "moveSpeed": 2.5,
       "bots": "47%"
     },
+    "run": {
+      "id": "run",
+      "name": "Run",
+      "tagline": "WASD at a considered pace.",
+      "blurb": "WASD, but at MMO speed rather than arena speed — fast enough to leave a telegraph, slow enough that leaving melee costs you something.",
+      "input": "wasd",
+      "moveSpeed": 2.9,
+      "bots": "47%"
+    },
     "free": {
       "id": "free",
       "name": "Free run",
