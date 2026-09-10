@@ -34,6 +34,25 @@ states and no combo strings.
 | **Kinetic Striker** (melee) | Mono-Blade, 1.6× from behind | **Servo Kick** — the interrupt · Static Snare · Blur Step |
 | **Railgun Specialist** (ranged) | Railgun, charged | Concussion Round — knockback · Seeker Drone · Orbital Lance |
 
+## The HUD
+
+Everything a player needs mid-fight, in a fixed place:
+
+- **Objective panel** (top left) — the current phase, and the specific countable thing in the
+  way: *"2 hostiles remaining · pull one pack at a time"*, *"Stand on it. 64% · adds incoming"*.
+  Vague objectives are the same as no objective.
+- **Party roster** — four rows in a stable order, health, role, who is a bot, and any debuff
+  they are carrying. The world-space frames tell you about whoever you are looking at; this
+  tells the healer about the person behind them.
+- **Ability bar** — your whole kit with pad and keyboard prompts, cooldown eating each slot
+  from the bottom, and cost. A new player can read their role off the bottom of the screen.
+- **Arena reticle** — Nano-Energy left, soft-locked target health right, debuffs flashing above.
+- **Floating combat numbers** — yours big and gold, other people's small and grey, damage taken
+  red, healing green. Without these there is no feedback loop at all.
+- **Boss bar and cast bar** — Core Overcharge gets the loudest thing on screen.
+
+`Escape` releases the mouse, and abilities holster while the cursor is free.
+
 ## Bots fill the empty seats
 
 Every boss ability is answered by a specific seat — the tank turns Plasma Sweep away, the
@@ -195,7 +214,7 @@ test that fails if anyone changes that.
 **Real.** The floor loop end to end, all four kits, the soft-lock scorer, aggro-linked packs
 with line-of-sight pulling and patrols, the full boss cycle with enrage and a wipe you can
 prevent by kicking it, the reticle HUD, bots in every empty seat, and the ENet layer with
-server-authoritative damage. `tools/check.sh` compiles every script and scene and runs 161
+server-authoritative damage. `tools/check.sh` compiles every script and scene and runs 176
 assertions — including a suite that boots a real floor with a real party, pulls a real pack,
 holds the terminal and kills the boss, and one that proves the Striker bot actually kicks Core
 Overcharge before it wipes the party.
@@ -205,6 +224,28 @@ printing the phase, what is alive, everyone's health and what each seat pressed.
 four bots clears the first room in about forty seconds, holds the Security Override, walks into
 the boss chamber and fights the Iron Centurion at roughly **385 damage a second** — a ~130
 second kill, which is what the Core Overcharge schedule at 0:45 / 1:30 / 2:15 was written for.
+
+## Seeing it
+
+`res://tests/Shot.tscn` renders a real frame of the running game and saves a PNG:
+
+```
+SHOT_DELAY=26 xvfb-run -a godot --path . \
+    --rendering-driver opengl3 --resolution 1600x900 res://tests/Shot.tscn
+```
+
+This is not optional polish. The assertion suite proves the simulation is right; it cannot tell
+you that the camera is inside the player's head, that the operative's own body is filling half
+the screen, or that six nameplates have piled into one word. Every one of those was found by
+looking at a screenshot, and none of them by a test.
+
+The other one it found: **movement was not camera-relative.** The rig is parented to the body
+and the body turns to follow the rig, so setting a *local* rotation on the rig applied it on top
+of the body's own — the camera ended up at roughly double the yaw the movement basis was
+computed from, and "forward" drifted further from the screen the more you turned (51.6° off at
+0.9 rad, near-reversed at 3.0). The rig is now `top_level`: it owns its orientation outright and
+follows the body's position. There is a test that compares the camera's real global basis
+against the vector movement actually uses.
 
 That number is also how the worst bug in the project so far was found. The press tally showed
 `kinetic_striker/mono_blade` firing **zero** times across an entire run: the Striker never

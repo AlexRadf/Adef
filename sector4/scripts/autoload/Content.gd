@@ -515,6 +515,38 @@ const MOB_TYPES := {
 	},
 }
 
+## What to print on the ability bar for each binding. Pad first, because
+## this is a controller game; the keyboard equivalent is the fallback.
+const INPUT_LABELS := {
+	"fire_primary": "RT",
+	"heal_beam": "RB",
+	"ability_dispel": "LB",
+	"ability_dash": "LT",
+	"smart_pulse": "X",
+	"ultimate": "Y",
+	"mark_target": "D-Pad >",
+	"toggle_camera": "R3",
+	"interact": "A",
+}
+
+const INPUT_KEYS := {
+	"fire_primary": "LMB",
+	"heal_beam": "RMB",
+	"ability_dispel": "Q",
+	"ability_dash": "Shift",
+	"smart_pulse": "E",
+	"ultimate": "R",
+	"mark_target": "F",
+	"toggle_camera": "V",
+	"interact": "G",
+}
+
+## Left to right on the bar. Anything not listed is appended after.
+const ABILITY_BAR_ORDER := [
+	"fire_primary", "heal_beam", "ability_dispel",
+	"smart_pulse", "ability_dash", "ultimate", "mark_target",
+]
+
 # ------------------------------------------------------------------ bots
 #
 # A bot is a priority list, read top to bottom: the first rule that both

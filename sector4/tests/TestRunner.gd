@@ -24,6 +24,7 @@ func _run_all() -> void:
 	await _suite("armour and corrosion", _test_armor)
 	await _suite("directional shield", _test_guard)
 	await _suite("facing", _test_facing)
+	await _suite("camera-relative movement", _test_camera_basis)
 	await _suite("threat table", _test_threat)
 	await _suite("ability cooldowns", _test_cooldowns)
 	await _suite("soft-lock scoring", _test_softlock)
@@ -220,6 +221,44 @@ func _test_facing() -> void:
 		"a target dead ahead is inside a 110 degree arc")
 	body.queue_free()
 
+## Movement has to agree with where the camera is actually pointing.
+##
+## The rig is a child of the body and the body turns to follow the rig, so
+## a local rotation on the rig gets applied on top of the body's -- the
+## camera ends up at roughly twice the yaw the movement basis was computed
+## from, and "forward" drifts further from the screen the more you turn.
+func _test_camera_basis() -> void:
+	var player: PlayerCharacter = preload("res://scenes/player/PlayerCharacter.tscn").instantiate()
+	player.role_id = "field_medic"
+	player.peer_id = 1
+	add_child(player)
+	player.global_position = Vector3.ZERO
+	for i in 3:
+		await get_tree().process_frame
+
+	for yaw in [0.0, 0.9, -2.2, 3.0]:
+		player.camera_rig.yaw = yaw
+		player.camera_rig.pitch = -0.2
+		# Let the body finish turning to face the camera, so this measures
+		# the settled state rather than the lerp.
+		await get_tree().create_timer(0.6).timeout
+
+		var cam_forward := -player.camera_rig.camera.global_transform.basis.z
+		cam_forward.y = 0.0
+		var basis_forward := player.camera_rig.forward_flat()
+		var drift := rad_to_deg(cam_forward.normalized().angle_to(basis_forward.normalized()))
+		check(drift < 2.0, "yaw %.1f: movement forward matches the camera (off by %.1f deg)" % [yaw, drift])
+
+		var cam_right := player.camera_rig.camera.global_transform.basis.x
+		cam_right.y = 0.0
+		var basis_right := player.camera_rig.right_flat()
+		var right_drift := rad_to_deg(cam_right.normalized().angle_to(basis_right.normalized()))
+		check(right_drift < 2.0, "yaw %.1f: strafe matches the camera (off by %.1f deg)" % [yaw, right_drift])
+
+	player.queue_free()
+	for i in 3:
+		await get_tree().process_frame
+
 func _test_threat() -> void:
 	var boss := _combatant("enemy")
 	var threat := ThreatComponent.new()
@@ -362,6 +401,17 @@ func _test_scenes() -> void:
 	for label in scenes:
 		var packed := load(scenes[label]) as PackedScene
 		check(packed != null and packed.can_instantiate(), "%s scene loads" % label)
+
+	# The HUD is what tells the player what is going on, so every panel of
+	# it is asserted by name rather than assumed present.
+	var hud := (load("res://scenes/ui/ArenaReticle.tscn") as PackedScene).instantiate()
+	add_child(hud)
+	await get_tree().process_frame
+	for panel in ["ReticleArcs", "WorldFrames", "EncounterHud", "AbilityBar",
+			"ObjectivePanel", "PartyRoster", "FloatingNumbers"]:
+		check(hud.get_node_or_null(panel) != null, "the HUD has a %s" % panel)
+	hud.queue_free()
+	await get_tree().process_frame
 
 func _test_boss() -> void:
 	var boss: IronCenturion = preload("res://scenes/enemies/IronCenturion.tscn").instantiate()

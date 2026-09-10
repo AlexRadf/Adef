@@ -18,28 +18,43 @@ const PRESET_NAMES: Array[String] = ["First Person", "Close", "Wide"]
 @export var stick_sensitivity: float = 2.6
 @export var min_pitch_deg: float = -72.0
 @export var max_pitch_deg: float = 68.0
-@export var shoulder_offset: Vector3 = Vector3(0.55, 1.55, 0.0)
+@export var shoulder_offset: Vector3 = Vector3(0.85, 1.6, 0.0)
 @export var transition_speed: float = 9.0
 
-var preset_index: int = 1
+var preset_index: int = 2
 var yaw: float = 0.0
 var pitch: float = -0.12
 
 var _target_length: float = 2.5
 var _owner_meshes: Array[GeometryInstance3D] = []
+var _body: Node3D = null
 
 @onready var spring_arm: SpringArm3D = $SpringArm3D
 @onready var camera: Camera3D = $SpringArm3D/Camera3D
 
 func _ready() -> void:
-	position = shoulder_offset
+	# The rig lives in world space, not in the operative's.
+	#
+	# It is parented to the body for convenience, but the body turns to
+	# follow the camera -- so a local rotation here would be applied on top
+	# of the body's own, putting the camera at roughly double the yaw the
+	# movement basis is computed from. Going top_level breaks that feedback
+	# loop: the rig owns its orientation outright and simply follows the
+	# body's position.
+	top_level = true
+	var body := get_parent()
+	if body is Node3D:
+		_body = body as Node3D
+	# The over-the-shoulder offset belongs to the boom rather than the
+	# pivot, so it swings round with the camera instead of with the body.
+	spring_arm.position = Vector3(shoulder_offset.x, 0.0, 0.0)
 	spring_arm.spring_length = PRESETS[preset_index]
 	_target_length = PRESETS[preset_index]
 	# The boom must not catch on the operative it is following.
-	var body := get_parent()
 	if body is CollisionObject3D:
 		spring_arm.add_excluded_object(body.get_rid())
 	_collect_owner_meshes(body)
+	_follow_body()
 
 func set_active(active: bool) -> void:
 	camera.current = active
@@ -64,9 +79,18 @@ func _process(delta: float) -> void:
 	if Input.is_action_just_pressed("toggle_camera"):
 		cycle_preset()
 
-	rotation = Vector3(pitch, yaw, 0.0)
+	_follow_body()
 	spring_arm.spring_length = move_toward(spring_arm.spring_length, _target_length, transition_speed * delta)
 	_update_owner_visibility()
+
+## Pivot on the operative's head, oriented in world space. Because the rig
+## is top_level both of these are absolute, which is what keeps
+## `forward_flat()` honest -- the direction the player walks is the
+## direction the camera is actually looking.
+func _follow_body() -> void:
+	global_rotation = Vector3(pitch, yaw, 0.0)
+	if _body != null and is_instance_valid(_body):
+		global_position = _body.global_position + Vector3(0.0, shoulder_offset.y, 0.0)
 
 func cycle_preset() -> void:
 	preset_index = (preset_index + 1) % PRESETS.size()
@@ -103,8 +127,11 @@ func _collect_owner_meshes(node: Node) -> void:
 func _update_owner_visibility() -> void:
 	var length := spring_arm.spring_length
 	var mode := GeometryInstance3D.SHADOW_CASTING_SETTING_ON
-	var visible_body := length > 0.35
-	if visible_body and length < 1.2:
+	# Hidden in first person, and shadows-only whenever the boom is close
+	# enough that the body would be filling the screen rather than framing
+	# the shot.
+	var visible_body := length > 1.6
+	if length > 0.35 and length <= 1.6:
 		mode = GeometryInstance3D.SHADOW_CASTING_SETTING_SHADOWS_ONLY
 	for mesh in _owner_meshes:
 		if not is_instance_valid(mesh):

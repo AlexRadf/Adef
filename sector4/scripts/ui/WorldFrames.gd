@@ -24,7 +24,16 @@ func _draw() -> void:
 	for unit in get_tree().get_nodes_in_group("party"):
 		_draw_frame(camera, unit, BAR_SIZE, Color(0.35, 0.92, 0.55), true, unit == soft_target)
 	for unit in get_tree().get_nodes_in_group("enemies"):
-		_draw_frame(camera, unit, ENEMY_BAR_SIZE, Color(0.95, 0.35, 0.30), false, false)
+		# A dormant mob thirty metres away is scenery, and a bare red bar
+		# floating over it reads as a glitch rather than as information.
+		# Enemies earn a nameplate by being close, awake, or called.
+		if not _enemy_is_interesting(unit, camera):
+			continue
+		# Only the one you are pointing at, the one that was called, and
+		# the boss get a name. Six overlapping labels in a trash pull is
+		# less readable than none.
+		_draw_frame(camera, unit, ENEMY_BAR_SIZE, Color(0.95, 0.35, 0.30),
+			_enemy_deserves_name(unit), unit == soft_target)
 
 func _draw_frame(camera: Camera3D, unit: Node, bar: Vector2, colour: Color,
 		show_name: bool, is_soft_target: bool) -> void:
@@ -36,7 +45,7 @@ func _draw_frame(camera: Camera3D, unit: Node, bar: Vector2, colour: Color,
 	if camera.is_position_behind(head):
 		return
 	var distance := camera.global_position.distance_to(head)
-	if distance > 70.0:
+	if distance > 60.0:
 		return
 	var at := camera.unproject_position(head)
 	var fade := clampf(1.0 - (distance - 45.0) / 25.0, 0.25, 1.0)
@@ -54,8 +63,11 @@ func _draw_frame(camera: Camera3D, unit: Node, bar: Vector2, colour: Color,
 	if show_name:
 		var label := str(unit.get("display_name"))
 		var width := font.get_string_size(label, HORIZONTAL_ALIGNMENT_LEFT, -1, 12).x
-		draw_string(font, at + Vector2(-width * 0.5, -bar.y - 6.0), label,
-			HORIZONTAL_ALIGNMENT_LEFT, -1, 12, Color(1, 1, 1, 0.85 * fade))
+		var text_at := at + Vector2(-width * 0.5, -bar.y - 6.0)
+		draw_rect(Rect2(text_at + Vector2(-4.0, -11.0), Vector2(width + 8.0, 15.0)),
+			Color(0, 0, 0, 0.55 * fade))
+		draw_string(font, text_at, label, HORIZONTAL_ALIGNMENT_LEFT, -1, 12,
+			Color(1, 1, 1, 0.92 * fade))
 
 	_draw_status_pips(unit, at + Vector2(0.0, bar.y * 0.5 + 12.0), fade)
 
@@ -79,6 +91,36 @@ func _draw_status_pips(unit: Node, at: Vector2, fade: float) -> void:
 		colour.a = fade
 		draw_rect(Rect2(Vector2(x, at.y), Vector2(7.0, 4.0)), colour)
 		x += 10.0
+
+## Close enough to matter, awake, or wearing the Focus Marker.
+func _enemy_is_interesting(unit: Node, camera: Camera3D) -> bool:
+	if not (unit is Node3D):
+		return false
+	var status = unit.get("status_component")
+	if status is StatusEffectComponent and status.has(FocusMarker.STATUS):
+		return true
+	if unit.has_method("is_awake") and unit.is_awake():
+		return true
+	if unit.is_in_group("boss"):
+		return true
+	return camera.global_position.distance_to((unit as Node3D).global_position) < 26.0
+
+func _enemy_deserves_name(unit: Node) -> bool:
+	if unit.is_in_group("boss"):
+		return true
+	var status = unit.get("status_component")
+	if status is StatusEffectComponent and status.has(FocusMarker.STATUS):
+		return true
+	return unit == _enemy_soft_target()
+
+func _enemy_soft_target() -> Node:
+	for player in get_tree().get_nodes_in_group("players"):
+		if player.get("is_local") != true:
+			continue
+		var targeting = player.get("enemy_targeting")
+		if targeting is SoftLockTargeting:
+			return targeting.current_target
+	return null
 
 func _soft_target() -> Node:
 	for player in get_tree().get_nodes_in_group("players"):

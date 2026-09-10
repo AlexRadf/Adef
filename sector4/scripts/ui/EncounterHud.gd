@@ -115,9 +115,9 @@ func _draw_cast_bar(font: Font) -> void:
 func _draw_banner(font: Font) -> void:
 	var age := _now() - _phase_shown_at
 	var alpha := clampf(1.0 - (age - 3.0), 0.0, 1.0)
-	var width := font.get_string_size(phase_name, HORIZONTAL_ALIGNMENT_LEFT, -1, 30).x
-	draw_string(font, Vector2((size.x - width) * 0.5, size.y * 0.30), phase_name,
-		HORIZONTAL_ALIGNMENT_LEFT, -1, 30, Color(1, 1, 1, alpha))
+	var width := font.get_string_size(phase_name, HORIZONTAL_ALIGNMENT_LEFT, -1, 26).x
+	draw_string(font, Vector2((size.x - width) * 0.5, size.y * 0.17), phase_name,
+		HORIZONTAL_ALIGNMENT_LEFT, -1, 26, Color(1, 1, 1, alpha))
 
 func _draw_local_health(font: Font) -> void:
 	var rect := Rect2(Vector2(38.0, size.y - 62.0), Vector2(260.0, 20.0))
@@ -127,6 +127,8 @@ func _draw_local_health(font: Font) -> void:
 		Color(0.35, 0.92, 0.55) if fraction > 0.35 else Color(1.0, 0.35, 0.30))
 	draw_string(font, rect.position + Vector2(8.0, 15.0), "%d / %d" % [roundi(local_health), roundi(local_max_health)],
 		HORIZONTAL_ALIGNMENT_LEFT, -1, 13, Color(0.05, 0.05, 0.05))
+	draw_string(font, rect.position + Vector2(0.0, -6.0), "YOU",
+		HORIZONTAL_ALIGNMENT_LEFT, -1, 11, Color(1, 1, 1, 0.55))
 
 func _draw_terminal(font: Font) -> void:
 	var terminal := get_tree().get_first_node_in_group("terminals")

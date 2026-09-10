@@ -72,6 +72,14 @@ func _ready() -> void:
 		add_child(brain)
 		brain.bind(self)
 
+## The operative this machine is driving, or null in a spectator/headless
+## run. The HUD asks for this constantly, so it lives in one place.
+static func local(tree: SceneTree) -> PlayerCharacter:
+	for candidate in tree.get_nodes_in_group("players"):
+		if candidate is PlayerCharacter and (candidate as PlayerCharacter).is_local:
+			return candidate as PlayerCharacter
+	return null
+
 func _configure_role() -> void:
 	var def: Dictionary = Content.role(role_id)
 	if def.is_empty():
@@ -107,7 +115,17 @@ func _role_material(def: Dictionary) -> StandardMaterial3D:
 # ------------------------------------------------------------- input
 
 func _process(_delta: float) -> void:
+	# Escape has to give the mouse back. Without it the window is a trap,
+	# which is a worse first impression than any missing feature.
+	if Input.is_action_just_pressed("ui_cancel"):
+		Input.mouse_mode = (Input.MOUSE_MODE_VISIBLE
+			if Input.mouse_mode == Input.MOUSE_MODE_CAPTURED
+			else Input.MOUSE_MODE_CAPTURED)
 	if is_dead:
+		return
+	# Mouse-look drives aiming, so abilities stay holstered while the
+	# cursor is free rather than firing at wherever the camera was left.
+	if Input.mouse_mode != Input.MOUSE_MODE_CAPTURED:
 		return
 	_poll_abilities()
 

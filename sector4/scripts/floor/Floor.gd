@@ -124,7 +124,7 @@ func _material(colour: Color, roughness: float) -> StandardMaterial3D:
 func _build_lighting() -> void:
 	var sun := DirectionalLight3D.new()
 	sun.rotation_degrees = Vector3(-58, -35, 0)
-	sun.light_energy = 0.75
+	sun.light_energy = 1.05
 	sun.light_color = Color(0.72, 0.82, 1.0)
 	sun.shadow_enabled = true
 	add_child(sun)
@@ -134,11 +134,11 @@ func _build_lighting() -> void:
 	environment.background_mode = Environment.BG_COLOR
 	environment.background_color = Color(0.04, 0.05, 0.08)
 	environment.ambient_light_source = Environment.AMBIENT_SOURCE_COLOR
-	environment.ambient_light_color = Color(0.22, 0.26, 0.34)
-	environment.ambient_light_energy = 0.55
+	environment.ambient_light_color = Color(0.30, 0.35, 0.45)
+	environment.ambient_light_energy = 0.95
 	environment.fog_enabled = true
 	environment.fog_light_color = Color(0.06, 0.09, 0.14)
-	environment.fog_density = 0.012
+	environment.fog_density = 0.006
 	environment.glow_enabled = true
 	env.environment = environment
 	add_child(env)

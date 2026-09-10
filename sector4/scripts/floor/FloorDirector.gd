@@ -33,6 +33,7 @@ var _spawn_root: Node = null
 var _terminal: SecurityTerminal = null
 
 func _ready() -> void:
+	add_to_group("director")
 	_def = Content.FLOORS[clampi(floor_index, 0, Content.FLOORS.size() - 1)]
 	_spawn_root = get_tree().get_first_node_in_group("spawn_root")
 	if _spawn_root == null:
