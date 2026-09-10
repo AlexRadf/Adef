@@ -5,14 +5,15 @@
 //   node sim.js --runs 1000
 //   node sim.js --runs 200 --seed 7 --verbose
 
-import { loadContent, applyStyle } from './content/load.js';
+import { loadContent, applyStyle, overrideAbilities } from './content/load.js';
 import { createState } from './engine/state.js';
 import { step } from './engine/tick.js';
+import { spawnPickup } from './engine/abilities.js';
 import { generateEncounter } from './engine/generate.js';
 import { tuneEncounter } from './engine/tune.js';
 
 function parseArgs(argv) {
-  const args = { boss: 'chthon', party: 'default', style: 'raid', modifiers: '', runs: 100, seed: 1, verbose: false };
+  const args = { boss: 'chthon', party: 'default', style: 'raid', game: '', modifiers: '', runs: 100, seed: 1, verbose: false };
   for (let i = 0; i < argv.length; i++) {
     const a = argv[i];
     if (a === '--verbose') args.verbose = true;
@@ -26,12 +27,18 @@ function parseArgs(argv) {
 
 export function runOnce(content, options) {
   const state = createState(content, { ...options, headless: true });
+  for (const pickup of options.pickups || []) spawnPickup(state, pickup, pickup.at);
   while (!state.over) step(state, content, []);
   return state;
 }
 
 const args = parseArgs(process.argv.slice(2));
-let content = applyStyle(await loadContent(), args.style);
+const base = await loadContent();
+// --game runs a 3D game mode headlessly: its style plus its signature.
+const gameDef = args.game ? base.games[args.game] : null;
+if (args.game && !gameDef) throw new Error(`unknown game: ${args.game}`);
+let content = applyStyle(base, gameDef ? gameDef.style : args.style);
+if (gameDef) content = overrideAbilities(content, gameDef.abilities);
 
 // --boss random rolls a procedural encounter and tunes it first.
 if (args.boss === 'random') {
@@ -49,6 +56,7 @@ const results = [];
 const started = Date.now();
 for (let i = 0; i < args.runs; i++) {
   const state = runOnce(content, {
+    pickups: gameDef ? gameDef.pickups : null,
     boss: args.boss,
     party: args.party,
     modifiers: args.modifiers,
@@ -95,7 +103,7 @@ for (const r of results) {
 }
 
 console.log(
-  `\nboss ${args.boss} · party ${args.party} · ${content.style.name.toLowerCase()} style` +
+  `\nboss ${args.boss} · party ${args.party} · ${gameDef ? gameDef.name.toLowerCase() + ' (' + gameDef.inspiration + ')' : content.style.name.toLowerCase() + ' style'}` +
     `${args.modifiers.length ? ` · ${args.modifiers.join('+')}` : ''} · ${args.runs} runs · ${Date.now() - started}ms`
 );
 console.log(`win rate ${((kills.length / results.length) * 100).toFixed(1)}%`);

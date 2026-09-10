@@ -5,9 +5,11 @@
 // headless runner use. This file only decides where the camera is and
 // turns mouse-look into the inputs the tick already understood.
 
-import { loadContent, applyStyle } from '../content/load.js';
+import { loadContent, applyStyle, overrideAbilities } from '../content/load.js';
 import { createState } from '../engine/state.js';
 import { step, snapshot } from '../engine/tick.js';
+import { spawnPickup } from '../engine/abilities.js';
+import { buildLobbyBoss } from '../engine/scenario.js';
 import { createScene, toSim } from './scene.js';
 import { createRig } from './camera.js';
 import { createControls } from './controls.js';
@@ -28,6 +30,8 @@ let view = null;
 let queue = [];
 let running = false;
 let paused = false;
+let scenario = 'lobby';
+let lobbyStart = 0;
 let accumulator = 0;
 let last = performance.now();
 
@@ -62,10 +66,29 @@ function fireSlot(slot) {
 
 /* ------------------------------------------------------- the clocks */
 
-function start() {
+function start(which = 'encounter') {
+  scenario = which;
   const def = content.games[game];
-  active = applyStyle(content, def.style);
-  state = createState(active, { seed: (Math.random() * 1e9) | 0, playerRole: role, mode: 'solo' });
+  // A game's signature mechanic rides on top of its style.
+  active = overrideAbilities(applyStyle(content, def.style), def.abilities);
+
+  let bossId = 'chthon';
+  if (scenario === 'lobby') {
+    const dummy = buildLobbyBoss(active);
+    active = { ...active, bosses: { ...active.bosses, [dummy.id]: dummy } };
+    bossId = dummy.id;
+  }
+
+  state = createState(active, {
+    seed: (Math.random() * 1e9) | 0,
+    playerRole: role,
+    mode: 'solo',
+    boss: bossId,
+    hardStopSeconds: scenario === 'lobby' ? 3600 : undefined,
+  });
+  // Quake's arena is a resource: put the pickups on the floor.
+  for (const pickup of def.pickups || []) spawnPickup(state, pickup, pickup.at);
+  lobbyStart = 0;
   view = snapshot(state, active);
   queue = [];
   hud.reset();
@@ -81,6 +104,8 @@ function start() {
   document.getElementById('menu').hidden = true;
   document.getElementById('over').hidden = true;
   document.getElementById('crosshair').hidden = def.camera === 'orbit';
+  document.getElementById('lobbyTag').hidden = scenario !== 'lobby';
+  document.getElementById('signature').textContent = def.signature || '';
   canvas.requestPointerLock();
 }
 
@@ -99,7 +124,7 @@ function tick() {
     if (ready) queue.push({ type: 'cast', abilityId: id });
   }
 
-  const dir = controls.moveDirection();
+  const dir = controls.moveDirection(padStick);
   queue.push({ type: 'moveDir', x: dir.x, y: dir.y });
 
   const hit = rig.aimPoint(world.camera);
@@ -111,11 +136,14 @@ function tick() {
   step(state, active, queue);
 }
 
+let padStick = null;
+
 function frame(now) {
   requestAnimationFrame(frame);
   world.resize();
   const dt = Math.min(0.1, (now - last) / 1000);
   last = now;
+  padStick = controls.pollGamepad(dt);
 
   if (running && !paused) {
     accumulator += dt * 1000;
@@ -124,7 +152,7 @@ function frame(now) {
       world.commit(view);
       tick();
       view = snapshot(state, active);
-      if (state.over) finish();
+          if (state.over && scenario !== 'lobby') finish();
     }
   }
 
@@ -137,9 +165,25 @@ function frame(now) {
       cameraPos: world.camera.position,
     });
     if (player) rig.apply(world.camera, def.camera, player, locked, dt);
-    hud.paint(view, { targetName: locked ? locked.name : '', modeName: def.name });
+    hud.paint(view, {
+      targetName: locked ? locked.name : '',
+      modeName: def.name,
+      lobby: scenario === 'lobby' ? lobbyStats() : null,
+      pad: controls.state.pad,
+    });
   }
   world.renderer.render(world.scene, world.camera);
+}
+
+// What a dummy is for: a number that tells you whether the loop works.
+function lobbyStats() {
+  const player = view.party.find((u) => u.id === view.playerId);
+  if (!player) return null;
+  const dealt = state.stats.damageBy[player.id] || 0;
+  const healed = state.stats.healBy[player.id] || 0;
+  if (!lobbyStart && (dealt || healed)) lobbyStart = state.tick;
+  const seconds = Math.max(1, (state.tick - lobbyStart) / 10);
+  return { dps: Math.round(dealt / seconds), hps: Math.round(healed / seconds), seconds };
 }
 
 function finish() {
@@ -160,7 +204,9 @@ menu.innerHTML = Object.values(content.games)
   .map(
     (g) => `<button class="game ${g.id === game ? 'sel' : ''}" data-game="${g.id}">
       <b>${g.name}</b><em>after ${g.inspiration}</em>
-      <span>${g.tagline}</span></button>`
+      <span>${g.tagline}</span>
+      <i class="sig">${g.signature ? g.signature.split('—')[0].trim() : ''}</i>
+      <i class="bots">bots win ${g.bots}</i></button>`
   )
   .join('');
 menu.addEventListener('click', (e) => {
@@ -168,9 +214,11 @@ menu.addEventListener('click', (e) => {
   if (!card) return;
   game = card.dataset.game;
   [...menu.children].forEach((c) => c.classList.toggle('sel', c.dataset.game === game));
-  document.getElementById('gameBlurb').textContent = content.games[game].blurb;
+  const def = content.games[game];
+  document.getElementById('gameBlurb').textContent = `${def.blurb}  ${def.signature || ''}`;
 });
-document.getElementById('gameBlurb').textContent = content.games[game].blurb;
+document.getElementById('gameBlurb').textContent =
+  `${content.games[game].blurb}  ${content.games[game].signature || ''}`;
 
 const roles = document.getElementById('roles');
 roles.addEventListener('click', (e) => {
@@ -179,8 +227,11 @@ roles.addEventListener('click', (e) => {
   role = card.dataset.role;
   [...roles.children].forEach((c) => c.classList.toggle('sel', c.dataset.role === role));
 });
-document.getElementById('play').addEventListener('click', () => start());
-document.getElementById('again').addEventListener('click', () => start());
+document.getElementById('play').addEventListener('click', () => start('lobby'));
+document.getElementById('again').addEventListener('click', () => start('lobby'));
+window.addEventListener('keydown', (e) => {
+  if (e.key.toLowerCase() === 'e' && scenario === 'lobby' && running) start('encounter');
+});
 document.getElementById('play').disabled = false;
 document.getElementById('play').textContent = 'Enter the pit';
 

@@ -15,6 +15,10 @@
       "do": "moveToSoak"
     },
     {
+      "if": "pickupReady",
+      "do": "grabPickup"
+    },
+    {
       "if": "bossCastingInterruptible",
       "do": "cast:lightning"
     },

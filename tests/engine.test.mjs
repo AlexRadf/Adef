@@ -12,6 +12,9 @@ import {
   orderMove,
   markArea,
   canUseAbility,
+  resolveAbility,
+  setBlocking,
+  spawnPickup,
 } from '../engine/abilities.js';
 import { applyAura } from '../engine/auras.js';
 import { distance, cellCenter, contains, vec } from '../engine/geometry.js';
@@ -26,7 +29,7 @@ import {
 import { toTicks, TICKS_PER_SECOND } from '../engine/clock.js';
 import { generateEncounter, withEncounter } from '../engine/generate.js';
 import { tuneEncounter } from '../engine/tune.js';
-import { buildDrillBoss, gauntletStage, applyCarry } from '../engine/scenario.js';
+import { buildDrillBoss, buildLobbyBoss, gauntletStage, applyCarry } from '../engine/scenario.js';
 
 const base = await loadContent();
 const content = applyStyle(base, 'raid');
@@ -508,6 +511,91 @@ test('every 3D game names a camera and a legal style', async () => {
     assert.ok(game.blurb.length > 40, `${game.id} needs to say what it is`);
   }
   assert.deepEqual(Object.keys(base.games), ['wow', 'quake', 'overwatch', 'souls']);
+});
+
+/* ------------------------------------------- 3D controls and modes */
+
+test('movement is camera-relative, and A is not D', async () => {
+  const { cameraRelative } = await import('../3d/controls.js');
+  const close = (a, b) => Math.abs(a - b) < 1e-9;
+  for (const yaw of [0, 0.9, 2.2, -1.4, Math.PI]) {
+    const forward = { x: -Math.sin(yaw), y: -Math.cos(yaw) };
+    const right = { x: Math.cos(yaw), y: -Math.sin(yaw) };
+    const w = cameraRelative({ x: 0, y: -1 }, yaw);
+    const s = cameraRelative({ x: 0, y: 1 }, yaw);
+    const d = cameraRelative({ x: 1, y: 0 }, yaw);
+    const a = cameraRelative({ x: -1, y: 0 }, yaw);
+    assert.ok(close(w.x, forward.x) && close(w.y, forward.y), `W at yaw ${yaw}`);
+    assert.ok(close(s.x, -forward.x) && close(s.y, -forward.y), `S at yaw ${yaw}`);
+    assert.ok(close(d.x, right.x) && close(d.y, right.y), `D at yaw ${yaw}`);
+    assert.ok(close(a.x, -right.x) && close(a.y, -right.y), `A at yaw ${yaw}`);
+  }
+});
+
+test('a cone only catches what is in front of the caster', async () => {
+  const { c, state } = fresh();
+  const boss = unitById(state, 'chthon');
+  boss.pos = { x: 2.5, y: 2.5 };
+  boss.facing = { x: 0, y: -1 }; // pointed "north"
+  const infront = unitById(state, 'ranger');
+  const behind = unitById(state, 'crash');
+  infront.pos = { x: 2.5, y: 1.6 };
+  behind.pos = { x: 2.5, y: 3.4 };
+  const cone = { ...c.abilities.magmaCleave, coneArc: 130, coneRange: 2.6,
+    effects: [{ type: 'damage', target: 'cone', amount: 50000, school: 'lava' }] };
+  const withCone = { ...c, abilities: { ...c.abilities, magmaCleave: cone } };
+  const hpBefore = { front: infront.hp, back: behind.hp };
+  resolveAbility(state, withCone, boss, 'magmaCleave', infront);
+  assert.ok(infront.hp < hpBefore.front, 'the one in front is hit');
+  assert.equal(behind.hp, hpBefore.back, 'the one behind it is not');
+});
+
+test('a parry turns the blow aside and staggers what swung', () => {
+  const c = applyStyle(base, 'souls');
+  const state = createState(c, { seed: 1, mode: 'solo', playerRole: 'tank' });
+  const tank = unitById(state, 'ranger');
+  const boss = unitById(state, 'chthon');
+  setBlocking(state, c, tank, true);
+  state.content = c;
+  const before = tank.hp;
+  const dealt = applyDamage(state, 'chthon', 'ranger', 90000, 'lava');
+  assert.equal(dealt, 0, 'a parried blow does nothing');
+  assert.equal(tank.hp, before);
+  assert.ok(boss.auras.some((a) => a.id === 'staggered'), 'and staggers the boss');
+
+  // The window closes: a later hit in the same block is not a parry.
+  state.tick += 40;
+  applyDamage(state, 'chthon', 'ranger', 90000, 'lava');
+  assert.ok(tank.hp < before, 'the second one lands');
+});
+
+test('a pickup is taken by standing on it, and comes back later', () => {
+  const c = applyStyle(base, 'raid');
+  const state = createState(c, { seed: 1, headless: true });
+  const def = base.games.quake.pickups[0];
+  spawnPickup(state, { ...def, firstAt: 0 }, def.at);
+  const taker = state.units.find((u) => u.team === 'party');
+  taker.pos = { x: def.at.x, y: def.at.y };
+  step(state, c, []);
+  assert.ok(taker.auras.some((a) => a.id === def.aura), 'standing on it takes it');
+  assert.ok(state.pickups[0].readyAt > state.tick, 'and it goes away for a while');
+});
+
+test('the lobby dummy does nothing at all', () => {
+  const dummy = buildLobbyBoss(content);
+  assert.equal(dummy.phases[0].timeline.length, 0, 'no timeline means no attacks');
+  const c = { ...content, bosses: { ...content.bosses, dummy } };
+  const state = createState(c, { seed: 1, headless: true, boss: 'dummy', hardStopSeconds: 40 });
+  while (!state.over) step(state, c, []);
+  assert.equal(state.stats.deaths.length, 0, 'nobody dies in the lobby');
+  assert.equal(state.result, 'timeout', 'and the dummy cannot be killed');
+});
+
+test('every game names a signature mechanic', () => {
+  for (const game of Object.values(base.games)) {
+    assert.ok(game.signature && game.signature.length > 30, `${game.id} needs a signature`);
+    assert.ok(game.bots, `${game.id} should carry its measured win rate`);
+  }
 });
 
 test('the tick rate lives in exactly one place', () => {

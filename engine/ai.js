@@ -114,6 +114,35 @@ export function urgentGather(state) {
   return soonest;
 }
 
+// A boss faces whoever it is swinging at, so a tank decides where its
+// frontal points. Standing on the far side of it from everyone else is
+// the whole job when a cleave is a cone.
+function awayFromParty(state, unit) {
+  const boss = bossOf(state);
+  if (!boss) return null;
+  const others = livingParty(state).filter((u) => u.id !== unit.id);
+  if (!others.length) return null;
+  const centre = others.reduce((sum, u) => ({ x: sum.x + u.pos.x / others.length, y: sum.y + u.pos.y / others.length }), { x: 0, y: 0 });
+  const away = { x: boss.pos.x - centre.x, y: boss.pos.y - centre.y };
+  const len = Math.hypot(away.x, away.y);
+  if (len < 0.2) return null;
+  return clampToArena({ x: boss.pos.x + (away.x / len) * 0.85, y: boss.pos.y + (away.y / len) * 0.85 });
+}
+
+function readyPickup(state, unit) {
+  let best = null;
+  let bestDist = 2.6; // not worth crossing the room for
+  for (const pickup of state.pickups) {
+    if (pickup.readyAt > state.tick) continue;
+    const d = Math.hypot(unit.pos.x - pickup.x, unit.pos.y - pickup.y);
+    if (d < bestDist) {
+      bestDist = d;
+      best = pickup;
+    }
+  }
+  return best;
+}
+
 function markedAreaOfKind(state, kind) {
   const area = urgentGather(state);
   return area && area.kind === kind ? area : null;
@@ -184,6 +213,14 @@ export const conditions = {
   allyHasAura: (state, content, unit, id) =>
     livingParty(state).some((u) => u.auras.some((a) => a.id === id)),
   enrageSoon: (state, content, unit, seconds) => state.enrageTick - state.tick <= Number(seconds) * 10,
+  pickupReady: (state, content, unit) => !!readyPickup(state, unit),
+  facingParty: (state, content, unit) => {
+    // Is the boss pointed at anybody it should not be?
+    const boss = bossOf(state);
+    if (!boss) return false;
+    const spot = awayFromParty(state, unit);
+    return !!spot && distance(unit.pos, spot) > 0.7;
+  },
 };
 
 // Human-facing descriptions of the registry, so the gambit editor can
@@ -212,10 +249,14 @@ export const CONDITION_SPECS = [
   { id: 'targetHasAura', label: 'my target has', args: [{ value: 'cracked' }] },
   { id: 'allyHasAura', label: 'an ally has', args: [{ value: 'regenerating' }] },
   { id: 'enrageSoon', label: 'enrage is within', args: [{ suffix: 's', value: 30 }] },
+  { id: 'pickupReady', label: 'a pickup is up nearby', args: [] },
+  { id: 'facingParty', label: 'the boss is not pointed away', args: [] },
 ];
 
 export const ACTION_SPECS = [
   { id: 'moveToSafe', label: 'step out of the fire' },
+  { id: 'holdBossAway', label: 'turn the boss away from the party' },
+  { id: 'grabPickup', label: 'go and take the pickup' },
   { id: 'moveToStack', label: 'go to the stack marker' },
   { id: 'moveToSoak', label: 'go soak' },
   { id: 'moveToBoss', label: 'get into melee' },
@@ -338,6 +379,18 @@ export function performAction(state, content, unit, action) {
       const area = markedAreaOfKind(state, 'soak');
       if (!area || contains(area, unit.pos)) return false;
       orderMove(state, unit, area);
+      return true;
+    }
+    case 'holdBossAway': {
+      const spot = awayFromParty(state, unit);
+      if (!spot || distance(unit.pos, spot) < 0.5) return false;
+      orderMove(state, unit, spot);
+      return true;
+    }
+    case 'grabPickup': {
+      const pickup = readyPickup(state, unit);
+      if (!pickup) return false;
+      orderMove(state, unit, { x: pickup.x, y: pickup.y });
       return true;
     }
     case 'moveToBoss': {

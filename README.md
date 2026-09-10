@@ -73,6 +73,30 @@ whether a kit actually interlocks — if it does, the list reads like a sentence
 All four play styles were re-tuned around the new kits and sit at Raid 49%, Arena 41%,
 Souls 43%, Action 33%, killing in 3:26–3:46 against a 4:30 enrage.
 
+### The lobby
+
+Every game starts you in a lobby: the same arena, your kit, and a training dummy that does
+not hit back, with a live damage-per-second readout so you can see whether the loop is
+working. Press `E` (or Start) when you are done and the real thing walks in.
+
+### One signature mechanic per mode
+
+The camera alone was not enough to make the modes feel different, so each leans into
+something its genre actually does:
+
+| | Signature | Measured |
+|---|---|---|
+| **Azeroth** | **Frontal cleave** — Magma Cleave comes out of the boss's face in a 130° cone. The tank's job becomes pointing it away from everyone else, and the bot tank now does exactly that: cleave went from hitting 2.8 people a cast to 1.6 | bots win 36% |
+| **Slipgate** | **Pickups** — Quad Damage and Megahealth spawn on the floor on a timer and you have to go and stand on them, which is why Quake maps are shaped the way they are. Bots take 7.9 a pull | 44% |
+| **Overload** | **Barrier** — the Vanguard's ultimate stops being a damage reduction and becomes a deployed shield: an absorb pool across the whole party, chewed through at about 574,000 a pull | 58% |
+| **The Pit** | **Parry** — raise your guard in the 0.35s before a blow lands and you turn it aside completely, staggering the boss into taking 35% more | 43% |
+
+### Controller
+
+Sticks move and look, `A B X Y` are the four abilities, `RT` is primary fire, `LT` blocks,
+`RB` dodges, `LB` cycles target, `Start` pauses. Polled through the Gamepad API once a
+frame, so anything that reports as a pad works. The HUD says "controller" when it sees one.
+
 ### What is real and what is not
 
 Real: the arena, the four cameras, mouse-look and camera-relative movement, telegraphs and
@@ -80,10 +104,10 @@ healing fields drawn on the floor, nameplates, the full HUD, dodge rolls with i-
 held block with stamina, lock-on facing, and the entire encounter running underneath it at
 the tuned difficulty.
 
-Not yet: controller support, split screen, animations, sound, projectiles you can see, and
-any art beyond primitives. The end goal is two people on one couch with pads — the engine
-already runs on a list of controlled units, so that is a transport and input problem rather
-than an architectural one.
+Not yet: split screen, animations, sound, projectiles you can see, and any art beyond
+primitives. The end goal is two people on one couch with pads — controller support is in
+now, and the engine already runs on a list of controlled units, so what is left is a second
+input source and a second viewport rather than an architectural change.
 
 ## The 2D build
 

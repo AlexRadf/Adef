@@ -338,7 +338,7 @@
       {
         "type": "damage",
         "target": "targetAndAdjacent",
-        "amount": 120960,
+        "amount": 121000,
         "school": "lava"
       },
       {

@@ -28,6 +28,12 @@ function resolveDefaultStyle(content, choice) {
     stamina: picked.movement.stamina || picked.tanking.stamina || null,
     dash: picked.movement.dash || null,
     block: picked.tanking.mode === 'block' ? picked.tanking.block : null,
+    parry: picked.tanking.parry
+      ? {
+          windowTicks: Math.round(picked.tanking.parry.windowSeconds * 10),
+          staggerSeconds: picked.tanking.parry.staggerSeconds,
+        }
+      : null,
   };
 }
 
@@ -66,6 +72,7 @@ export function createState(content, options = {}) {
     units: [],
     hazards: [],
     fields: [],
+    pickups: [],
     hazardCounter: 0,
     style,
     mode,

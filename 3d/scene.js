@@ -165,6 +165,41 @@ export function createScene(canvas) {
   }
 
   const HAZARD_COLOUR = { blast: 0xff7a18, split: 0x7b4fd0, soak: 0x2f8fb4, heal: 0x7ea23c };
+  const PICKUP_COLOUR = { quad: 0x9a5cff, mega: 0xff3b3b };
+
+  // Floating, spinning, unmistakable -- the way a pickup has looked
+  // since 1996.
+  const pickups = new Map();
+  function paintPickups(view, time) {
+    for (const p of view.pickups || []) {
+      let mesh = pickups.get(p.type);
+      if (!mesh) {
+        mesh = new THREE.Mesh(
+          new THREE.OctahedronGeometry(0.45, 0),
+          new THREE.MeshStandardMaterial({
+            color: PICKUP_COLOUR[p.type] || 0xffffff,
+            emissive: PICKUP_COLOUR[p.type] || 0xffffff,
+            emissiveIntensity: 0.7,
+            flatShading: true,
+          })
+        );
+        const glow = new THREE.Mesh(
+          new THREE.RingGeometry(0.6, 0.95, 20),
+          new THREE.MeshBasicMaterial({ color: PICKUP_COLOUR[p.type] || 0xffffff, side: THREE.DoubleSide,
+            transparent: true, opacity: 0.5 })
+        );
+        glow.rotation.x = -Math.PI / 2;
+        glow.position.y = -0.85;
+        mesh.add(glow);
+        scene.add(mesh);
+        pickups.set(p.type, mesh);
+      }
+      const at = toWorld(p);
+      mesh.position.set(at.x, 1.05 + Math.sin(time * 2) * 0.14, at.z);
+      mesh.rotation.y = time * 1.4;
+      mesh.visible = p.ready;
+    }
+  }
 
   function paintGround(view, time) {
     const items = [
@@ -221,6 +256,7 @@ export function createScene(canvas) {
       else actor.body.material.emissive.setHex(0x000000);
     }
     paintGround(view, time);
+    paintPickups(view, time);
   }
 
   // Called once per sim tick so interpolation has somewhere to come from.

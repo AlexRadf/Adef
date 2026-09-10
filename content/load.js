@@ -121,6 +121,17 @@ export function resolveStyle(content, choice = {}) {
 
 // Returns a content view with the style's ability overrides folded in.
 // Nothing is mutated, so several styles can be compared in one process.
+// A game mode may carry its own ability overrides on top of a style --
+// that is where a mode's signature mechanic lives.
+export function overrideAbilities(content, overrides = {}) {
+  if (!overrides || !Object.keys(overrides).length) return content;
+  const abilities = { ...content.abilities };
+  for (const [id, def] of Object.entries(overrides)) {
+    abilities[id] = hydrateAbilities({ [id]: { ...content.abilities[id], ...def } })[id];
+  }
+  return { ...content, abilities };
+}
+
 export function applyStyle(content, choice = 'raid') {
   const picked = resolveStyle(content, choice);
   const overrides = {};
@@ -162,6 +173,12 @@ export function applyStyle(content, choice = 'raid') {
     stamina: picked.movement.stamina || picked.tanking.stamina || null,
     dash: picked.movement.dash || null,
     block: picked.tanking.mode === 'block' ? picked.tanking.block : null,
+    parry: picked.tanking.parry
+      ? {
+          windowTicks: Math.round(picked.tanking.parry.windowSeconds * 10),
+          staggerSeconds: picked.tanking.parry.staggerSeconds,
+        }
+      : null,
   };
   return { ...content, abilities, style };
 }

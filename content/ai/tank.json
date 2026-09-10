@@ -15,6 +15,10 @@
       "do": "moveToSoak"
     },
     {
+      "if": "facingParty",
+      "do": "holdBossAway"
+    },
+    {
       "if": "partyAvgBelowPct:70",
       "do": "cast:pentagram"
     },

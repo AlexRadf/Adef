@@ -5,6 +5,23 @@
 
 const DRILL_HP = 900000000; // unkillable: a drill ends when you do
 
+// The lobby: a room, your kit, and something that does not hit back.
+// Everything else about the fight is identical, so what you learn here
+// is true when the real thing walks in.
+export function buildLobbyBoss(content) {
+  const source = content.bosses.chthon;
+  return {
+    id: 'dummy',
+    name: 'Training Dummy',
+    title: 'It does not hit back',
+    hp: 999000000,
+    cell: source.cell,
+    speed: 0,
+    enrageAtSeconds: 100000,
+    phases: [{ name: 'Training', trigger: { type: 'start' }, timeline: [] }],
+  };
+}
+
 export function buildDrillBoss(content, drillId) {
   const drill = content.drills[drillId];
   if (!drill) throw new Error(`unknown drill: ${drillId}`);

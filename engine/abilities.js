@@ -38,6 +38,10 @@ export const livingEnemies = (state) => state.units.filter((u) => u.alive && u.t
 // Events worth stopping the world for, when a mode asks for tactical pause.
 const PAUSE_WORTHY = new Set(['telegraph', 'death', 'phase', 'enrage', 'spawn', 'mechanic']);
 
+// applyDamage occasionally needs content (a parry applies an aura), and
+// it is called from places that do not carry it. The tick stashes it.
+export const contentFor = (state) => state.content;
+
 export function log(state, text, kind = 'info') {
   state.logSeq = (state.logSeq || 0) + 1;
   state.log.push({ seq: state.logSeq, tick: state.tick, text, kind });
@@ -108,6 +112,23 @@ export function applyDamage(state, sourceId, targetId, baseAmount, school = 'phy
   }
   amount *= statMult(target, 'damageTaken');
   amount = Math.max(0, Math.round(amount));
+
+  // Blocking at the last moment is a parry: the hit is turned aside and
+  // whatever swung is left staggered.
+  const parry = styleOf(state).parry;
+  if (
+    parry &&
+    target.blocking &&
+    source &&
+    source.team === 'enemy' &&
+    state.tick - (target.blockStartedAt ?? -999) <= parry.windowTicks
+  ) {
+    target.blockStartedAt = -999; // one parry per block
+    applyAura(state, contentFor(state), source.id, source, 'staggered');
+    log(state, `${target.name} PARRIES ${source.name}!`, 'interrupt');
+    state.stats.parries = (state.stats.parries || 0) + 1;
+    return 0;
+  }
 
   const afterAbsorb = consumeAbsorb(state, target, amount);
   const absorbed = amount - afterAbsorb;
@@ -210,6 +231,16 @@ function resolveEffectTargets(state, ctx, spec) {
       if (!target) return [];
       const foes = target.team === 'party' ? livingParty(state) : livingEnemies(state);
       return foes.filter((u) => u.id !== target.id && distance(u.pos, target.pos) <= 1);
+    }
+    // A frontal: everything inside a cone out of the caster's face. The
+    // tank's job stops being a threat meter and becomes "point it away".
+    case 'cone': {
+      const arc = ctx.ability.coneArc || 120;
+      const reach = ctx.ability.coneRange ?? 2.2;
+      const foes = caster.team === 'party' ? livingEnemies(state) : livingParty(state);
+      return foes.filter(
+        (u) => distance(u.pos, caster.pos) <= reach && withinArc(caster.pos, caster.facing, u.pos, arc)
+      );
     }
     case 'inTargetArea': {
       const area = cell || (target ? { x: target.pos.x, y: target.pos.y, half: TILE_HALF } : null);
@@ -412,6 +443,23 @@ export function markArea(state, pos, sourceId, e) {
   });
 }
 
+// Pickups: Quake's actual design, which is that the map is a resource
+// you have to go and stand on.
+export function spawnPickup(state, def, pos) {
+  state.pickups.push({
+    id: ++state.hazardCounter,
+    type: def.id,
+    name: def.name,
+    aura: def.aura,
+    heal: def.heal || 0,
+    x: pos.x,
+    y: pos.y,
+    radius: def.radius ?? 0.55,
+    respawn: Math.round((def.respawn ?? 30) * TICKS_PER_SECOND),
+    readyAt: state.tick + Math.round((def.firstAt ?? 12) * TICKS_PER_SECOND),
+  });
+}
+
 export function runEffects(state, content, ctx, effects) {
   for (const e of effects || []) {
     const handler = effectHandlers[e.type];
@@ -535,7 +583,9 @@ export function performDash(state, content, unit) {
 export function setBlocking(state, content, unit, on) {
   const block = styleOf(state).block;
   if (!block || !unit.alive) return;
+  const was = unit.blocking;
   unit.blocking = !!on && unit.stamina > 0 && !hasAuraId(unit, 'guardBroken');
+  if (unit.blocking && !was) unit.blockStartedAt = state.tick;
   if (!unit.blocking) return;
   const aura = applyAura(state, content, unit.id, unit, 'blocking', { durationTicks: 3 });
   // How much a block blocks lives in the style, not in the aura file.

@@ -279,5 +279,24 @@
         "value": 2
       }
     ]
+  },
+  "staggered": {
+    "name": "Staggered",
+    "duration": 1.5,
+    "harmful": true,
+    "modifiers": [
+      {
+        "stat": "damageTaken",
+        "op": "mult",
+        "value": 1.35
+      }
+    ]
+  },
+  "barrier": {
+    "name": "Barrier",
+    "duration": 8,
+    "harmful": false,
+    "absorb": 150000,
+    "modifiers": []
   }
 }

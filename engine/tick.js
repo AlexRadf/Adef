@@ -49,12 +49,14 @@ export function applyOrders(state, content, inputQueue = []) {
 export function step(state, content, inputQueue = []) {
   if (state.over) return state;
 
+  state.content = content; // so the choke points can reach it
   state.tick++;                              // 1
   state.events = [];
   regenResources(state, content);
   resolveCastsAndMoves(state, content);      // 2
   auraPass(state, content);                  // 3
   fieldPass(state, content);
+  pickupPass(state, content);
   hazardPass(state, content);                // 4
   bossPass(state, content);                  // 5
   aiPass(state, content);                    // 6
@@ -88,6 +90,22 @@ function regenResources(state, content) {
       }
     } else {
       u.stamina = Math.min(u.maxStamina, u.stamina + u.staminaRegen / TICKS_PER_SECOND);
+    }
+  }
+}
+
+// Walking over a pickup takes it. It respawns on a timer, so the arena
+// itself becomes something the party has to move around for.
+function pickupPass(state, content) {
+  for (const pickup of state.pickups) {
+    if (pickup.readyAt > state.tick) continue;
+    for (const unit of livingParty(state)) {
+      if (Math.hypot(unit.pos.x - pickup.x, unit.pos.y - pickup.y) > pickup.radius) continue;
+      if (pickup.aura) applyAura(state, content, unit.id, unit, pickup.aura);
+      if (pickup.heal) applyHeal(state, null, unit, pickup.heal, { name: pickup.name });
+      log(state, `${unit.name} takes ${pickup.name}!`, 'enrage');
+      pickup.readyAt = state.tick + pickup.respawn;
+      break;
     }
   }
 }
@@ -349,6 +367,8 @@ function bossPass(state, content) {
   else boss.moveTarget = null;
 
   if (boss.castAbility) return;
+  // Staggered: the window a parry buys you.
+  if (boss.auras.some((a) => a.id === 'staggered')) return;
 
   for (const slot of state.schedule) {
     if (slot.nextTick > state.tick) continue;
@@ -581,6 +601,14 @@ export function snapshot(state, content) {
     })),
     aim: { ...state.playerAim },
     fields: state.fields.map((f) => ({ x: f.x, y: f.y, half: f.half, name: f.name })),
+    pickups: state.pickups.map((p) => ({
+      type: p.type,
+      name: p.name,
+      x: p.x,
+      y: p.y,
+      ready: p.readyAt <= state.tick,
+      in: Math.max(0, (p.readyAt - state.tick) / TICKS_PER_SECOND),
+    })),
     events: state.events.slice(),
     style: {
       id: state.style.id,

@@ -13,7 +13,30 @@
       "tanking": "threat"
     },
     "holdFire": false,
-    "sensitivity": 1
+    "sensitivity": 1,
+    "signature": "Frontal cleave — Magma Cleave comes out of the boss's face in a 130° cone, so the tank's job is to keep it pointed away from everyone else.",
+    "abilities": {
+      "magmaCleave": {
+        "name": "Magma Cleave",
+        "coneArc": 130,
+        "coneRange": 2.6,
+        "desc": "A frontal. Everything in the cone in front of it gets hit.",
+        "effects": [
+          {
+            "type": "damage",
+            "target": "cone",
+            "amount": 132000,
+            "school": "lava"
+          },
+          {
+            "type": "aura",
+            "aura": "scorched",
+            "target": "target"
+          }
+        ]
+      }
+    },
+    "bots": "36%"
   },
   "quake": {
     "id": "quake",
@@ -29,7 +52,33 @@
       "tanking": "threat"
     },
     "holdFire": true,
-    "sensitivity": 1.15
+    "sensitivity": 1.15,
+    "signature": "Pickups — Quad Damage and Megahealth spawn on the floor on a timer. You have to go and stand on them, which is the whole reason Quake maps are shaped the way they are.",
+    "pickups": [
+      {
+        "id": "quad",
+        "name": "Quad Damage",
+        "aura": "quadPickup",
+        "respawn": 50,
+        "firstAt": 25,
+        "at": {
+          "x": 2.5,
+          "y": 0.8
+        }
+      },
+      {
+        "id": "mega",
+        "name": "Megahealth",
+        "heal": 240000,
+        "respawn": 40,
+        "firstAt": 15,
+        "at": {
+          "x": 2.5,
+          "y": 4.2
+        }
+      }
+    ],
+    "bots": "44%"
   },
   "overwatch": {
     "id": "overwatch",
@@ -45,7 +94,23 @@
       "tanking": "threat"
     },
     "holdFire": true,
-    "sensitivity": 1
+    "sensitivity": 1,
+    "signature": "Barrier — the Vanguard's ultimate stops being a damage reduction and becomes a deployed shield: a pool of absorb across the whole party that gets chewed through.",
+    "abilities": {
+      "pentagram": {
+        "name": "Barrier",
+        "icon": "◫",
+        "desc": "ULTIMATE. Drops a barrier over the party: 150,000 of absorb each, until it is chewed through.",
+        "effects": [
+          {
+            "type": "aura",
+            "aura": "barrier",
+            "target": "party"
+          }
+        ]
+      }
+    },
+    "bots": "58%"
   },
   "souls": {
     "id": "souls",
@@ -61,6 +126,8 @@
       "tanking": "block"
     },
     "holdFire": false,
-    "sensitivity": 0.9
+    "sensitivity": 0.9,
+    "signature": "Parry — raise your guard in the half second before a blow lands and you turn it aside completely, staggering the boss and leaving it taking 35% more for 2.5s.",
+    "bots": "43%"
   }
 }

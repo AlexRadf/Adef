@@ -91,6 +91,15 @@
   #crosshair::before { left:10px; top:0; width:2px; height:22px; }
   #crosshair::after { top:10px; left:0; height:2px; width:22px; }
 
+  #lobbyTag { left:50%; top:76px; transform:translateX(-50%); width:min(560px,60vw); text-align:center; }
+  #lobbyTag b { font:15px/1 Impact,sans-serif; letter-spacing:.22em; color:var(--gold);
+    text-transform:uppercase; text-shadow:2px 2px 0 #000; }
+  #lobbyStats { font:26px/1.2 Impact,sans-serif; color:var(--lava-hot); text-shadow:2px 2px 0 #000; margin-top:2px; }
+  #signature { font-size:11px; color:var(--dim); margin:6px auto 0; max-width:520px; line-height:1.5; }
+  .go-hint { margin-top:6px; font-size:11px; color:var(--gold-dim); letter-spacing:.06em; }
+  .go-hint kbd { background:#241b13; border:1px solid #000; padding:1px 6px; color:var(--text); }
+  #padTag { right:14px; bottom:34px; font:10px/1 Impact,sans-serif; letter-spacing:.18em;
+    color:var(--gold-dim); text-transform:uppercase; }
   #hint { left:50%; top:62%; transform:translateX(-50%); font:14px/1.7 Impact,sans-serif;
     letter-spacing:.14em; color:var(--gold); text-shadow:2px 2px 0 #000; text-align:center; }
 
@@ -115,6 +124,9 @@
   .game em { display:block; font-size:10px; color:var(--gold-dim); letter-spacing:.1em;
     text-transform:uppercase; margin-bottom:5px; }
   .game span { font-size:11px; }
+  .game .sig { display:block; margin-top:6px; font-size:10px; color:var(--lava); letter-spacing:.04em;
+    text-transform:uppercase; }
+  .game .bots { display:block; margin-top:2px; font-size:10px; color:#5f5346; }
   #roles { display:grid; grid-template-columns:repeat(3,1fr); gap:8px; }
   .role { padding:10px; cursor:pointer; background:#100c09; border:1px solid #000; color:var(--dim);
     font:inherit; box-shadow:inset 1px 1px 0 rgba(120,100,72,.22); }
@@ -153,6 +165,13 @@
   <div id="mode"></div>
   <div id="crosshair"></div>
   <div id="hint" hidden>Click to look — Esc releases the mouse</div>
+  <div id="lobbyTag" hidden>
+    <b>Training</b>
+    <div id="lobbyStats">Hit the dummy. Learn the loop.</div>
+    <div id="signature"></div>
+    <div class="go-hint"><kbd>E</kbd> or <kbd>Start</kbd> — begin the encounter</div>
+  </div>
+  <div id="padTag" hidden>controller</div>
 </div>
 
 <div class="screen" id="menu">
@@ -171,7 +190,11 @@
     <button class="go" id="play" disabled>Loading…</button>
     <div class="keys">
       <kbd>WASD</kbd> move &nbsp;<kbd>mouse</kbd> look &nbsp;<kbd>LMB</kbd> primary &nbsp;<kbd>1-4</kbd> abilities<br>
-      <kbd>Shift</kbd> dodge &nbsp;<kbd>RMB</kbd>/<kbd>Q</kbd> block &nbsp;<kbd>Tab</kbd> target &nbsp;<kbd>Space</kbd> pause &nbsp;<kbd>R</kbd> restart
+      <kbd>Shift</kbd> dodge &nbsp;<kbd>RMB</kbd>/<kbd>Q</kbd> block &nbsp;<kbd>Tab</kbd> target &nbsp;<kbd>E</kbd> leave the lobby
+      &nbsp;<kbd>Space</kbd> pause &nbsp;<kbd>R</kbd> restart<br>
+      <span style="color:var(--gold-dim)">Controller:</span> sticks move and look &nbsp;<kbd>A B X Y</kbd> abilities
+      &nbsp;<kbd>RT</kbd> primary &nbsp;<kbd>LT</kbd> block &nbsp;<kbd>RB</kbd> dodge &nbsp;<kbd>LB</kbd> target
+      &nbsp;<kbd>Start</kbd> pause
     </div>
   </div>
 </div>

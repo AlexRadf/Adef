@@ -91,6 +91,11 @@ export function createHud(content) {
       }
     }
 
+    if (extra.lobby) {
+      const { dps, hps } = extra.lobby;
+      el('lobbyStats').textContent = hps > dps ? `${num(hps)} healing per second` : `${num(dps)} damage per second`;
+    }
+    el('padTag').hidden = !extra.pad;
     el('target').textContent = extra.targetName || '';
     el('mode').textContent = extra.modeName || '';
   }
