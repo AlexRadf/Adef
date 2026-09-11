@@ -180,6 +180,12 @@ func _system_purge(payload: Dictionary) -> bool:
 	var purged := status.dispel(types)
 	if purged == "":
 		return false
+	AbilityFx.tracer(
+		player.aim_point(), (target as Node3D).global_position + Vector3(0, 1.2, 0),
+		Color(0.75, 0.95, 1.0, 0.9), 0.07
+	)
+	AbilityFx.impact((target as Node3D).global_position + Vector3(0, 1.2, 0),
+		Color(0.75, 0.95, 1.0, 0.95), 1.1)
 	Combat.apply_heal(player, target, float(def.get("heal_on_cleanse", 60.0)))
 	return true
 

@@ -120,9 +120,12 @@ func _all_trash_cleared() -> bool:
 func _open_security_override() -> void:
 	_set_phase(Phase.SECURITY_OVERRIDE)
 	var terminal: SecurityTerminal = preload("res://scenes/floor/SecurityTerminal.tscn").instantiate()
-	terminal.unlock_seconds = float(_def.get("terminal_unlock_seconds", 12.0))
-	terminal.wave_count = int(_def.get("terminal_waves", 2))
-	terminal.wave_types = _def.get("terminal_wave_types", ["sentry_drone"])
+	terminal.unlock_seconds = float(_def.get("terminal_unlock_seconds", 8.0))
+	# No timed waves. What you fight on a floor is the packs that are
+	# standing in it; adds that spawn on a clock are a different game, and
+	# they undercut the whole point of choosing when to pull.
+	terminal.wave_count = 0
+	terminal.wave_types = []
 	_spawn_root.add_child(terminal, true)
 	terminal.global_position = _def["terminal"]
 	terminal.unlocked.connect(_on_terminal_unlocked)
@@ -133,6 +136,8 @@ func _on_terminal_unlocked() -> void:
 
 # ------------------------------------------------------------------ boss
 
+## The boss is placed, not summoned. It stands in its room from the moment
+## the door opens and waits to be pulled, exactly like every trash pack.
 func _spawn_boss() -> void:
 	_set_phase(Phase.BOSS)
 	var scene: PackedScene = preload("res://scenes/enemies/IronCenturion.tscn")
@@ -141,7 +146,7 @@ func _spawn_boss() -> void:
 	_spawn_root.add_child(boss, true)
 	boss.global_position = _def.get("boss_origin", Vector3(0, 0, -70))
 	boss.health_component.died.connect(_on_boss_died)
-	boss.begin_encounter()
+	boss.arm()
 
 func _on_boss_died() -> void:
 	_set_phase(Phase.ASCENT)

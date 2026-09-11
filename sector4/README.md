@@ -87,6 +87,9 @@ Everything a player needs mid-fight, in a fixed place:
 - **Arena reticle** — Nano-Energy left, soft-locked target health right, debuffs flashing above.
 - **Floating combat numbers** — yours big and gold, other people's small and grey, damage taken
   red, healing green. Without these there is no feedback loop at all.
+- **Ability visuals** — tracers, impact rings, a flowing heal beam, a dash trail and a purge
+  bolt. They are drawn from the same events the server already broadcasts, in `Combat`'s one
+  reporting function, so an effect can never show a shot that did not happen.
 - **Boss bar and cast bar** — Core Overcharge gets the loudest thing on screen.
 
 `Escape` opens the **pause screen**: resume, a kit card spelling out what every button does and
@@ -98,6 +101,16 @@ Enemies **go down** rather than freezing upright: they topple, settle, fade and 
 away, with collision dropped so a corpse never blocks the room. A downed operative topples too
 but stays put and stands back up, because they can still be revived. Trash is tinted by type,
 so the thing that casts at you does not look like the thing that punches you.
+
+## What you fight, and when
+
+A floor is **packs that are standing in it**, and a boss room at the end. There are no timed
+add waves: adds that spawn on a clock undercut the whole point of choosing when to pull.
+
+The boss follows the same contract as every trash pack — it is **placed, not summoned**. It
+stands in its chamber from the moment the door opens and does nothing until something hits it.
+Drag it more than 34m from home and it drops the fight, walks back, and returns to full: losing
+a pull costs you the pull, not the run, and the encounter cannot be won with a corridor.
 
 ## Bots fill the empty seats
 
@@ -126,6 +139,16 @@ Bots do not react instantly. Each seat carries a reaction delay of 0.35–0.95s 
 a condition, and the interrupt gets a much shorter fuse because a 4 second window is not
 forgiving enough for a human-shaped pause. One number, and it is the single biggest reason a
 party of bots reads as people rather than as a machine.
+
+**Bots never start fights.** They form up beside whoever is leading — spread across and slightly
+behind, so a bot is never the thing that walks into a pack first — and they only commit once
+something is genuinely engaged. A dormant pack across the room is scenery to them. An ability
+with no target is simply not pressed, which is what stops the fallback attack from firing down
+the bot's facing and pulling whatever happens to be standing there. The decision of when to pull
+belongs to the player, because that decision *is* the tactical layer.
+
+They also only exist in a fight: the staging deck shows the real squad and marks the empty seats,
+and bots are created when you deploy.
 
 Bots never bypass validation: every press goes through the same `RoleKit.server_fire` a human's
 button reaches, so a bot cannot do anything a player could not.
@@ -174,6 +197,10 @@ score = dot(cam_forward, to_target) × 0.50      # angle
       − (dist / 35m)                × 0.15      # distance
       + 0.20 if it is already the target        # sticky
 ```
+
+Facing the boss must not make the healer unable to heal, so the cone is an aiming aid rather
+than a requirement: the ally scorer runs a wider cone, falls back to whoever most needs help
+when nobody is in it, and `Tab` / D-Pad Left steps through the party explicitly.
 
 The sticky bonus is the whole reason it feels stable — without it the reticle flickers between
 two people standing on top of each other, and a heal beam that flickers is a heal beam that

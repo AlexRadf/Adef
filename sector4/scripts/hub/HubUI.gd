@@ -41,7 +41,7 @@ func _process(_delta: float) -> void:
 func _unhandled_input(event: InputEvent) -> void:
 	if screen == Screen.NONE:
 		return
-	if event.is_action_pressed("ui_cancel") or event.is_action_pressed("interact"):
+	if event.is_action_pressed("ui_cancel") or event.is_action_pressed("interact") 			or event.is_action_pressed("back_out"):
 		close()
 		get_viewport().set_input_as_handled()
 		return
@@ -53,6 +53,12 @@ func _unhandled_input(event: InputEvent) -> void:
 	elif event.is_action_pressed("ui_accept"):
 		_activate(_hover)
 	elif event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT:
+		if _close_rect().has_point(event.position) or not _panel_rect().has_point(event.position):
+			# The X, or anywhere off the panel. A menu you can only leave
+			# by guessing a key is a menu people get stuck in.
+			close()
+			get_viewport().set_input_as_handled()
+			return
 		var index := _row_at(event.position)
 		if index >= 0:
 			_activate(index)
@@ -135,6 +141,24 @@ func _flash(text: String) -> void:
 
 # ---------------------------------------------------------------- drawing
 
+## A real target in the corner of the panel, sized for a mouse.
+func _close_rect() -> Rect2:
+	var rect := _panel_rect()
+	return Rect2(rect.position + Vector2(rect.size.x - 52.0, 14.0), Vector2(38.0, 38.0))
+
+func _draw_close_button(font: Font) -> void:
+	var rect := _close_rect()
+	var hot := rect.has_point(get_viewport().get_mouse_position())
+	_canvas.draw_rect(rect, Color(0.14, 0.06, 0.07, 0.95) if hot else Color(0.06, 0.07, 0.10, 0.9))
+	_canvas.draw_rect(rect, Color(1.0, 0.45, 0.4, 0.9) if hot else Color(1, 1, 1, 0.25), false, 1.5)
+	var centre := rect.position + rect.size * 0.5
+	var arm := 8.0
+	var colour := Color(1.0, 0.6, 0.55) if hot else Color(1, 1, 1, 0.7)
+	_canvas.draw_line(centre + Vector2(-arm, -arm), centre + Vector2(arm, arm), colour, 2.0)
+	_canvas.draw_line(centre + Vector2(-arm, arm), centre + Vector2(arm, -arm), colour, 2.0)
+	_canvas.draw_string(font, rect.position + Vector2(-26.0, 26.0), "Esc",
+		HORIZONTAL_ALIGNMENT_LEFT, -1, 12, Color(1, 1, 1, 0.45))
+
 func _panel_rect() -> Rect2:
 	return Rect2((_canvas.size - PANEL_SIZE) * 0.5, PANEL_SIZE)
 
@@ -155,6 +179,7 @@ func _draw_canvas() -> void:
 	if screen == Screen.NONE:
 		_draw_deck_header(font)
 		_draw_station_signs(font)
+		_draw_empty_seats(font)
 		_draw_prompt(font)
 		return
 	var rect := _panel_rect()
@@ -167,9 +192,10 @@ func _draw_canvas() -> void:
 		Screen.ROSTER: _draw_roster(font, rect)
 		Screen.MISSION: _draw_mission(font, rect)
 
+	_draw_close_button(font)
 	_canvas.draw_string(font, rect.position + Vector2(26.0, rect.size.y - 18.0),
-		"Enter / click to select     Esc to close",
-		HORIZONTAL_ALIGNMENT_LEFT, -1, 12, Color(1, 1, 1, 0.4))
+		"Enter or click to select     Esc, B or click outside to go back",
+		HORIZONTAL_ALIGNMENT_LEFT, -1, 13, Color(1, 1, 1, 0.55))
 	if _now() < _status_until:
 		_canvas.draw_string(font, rect.position + Vector2(360.0, rect.size.y - 18.0), _status,
 			HORIZONTAL_ALIGNMENT_LEFT, -1, 12, Color(1.0, 0.6, 0.3))
@@ -196,6 +222,30 @@ func _draw_station_signs(font: Font) -> void:
 		var sub_width := font.get_string_size(station.subtitle, HORIZONTAL_ALIGNMENT_LEFT, -1, 11).x
 		_canvas.draw_string(font, at + Vector2(-sub_width * 0.5, 16.0), station.subtitle,
 			HORIZONTAL_ALIGNMENT_LEFT, -1, 11, Color(1, 1, 1, 0.55))
+
+## Labels over the unfilled seats, so the squad you are missing is as
+## visible as the squad you have.
+func _draw_empty_seats(font: Font) -> void:
+	var camera := get_viewport().get_camera_3d()
+	if camera == null:
+		return
+	for node in get_tree().get_nodes_in_group("empty_seats"):
+		var pad := node as Node3D
+		if pad == null:
+			continue
+		var head: Vector3 = pad.global_position + Vector3(0.0, 1.5, 0.0)
+		if camera.is_position_behind(head):
+			continue
+		var at := camera.unproject_position(head)
+		var role_id: String = pad.get_meta("empty_seat_role", "")
+		var label: String = Content.role(role_id).get("display_name", role_id)
+		var width := font.get_string_size(label, HORIZONTAL_ALIGNMENT_LEFT, -1, 14).x
+		_canvas.draw_string(font, at + Vector2(-width * 0.5, 0.0), label,
+			HORIZONTAL_ALIGNMENT_LEFT, -1, 14, Color(1, 1, 1, 0.55))
+		var note := "bot fills on deploy"
+		var note_width := font.get_string_size(note, HORIZONTAL_ALIGNMENT_LEFT, -1, 11).x
+		_canvas.draw_string(font, at + Vector2(-note_width * 0.5, 15.0), note,
+			HORIZONTAL_ALIGNMENT_LEFT, -1, 11, Color(1, 1, 1, 0.32))
 
 ## The walk-up prompt. Without this a station is just furniture.
 func _draw_prompt(font: Font) -> void:

@@ -31,6 +31,7 @@ func _ready() -> void:
 	_build_geometry()
 	_build_lighting()
 	add_child(HUD_SCENE.instantiate())
+	add_child(preload("res://scenes/abilities/AbilityFx.tscn").instantiate())
 	add_child(PAUSE_SCENE.instantiate())
 	if Net.is_server():
 		_spawn_players()

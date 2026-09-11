@@ -35,6 +35,7 @@ var _ui: HubUI = null
 
 func _ready() -> void:
 	spawn_root.add_to_group("spawn_root")
+	add_child(preload("res://scenes/abilities/AbilityFx.tscn").instantiate())
 	_build_deck()
 	_build_lighting()
 	_build_stations()
@@ -45,8 +46,10 @@ func _ready() -> void:
 
 # ------------------------------------------------------------- the squad
 
-## Everyone stands on the deck, humans and bots alike, so the hub shows the
-## party you are about to deploy with rather than just your own back.
+## Only real people stand on the deck. An empty seat is shown as an empty
+## seat -- a lit pad with the role's name on it -- rather than as a bot
+## pretending to be a squadmate, because in the hub the question you are
+## answering is "who is actually here".
 func _spawn_squad() -> void:
 	var taken := {}
 	var slot := 0
@@ -58,8 +61,29 @@ func _spawn_squad() -> void:
 	for role_id in Content.ROLE_ORDER:
 		if taken.has(role_id):
 			continue
-		_spawn_one(0, role_id, slot, true)
+		_mark_empty_seat(role_id, slot)
 		slot += 1
+
+## An unfilled seat: a pad you can see, labelled, saying a bot will take it
+## when the squad drops.
+func _mark_empty_seat(role_id: String, slot: int) -> void:
+	var pad := MeshInstance3D.new()
+	var mesh := CylinderMesh.new()
+	mesh.top_radius = 0.85
+	mesh.bottom_radius = 0.85
+	mesh.height = 0.05
+	pad.mesh = mesh
+	var material := StandardMaterial3D.new()
+	material.albedo_color = Color(0.35, 0.42, 0.55, 0.5)
+	material.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	material.emission_enabled = true
+	material.emission = Color(0.30, 0.40, 0.55)
+	material.emission_energy_multiplier = 0.7
+	pad.material_override = material
+	pad.set_meta("empty_seat_role", role_id)
+	pad.add_to_group("empty_seats")
+	spawn_root.add_child(pad)
+	pad.global_position = Vector3(-4.5 + 3.0 * float(slot), 0.05, 4.0)
 
 func _spawn_one(peer_id: int, role_id: String, slot: int, as_bot: bool) -> void:
 	var body: PlayerCharacter = PLAYER_SCENE.instantiate()
@@ -67,14 +91,8 @@ func _spawn_one(peer_id: int, role_id: String, slot: int, as_bot: bool) -> void:
 	body.peer_id = peer_id
 	body.role_id = role_id
 	body.is_bot = as_bot
-	# Bots idle on the deck rather than running a combat brain at a room
-	# with nothing in it.
-	body.set_meta("hub_idle", as_bot)
 	spawn_root.add_child(body, true)
 	body.global_position = Vector3(-4.5 + 3.0 * float(slot), 0.4, 4.0)
-	if as_bot and body.brain != null:
-		body.brain.queue_free()
-		body.brain = null
 
 ## Swapping seat rebuilds the deck, so the operative you are looking at is
 ## always the one you are about to take into the fight.

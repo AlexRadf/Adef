@@ -17,11 +17,21 @@ class_name IronCenturion
 
 const SCRIPTED_TOLERANCE := 0.05
 
+## How far from its chamber the Centurion will follow before it gives up,
+## walks home and comes back to full. A boss you can drag down the corridor
+## and kill with the corridor is not an encounter.
+const LEASH_RADIUS := 34.0
+const RESET_SECONDS := 1.2
+
 @export var boss_id: String = "unit_01"
+
+signal reset_home()
 
 var is_enraged: bool = false
 var encounter_time: float = 0.0
 var active: bool = false
+var home: Vector3 = Vector3.ZERO
+var resetting: bool = false
 
 var _def: Dictionary = {}
 var _next_at: Dictionary = {}
@@ -49,10 +59,56 @@ func _ready() -> void:
 	for entry in _def.get("cycle", []):
 		_next_at[entry["ability"]] = float(entry["first"])
 
+## The boss waits in its room. Walking in does nothing; pulling it starts
+## the fight, which is the same contract every trash pack already has.
+func arm() -> void:
+	home = global_position
+	active = false
+	resetting = false
+
 func begin_encounter() -> void:
+	if active:
+		return
 	active = true
 	encounter_time = 0.0
 	_scripted_fired.clear()
+	GameEvents.boss_cast_finished.emit("", false)
+
+func on_pulled_by(puller: Node) -> void:
+	if threat_component != null and puller != null:
+		threat_component.add_threat(puller, 100.0)
+	begin_encounter()
+
+## Out of its room: drop everything, walk home, come back to full. Losing a
+## pull has to cost you the pull rather than the run.
+func _check_leash() -> void:
+	if not active or resetting:
+		return
+	if global_position.distance_to(home) <= LEASH_RADIUS and _threat_leader() != null:
+		return
+	_reset_home()
+
+func _reset_home() -> void:
+	resetting = true
+	active = false
+	cast_component.cancel()
+	_turn_locked = false
+	is_enraged = false
+	encounter_time = 0.0
+	_scripted_fired.clear()
+	for entry in _def.get("cycle", []):
+		_next_at[entry["ability"]] = float(entry["first"])
+	if threat_component != null:
+		for unit in threat_component.participants():
+			threat_component.forget(unit)
+	status_component.clear_all()
+	health_component.setup(float(_def.get("max_health", 50000.0)))
+	var walk := create_tween()
+	walk.tween_property(self, "global_position", home, RESET_SECONDS)
+	await walk.finished
+	resetting = false
+	reset_home.emit()
+	GameEvents.boss_cast_finished.emit("", true)
 
 ## The interval this ability is currently running at, enrage included. The
 ## HUD timeline reads this, and so does the test that proves enrage works.
@@ -71,7 +127,12 @@ func _cast_rate() -> float:
 func _physics_process(delta: float) -> void:
 	if not Net.is_server() or is_dead:
 		return
+	if resetting:
+		return
 	_chase(delta)
+	if not active:
+		return
+	_check_leash()
 	if not active:
 		return
 	encounter_time += delta
@@ -199,7 +260,7 @@ func _core_overcharge() -> void:
 # -------------------------------------------------------------- movement
 
 func _chase(delta: float) -> void:
-	var target := _threat_leader()
+	var target := _threat_leader() if active else null
 	if target == null or _turn_locked:
 		velocity.x = move_toward(velocity.x, 0.0, 30.0 * delta)
 		velocity.z = move_toward(velocity.z, 0.0, 30.0 * delta)

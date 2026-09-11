@@ -33,10 +33,12 @@ func _run_all() -> void:
 	await _suite("cast and interrupt", _test_cast)
 	await _suite("scenes instantiate", _test_scenes)
 	await _suite("boss cycle", _test_boss)
+	await _suite("boss room leash", _test_leash)
 	await _suite("floor director", _test_floor)
 	await _suite("a floor, actually running", _test_integration)
 	await _suite("loadout modules", _test_loadout)
 	await _suite("the hub", _test_hub)
+	await _suite("bots hold the line", _test_bot_restraint)
 	await _suite("bots fill the empty seats", _test_bots)
 	await _suite("bots do their jobs", _test_bot_jobs)
 
@@ -431,6 +433,23 @@ func _test_softlock() -> void:
 	targeting.current_target = null
 	check(targeting.evaluate() == null, "nobody behind you is soft-locked")
 
+	# Facing the boss must not make the healer unable to heal. With the
+	# fallback on, an ally outside the cone is still reachable.
+	targeting.fallback_to_neediest = true
+	healthy.global_position = Vector3(0, 0, 12)
+	hurt.global_position = Vector3(2, 0, 12)
+	targeting.current_target = null
+	check(targeting.evaluate() == null, "nobody is in the cone")
+	await get_tree().process_frame
+	check(targeting.current_target == hurt, "but the hurt ally is still picked up behind you")
+
+	# And the explicit override steps through the party regardless.
+	var stepped := targeting.cycle(true)
+	check(stepped != null, "cycle picks somebody")
+	var stepped_again := targeting.cycle(true)
+	check(stepped_again != stepped, "and stepping again moves on")
+	targeting.fallback_to_neediest = false
+
 	# Smart Nano-Pulse ignores the cone by design.
 	check(targeting.lowest_health_ally(60.0) == hurt, "Smart Nano-Pulse finds the lowest HP anywhere")
 
@@ -517,6 +536,41 @@ func _test_boss() -> void:
 	check(scripted[0]["at"] == 45.0, "first Core Overcharge at 0:45")
 	check(scripted[1]["at"] == 90.0, "second at 1:30")
 	boss.queue_free()
+
+## Drag the boss out of its room and it has to give up, walk home and come
+## back to full -- otherwise the fight can be won with the corridor rather
+## than with the encounter.
+func _test_leash() -> void:
+	_ground()
+	var boss: IronCenturion = preload("res://scenes/enemies/IronCenturion.tscn").instantiate()
+	add_child(boss)
+	boss.global_position = Vector3(0, 0, -30)
+	var puller := _bot("enforcer", Vector3(0, 0, -28))
+	for i in 4:
+		await get_tree().process_frame
+	boss.arm()
+
+	check(not boss.active, "the boss starts dormant")
+	boss.on_pulled_by(puller)
+	check(boss.active, "and a pull starts it")
+
+	boss.health_component.reduce(20000.0)
+	check(boss.health_component.get_health_percent() < 0.9, "it takes damage once engaged")
+
+	# Walk the puller far outside the leash and let the boss notice.
+	puller.global_position = Vector3(0, 0, 60)
+	boss.global_position = Vector3(0, 0, 55)
+	boss._check_leash()
+	check(not boss.active, "leaving the room drops the fight")
+	await get_tree().create_timer(1.6).timeout
+	check_near(boss.health_component.get_health_percent(), 1.0, "and it resets to full")
+	check(boss.global_position.distance_to(boss.home) < 1.0, "back where it started")
+	check(not boss.is_enraged, "and calm again")
+
+	boss.queue_free()
+	puller.queue_free()
+	for i in 3:
+		await get_tree().process_frame
 
 func _test_floor() -> void:
 	var floor_def: Dictionary = Content.FLOORS[0]
@@ -625,7 +679,12 @@ func _test_integration() -> void:
 		await get_tree().create_timer(0.6).timeout
 		check(pane.is_unlocked, "and the override completes")
 	check(director.phase == FloorDirector.Phase.BOSS, "and holding it brings the Iron Centurion")
-	check(director.boss != null and director.boss.active, "which starts its cycle")
+	check(director.boss != null, "which is standing in its chamber")
+	# The boss waits. Walking into the room is not a pull, which is the
+	# same contract every trash pack already has.
+	check(not director.boss.active, "and waits to be pulled rather than starting itself")
+	director.boss.on_pulled_by(seats["enforcer"])
+	check(director.boss.active, "pulling it starts the fight")
 
 	# Killing the boss ends the floor on the ascent.
 	if director.boss != null:
@@ -641,6 +700,41 @@ func _test_integration() -> void:
 
 ## A solo run must still be a four-person fight, because every boss
 ## ability is answered by a specific seat.
+## A bot must never be the thing that starts a fight. The player picks the
+## moment; the squad forms up and waits.
+func _test_bot_restraint() -> void:
+	_ground()
+	var leader := _bot("field_medic", Vector3.ZERO)
+	leader.is_bot = false          # stand in for the human
+	var tank := _bot("enforcer", Vector3(0, 0, 3))
+	var mob: TrashMob = preload("res://scenes/enemies/TrashMob.tscn").instantiate()
+	mob.mob_type = "sentry_drone"
+	add_child(mob)
+	mob.global_position = Vector3(0, 0, -14)
+	for i in 4:
+		await get_tree().process_frame
+
+	check(not mob.is_awake(), "the pack is asleep")
+	check(tank.brain._primary_enemy() == null, "so the bot has nothing to fight")
+	await get_tree().create_timer(1.2).timeout
+	check(not mob.is_awake(), "and it does not go and wake it")
+	check(mob.health_component.get_health_percent() >= 0.999, "nor shoot it from here")
+
+	# It should be forming up on the leader instead of idling on the spot.
+	var spot := tank.brain._formation_spot()
+	check(spot.distance_to(leader.global_position) < 6.0, "it forms up near the leader")
+
+	# Once the player pulls, the bot commits.
+	mob.on_pulled_by(leader)
+	await get_tree().create_timer(0.6).timeout
+	check(tank.brain._primary_enemy() == mob, "and once it is pulled, the bot engages")
+
+	leader.queue_free()
+	tank.queue_free()
+	mob.queue_free()
+	for i in 3:
+		await get_tree().process_frame
+
 func _test_bots() -> void:
 	Net.roster = {1: {"name": "You", "role": "field_medic", "ready": true}}
 	var level: FloorLevel = preload("res://scenes/floor/Floor.tscn").instantiate()
@@ -688,6 +782,10 @@ func _test_bot_jobs() -> void:
 	var striker := _bot("kinetic_striker", Vector3(0, 0.5, 3.0))
 	for i in 4:
 		await get_tree().process_frame
+
+	# The boss has to be pulled before anyone is fighting it.
+	boss.arm()
+	boss.on_pulled_by(striker)
 
 	var wiped := [false]
 	boss.cast_component.begin("core_overcharge", 4.0, true, func() -> void: wiped[0] = true)
@@ -747,7 +845,12 @@ func _test_bot_jobs() -> void:
 	var squishy := _bot("railgun_specialist", Vector3(4, 0.5, 0))
 	for i in 4:
 		await get_tree().process_frame
+	# A real pull: the sniper wakes it and holds the threat. Bots only
+	# commit once something is actually engaged, so the mob has to be awake
+	# for the tank to care about it.
+	mob.on_pulled_by(squishy)
 	mob.threat_component.add_threat(squishy, 5000.0)
+	check(mob.is_awake(), "the mob is engaged")
 	check(mob.threat_component.get_leader() == squishy, "the sniper pulled aggro")
 	await get_tree().create_timer(2.0).timeout
 	check(mob.threat_component.get_leader() == tank, "the Enforcer bot pulls it back")
@@ -848,19 +951,17 @@ func _test_hub() -> void:
 	check(ids.has("armoury") and ids.has("roster") and ids.has("mission"),
 		"armoury, roster and mission table")
 
-	# The squad stands on the deck, so you see who you are deploying with.
+	# Only real people stand on the deck. The hub answers "who is actually
+	# here", so a bot must not be standing in as a squadmate.
 	var bodies := get_tree().get_nodes_in_group("players")
-	check(bodies.size() == 4, "the whole squad is on the deck")
-	var humans := 0
-	for body in bodies:
-		if not body.is_bot:
-			humans += 1
-	check(humans == 1, "one of them is you")
-	# Hub bots must not be running a combat brain at an empty room.
-	for body in bodies:
-		if body.is_bot:
-			check(body.brain == null, "hub bots idle rather than fight")
-			break
+	check(bodies.size() == 1, "only real operatives stand on the deck")
+	check(not bodies[0].is_bot, "and that one is you")
+	var seats := get_tree().get_nodes_in_group("empty_seats")
+	check(seats.size() == 3, "the three unfilled seats are shown as empty")
+	var seat_roles := {}
+	for pad in seats:
+		seat_roles[pad.get_meta("empty_seat_role", "")] = true
+	check(not seat_roles.has("field_medic"), "your own seat is not marked empty")
 
 	check(hub.station_in_reach() == null, "no prompt until you walk onto one")
 

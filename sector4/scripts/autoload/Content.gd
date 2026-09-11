@@ -603,6 +603,7 @@ const INPUT_LABELS := {
 	"ultimate": "Y",
 	"mark_target": "D-Pad >",
 	"toggle_camera": "R3",
+	"cycle_ally": "D-Pad <",
 	"interact": "A",
 }
 
@@ -615,6 +616,7 @@ const INPUT_KEYS := {
 	"ultimate": "R",
 	"mark_target": "F",
 	"toggle_camera": "V",
+	"cycle_ally": "Tab",
 	"interact": "G",
 }
 

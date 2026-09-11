@@ -17,6 +17,12 @@ const DECISION_INTERVAL := 0.25
 
 var player: PlayerCharacter = null
 
+## Bots do not start fights. They form up on whoever is leading and only
+## commit once something is actually engaged, so the decision of when to
+## pull stays with the player -- which is the whole tactical layer.
+const FORMATION_SPREAD := 2.6
+const REGROUP_DISTANCE := 16.0
+
 var _priorities: Array = []
 var _positioning: Dictionary = {}
 var _next_decision_at: float = 0.0
@@ -70,8 +76,15 @@ func _perform(action: String) -> bool:
 	var ability_id: String = parts[1] if parts.size() > 1 else ""
 	match verb:
 		"use":
+			var target := _action_target(ability_id)
+			# No target means do not press it. Without this the fallback
+			# attack still fires down the bot's facing, and the ray finds
+			# whatever happens to be standing there -- which is a bot
+			# starting a fight the player did not choose.
+			if target == null:
+				return false
 			_stop_channel()
-			return player.kit.server_fire(ability_id, player.kit.bot_payload(_action_target(ability_id)))
+			return player.kit.server_fire(ability_id, player.kit.bot_payload(target))
 		"channel":
 			return _start_channel(ability_id)
 	return false
@@ -119,12 +132,12 @@ func _condition(expr: String) -> bool:
 	var arg: float = float(parts[1]) if parts.size() > 1 else 0.0
 	match name:
 		"lost_aggro":
-			return _delayed("lost_aggro", _lost_aggro(), _reaction)
+			return _squad_in_combat() and _delayed("lost_aggro", _lost_aggro(), _reaction)
 		"marked_target_loose":
 			var marked := FocusMarker.current(player.get_tree())
 			return marked != null and _threat_leader_of(marked) != player
 		"adds_loose":
-			return _delayed("adds_loose", _adds_on_squishies() >= 2, _reaction)
+			return _squad_in_combat() and _delayed("adds_loose", _adds_on_squishies() >= 2, _reaction)
 		"self_in_hazard":
 			return _delayed("hazard", _standing_in_hazard(), _reaction)
 		"boss_casting_frontal":
@@ -142,11 +155,11 @@ func _condition(expr: String) -> bool:
 		"party_wounded":
 			return _delayed("wounded_%d" % int(arg), _wounded_count(0.75) >= int(arg), _reaction)
 		"caster_add_up":
-			return _caster_add() != null
+			return _squad_in_combat() and _caster_add() != null
 		"add_on_healer":
-			return _add_near_healer() != null
+			return _squad_in_combat() and _add_near_healer() != null
 		"drone_ready":
-			return _enemy_count() >= 1
+			return _squad_in_combat()
 		"boss_enraged":
 			var boss := player.get_tree().get_first_node_in_group("boss")
 			return boss != null and boss.get("is_enraged") == true
@@ -182,10 +195,10 @@ func _steer(delta: float) -> void:
 	elif anchor != null:
 		desired = _station(anchor)
 	else:
-		# Nothing to fight. Go to the objective -- otherwise the party
-		# finishes the room and then stands in it, and the Security
-		# Override never gets held.
-		desired = _rally_point(player.global_position)
+		# Nothing engaged. Form up on whoever is leading and move when they
+		# move: the squad advances with the player rather than ahead of
+		# them, so the player picks the moment.
+		desired = _formation_spot()
 		look_at = null
 
 	var offset := desired - player.global_position
@@ -244,8 +257,38 @@ func _avoid_crowding(_delta: float) -> void:
 	if not push.is_zero_approx():
 		player.ai_move_intent = (player.ai_move_intent + push * 0.6).normalized()
 
-## Where to be when there is nothing to shoot: the terminal while it is
-## still locked, otherwise wherever the human is.
+## A slot beside the leader, offset so four bodies do not stack. If there
+## is no human at all the squad falls back to the objective, which is what
+## keeps a full-bot run moving.
+func _formation_spot() -> Vector3:
+	var leader := _leader()
+	if leader == null:
+		return _rally_point(player.global_position)
+	var index := maxi(0, Content.ROLE_ORDER.find(player.role_id))
+	var facing := -leader.global_transform.basis.z
+	facing.y = 0.0
+	if facing.is_zero_approx():
+		facing = Vector3.FORWARD
+	var right := facing.cross(Vector3.UP).normalized()
+	# Spread across and slightly behind: a bot should never be the thing
+	# that walks into a pack first.
+	var across := (float(index) - 1.5) * FORMATION_SPREAD
+	var spot: Vector3 = leader.global_position + right * across - facing * 2.2
+	# Too far to be useful: close the gap rather than holding formation.
+	if player.global_position.distance_to(leader.global_position) > REGROUP_DISTANCE:
+		return leader.global_position
+	return spot
+
+func _leader() -> Node3D:
+	for unit in player.get_tree().get_nodes_in_group("players"):
+		if unit == player or unit.get("is_bot") == true or unit.get("is_dead") == true:
+			continue
+		if unit is Node3D:
+			return unit as Node3D
+	return null
+
+## Where to be when there is nothing to shoot and nobody to follow: the
+## terminal while it is still locked.
 func _rally_point(fallback: Vector3) -> Vector3:
 	var terminal := player.get_tree().get_first_node_in_group("terminals")
 	if terminal is SecurityTerminal and not (terminal as SecurityTerminal).is_unlocked:
@@ -265,14 +308,50 @@ func _rally_point(fallback: Vector3) -> Vector3:
 
 # -------------------------------------------------------------- queries
 
+## What this bot should be fighting -- and crucially, nothing at all unless
+## the squad is already in a fight. A called target is an order and counts
+## as engagement; an unpulled pack across the room does not.
 func _primary_enemy() -> Node3D:
 	var marked := FocusMarker.current(player.get_tree())
 	if marked != null and marked.get("is_dead") != true:
 		return marked as Node3D
+	if not _squad_in_combat():
+		return null
 	var boss := player.get_tree().get_first_node_in_group("boss")
-	if boss != null and boss.get("is_dead") != true:
+	if boss != null and boss.get("is_dead") != true and boss.get("active") == true:
 		return boss as Node3D
-	return _nearest_enemy(80.0)
+	return _awake_enemy(80.0)
+
+## Something is awake and has someone on its threat table, or the boss has
+## been pulled. Until then the squad is walking, not fighting.
+func _squad_in_combat() -> bool:
+	var boss := player.get_tree().get_first_node_in_group("boss")
+	if boss != null and boss.get("is_dead") != true and boss.get("active") == true:
+		return true
+	for enemy in player.get_tree().get_nodes_in_group("trash"):
+		if enemy.get("is_dead") == true:
+			continue
+		if enemy.has_method("is_awake") and enemy.is_awake():
+			return true
+	return false
+
+## Only things that are actually awake. A dormant pack is scenery until
+## somebody pulls it.
+func _awake_enemy(limit: float) -> Node3D:
+	var best: Node3D = null
+	var nearest := limit
+	for enemy in player.get_tree().get_nodes_in_group("enemies"):
+		if enemy.get("is_dead") == true or not (enemy is Node3D):
+			continue
+		if enemy.has_method("is_awake") and not enemy.is_awake():
+			continue
+		if enemy.is_in_group("boss") and enemy.get("active") != true:
+			continue
+		var d: float = player.global_position.distance_to((enemy as Node3D).global_position)
+		if d < nearest:
+			nearest = d
+			best = enemy as Node3D
+	return best
 
 func _focus_target() -> Node:
 	return _primary_enemy()
@@ -329,7 +408,7 @@ func _threat_leader_of(enemy: Node) -> Node:
 func _adds_on_squishies() -> int:
 	var count := 0
 	for enemy in player.get_tree().get_nodes_in_group("trash"):
-		if enemy.get("is_dead") == true:
+		if enemy.get("is_dead") == true or not (enemy as TrashMob).is_awake():
 			continue
 		var leader := _threat_leader_of(enemy)
 		if leader != null and leader != player and _is_squishy(leader):
@@ -339,6 +418,8 @@ func _adds_on_squishies() -> int:
 func _add_near_healer() -> Node:
 	for enemy in player.get_tree().get_nodes_in_group("trash"):
 		if enemy.get("is_dead") == true or not (enemy is Node3D):
+			continue
+		if not (enemy as TrashMob).is_awake():
 			continue
 		var leader := _threat_leader_of(enemy)
 		if leader != null and _is_squishy(leader):
@@ -353,7 +434,7 @@ func _is_squishy(unit: Node) -> bool:
 
 func _caster_add() -> Node:
 	for enemy in player.get_tree().get_nodes_in_group("trash"):
-		if enemy.get("is_dead") == true:
+		if enemy.get("is_dead") == true or not (enemy as TrashMob).is_awake():
 			continue
 		if Content.mob(enemy.get("mob_type")).get("ranged", false):
 			return enemy

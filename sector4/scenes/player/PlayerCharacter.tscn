@@ -49,6 +49,8 @@ script = ExtResource("4_ability")
 script = ExtResource("5_softlock")
 target_group = "party"
 include_self = false
+max_cone_angle = 52.0
+fallback_to_neediest = true
 
 [node name="EnemyTargeting" type="Node" parent="."]
 script = ExtResource("5_softlock")

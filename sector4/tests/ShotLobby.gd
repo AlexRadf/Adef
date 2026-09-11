@@ -27,6 +27,26 @@ func _ready() -> void:
 			if ui != null:
 				ui.open_panel("armoury" if mode == "armoury" else "mission")
 			await get_tree().create_timer(0.4).timeout
+	elif mode == "fx":
+		Net.start_solo()
+		Net.roster = {1: {"name": "You", "role": "field_medic", "ready": true}}
+		add_child(preload("res://scenes/floor/Floor.tscn").instantiate())
+		await get_tree().create_timer(1.0).timeout
+		# Pull the nearest pack so there is a fight to look at, and hurt a
+		# squadmate so the healer's beam is live.
+		var best: Node = null
+		var nearest := INF
+		for mob in get_tree().get_nodes_in_group("trash"):
+			var d: float = Vector3(0, 0, 4).distance_to((mob as Node3D).global_position)
+			if d < nearest:
+				nearest = d
+				best = mob
+		if best != null:
+			best.on_pulled_by(PlayerCharacter.local(get_tree()))
+		for unit in get_tree().get_nodes_in_group("party"):
+			if unit.get("is_bot") == true:
+				unit.health_component.reduce(unit.health_component.max_health * 0.55)
+		await get_tree().create_timer(float(OS.get_environment("SHOT_DELAY")) if OS.get_environment("SHOT_DELAY") != "" else 6.0).timeout
 	elif mode == "marker":
 		Net.start_solo()
 		Net.roster = {1: {"name": "You", "role": "field_medic", "ready": true}}

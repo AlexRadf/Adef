@@ -125,6 +125,10 @@ func _process(_delta: float) -> void:
 	# cursor is free rather than firing at wherever the camera was left.
 	if Input.mouse_mode != Input.MOUSE_MODE_CAPTURED:
 		return
+	# Step through the party without looking away from what you are
+	# fighting. The soft lock is an aiming aid; this is the override.
+	if Input.is_action_just_pressed("cycle_ally"):
+		ally_targeting.cycle(true)
 	_poll_abilities()
 
 ## Held actions and tapped actions are the same table; the kit decides
@@ -218,6 +222,14 @@ func apply_dash(direction: Vector3, impulse: float, decay: float = 24.0) -> void
 		dir = camera_rig.forward_flat() if is_local else -global_transform.basis.z
 	dash_velocity = dir.normalized() * impulse
 	dash_decay = maxf(1.0, decay)
+	# The travel line, so a dash reads as going somewhere rather than as a
+	# stutter. Length matches the distance it will actually cover.
+	var travel := impulse * impulse / (2.0 * dash_decay)
+	AbilityFx.tracer(
+		global_position + Vector3(0, 0.9, 0),
+		global_position + Vector3(0, 0.9, 0) + dir.normalized() * travel,
+		Color(0.45, 0.85, 1.0, 0.55), 0.12
+	)
 
 ## The direction the operative is currently asking to move, in world space.
 ## Rocket Dash uses this so a dash goes where you are already going rather

@@ -30,6 +30,11 @@ signal target_changed(target: Node)
 @export var health_weight: float = 0.35
 @export var distance_weight: float = 0.15
 @export var sticky_bonus: float = 0.20
+## When nobody is inside the cone, fall back to whoever most needs help.
+## Standing nose-to-nose with the boss must not make the healer unable to
+## heal -- the cone is an aiming aid, not a requirement.
+@export var fallback_to_neediest: bool = false
+@export var fallback_health_pct: float = 0.98
 @export var marked_bonus: float = 0.30
 @export var require_line_of_sight: bool = true
 @export var line_of_sight_mask: int = 1
@@ -51,6 +56,10 @@ func bind_camera(camera: Camera3D) -> void:
 
 func _process(_delta: float) -> void:
 	var best := evaluate()
+	if best == null and fallback_to_neediest:
+		var needy := lowest_health_ally(max_distance)
+		if needy != null and _health_pct(needy) < fallback_health_pct:
+			best = needy
 	if best != current_target:
 		current_target = best
 		target_changed.emit(current_target)
@@ -121,6 +130,29 @@ func lowest_health_ally(range_limit: float = 40.0) -> Node3D:
 			best = target
 	return best
 
+## Step to the next ally, ignoring the cone entirely. The explicit answer
+## to "I am looking at the boss and need to heal the tank".
+func cycle(forward: bool = true) -> Node3D:
+	# Ordered by seat so the sequence is predictable between presses, but
+	# anything without a seat still gets included rather than skipped.
+	var candidates: Array[Node3D] = []
+	for candidate in get_tree().get_nodes_in_group("party"):
+		if _is_eligible(candidate, true):
+			candidates.append(candidate as Node3D)
+	candidates.sort_custom(func(a: Node3D, b: Node3D) -> bool:
+		return _seat_index(a) < _seat_index(b))
+	if candidates.is_empty():
+		return null
+	var index := candidates.find(current_target)
+	index = (index + (1 if forward else -1)) % candidates.size()
+	if index < 0:
+		index += candidates.size()
+	current_target = candidates[index]
+	target_changed.emit(current_target)
+	if target_group == "party":
+		GameEvents.soft_target_changed.emit(current_target)
+	return current_target
+
 ## The nearest ally carrying something System Purge can strip. Drives both
 ## the dispel prompt on the HUD and the AI medic.
 func nearest_dispellable(types: Array, range_limit: float = 35.0) -> Node3D:
@@ -140,6 +172,14 @@ func nearest_dispellable(types: Array, range_limit: float = 35.0) -> Node3D:
 	return best
 
 # --------------------------------------------------------------- helpers
+
+## Position in the lobby's seat order; anything unseated sorts last.
+func _seat_index(unit: Node) -> int:
+	var role_id = unit.get("role_id")
+	if typeof(role_id) != TYPE_STRING:
+		return 99
+	var index := Content.ROLE_ORDER.find(role_id)
+	return index if index >= 0 else 99
 
 func _is_eligible(candidate: Node, ignore_cone: bool = false) -> bool:
 	if not (candidate is Node3D) or not is_instance_valid(candidate):

@@ -66,6 +66,10 @@ func apply_damage(source: Node, target: Node, amount: float, opts: Dictionary = 
 
 	# 6. threat, and the lifesteal that Overclock Surge grants
 	if dealt > 0.0:
+		# Hitting something is a pull. Trash packs and the boss share one
+		# rule: what you shoot is what wakes up.
+		if target.has_method("on_pulled_by"):
+			target.on_pulled_by(source)
 		if not opts.get("suppress_threat", false):
 			_feed_threat(source, target, dealt * float(opts.get("threat_mult", 1.0)))
 		_apply_lifesteal(source, dealt)
@@ -234,9 +238,36 @@ func _path_of(unit: Node) -> NodePath:
 func _report_damage(source: Node, target: Node, amount: float, is_crit: bool) -> void:
 	var peer := _peer_of(source)
 	GameEvents.damage_dealt.emit(peer, target, amount, is_crit)
+	_show_hit(source, target, is_crit)
 
 func _report_heal(source: Node, target: Node, amount: float) -> void:
 	GameEvents.healing_done.emit(_peer_of(source), target, amount)
+	_show_heal(source, target)
+
+## Effects are drawn from here rather than from the kits, because this is
+## the one function every hit already passes through -- and because it runs
+## on clients too, so what you see is what the server actually resolved.
+func _show_hit(source: Node, target: Node, is_crit: bool) -> void:
+	if not (target is Node3D):
+		return
+	var at: Vector3 = (target as Node3D).global_position + Vector3(0, 1.1, 0)
+	var tint := Color(1.0, 0.80, 0.35) if _is_party(source) else Color(1.0, 0.35, 0.30)
+	if source is Node3D and source != target:
+		var from: Vector3 = (source as Node3D).global_position + Vector3(0, 1.2, 0)
+		AbilityFx.tracer(from, at, Color(tint, 0.85), 0.07)
+	AbilityFx.impact(at, Color(tint, 0.95), 2.0 if is_crit else 1.35)
+
+func _show_heal(source: Node, target: Node) -> void:
+	if not (target is Node3D) or not (source is Node3D):
+		return
+	if source == target:
+		AbilityFx.impact((target as Node3D).global_position + Vector3(0, 1.1, 0),
+			Color(0.35, 0.95, 0.55, 0.85), 0.8)
+		return
+	AbilityFx.beam(source as Node3D, target as Node3D, Color(0.35, 0.95, 0.60, 0.85))
+
+func _is_party(unit: Node) -> bool:
+	return unit != null and is_instance_valid(unit) and unit.get("team") == "party"
 
 func _peer_of(unit: Node) -> int:
 	if unit == null or not is_instance_valid(unit):
