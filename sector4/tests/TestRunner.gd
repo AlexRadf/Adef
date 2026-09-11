@@ -1045,11 +1045,16 @@ func _test_bot_restraint() -> void:
 	# With nobody human in the squad there is no one to make the call, so a
 	# full-bot party has to be allowed to start on its own -- otherwise a
 	# headless run stands in the doorway forever.
-	leader.queue_free()
-	await get_tree().process_frame
+	# Turn the stand-in human into a bot rather than freeing it, so this
+	# tests the rule and not queue_free's timing.
+	leader.is_bot = true
 	check(not tank.brain._has_human_lead(), "with no person in the squad")
 	check(tank.brain._squad_in_combat(), "bots stop holding back")
+	# And they must actually be willing to target a sleeping pack, or
+	# "allowed to fight" still means standing still.
+	check(tank.brain._primary_enemy() == mob, "and will pull a dormant pack themselves")
 
+	leader.queue_free()
 	tank.queue_free()
 	mob.queue_free()
 	for i in 3:

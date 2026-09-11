@@ -324,7 +324,15 @@ func _primary_enemy() -> Node3D:
 	var boss := player.get_tree().get_first_node_in_group("boss")
 	if boss != null and boss.get("is_dead") != true and boss.get("active") == true:
 		return boss as Node3D
-	return _awake_enemy(80.0)
+	var awake := _awake_enemy(80.0)
+	if awake != null:
+		return awake
+	# Nothing is awake. With a person in the squad that means "wait" -- it
+	# is their call to make. With nobody to wait for, the squad has to pull
+	# for itself or it stands in the doorway forever.
+	if not _has_human_lead():
+		return _nearest_enemy(80.0)
+	return null
 
 ## Bots hold back for a *person*. With nobody human in the squad there is
 ## no one to make the call, so a full-bot party engages on its own --
