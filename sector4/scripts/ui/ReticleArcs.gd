@@ -58,6 +58,9 @@ func _refresh_target() -> void:
 		target_fraction = health.get_health_percent()
 
 func _draw() -> void:
+	var local := _local_player()
+	if local != null and local.get("is_dead") == true:
+		return
 	var centre := size * 0.5
 	_draw_crosshair(centre)
 	# Left: Nano-Energy. Right: the soft-locked target's health. Both are

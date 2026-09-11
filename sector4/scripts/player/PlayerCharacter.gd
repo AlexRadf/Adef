@@ -258,6 +258,15 @@ func aim_direction() -> Vector3:
 
 func _on_local_health_changed(current: float, maximum: float) -> void:
 	GameEvents.local_health_changed.emit(current, maximum)
+	if is_local and current <= 0.0:
+		GameEvents.downed_state_changed.emit(true, _standing_allies())
+
+func _standing_allies() -> int:
+	var count := 0
+	for unit in get_tree().get_nodes_in_group("party"):
+		if unit != self and unit.get("is_dead") != true:
+			count += 1
+	return count
 
 func _on_local_energy_changed(current: float, maximum: float) -> void:
 	GameEvents.energy_changed.emit(current, maximum)

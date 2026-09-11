@@ -72,6 +72,26 @@ shows each module's modifiers and the combined effect of everything fitted, so t
 visible as a total rather than as a pile of separate lines. Loadouts are saved to disk per
 role, and an old save silently drops modules that no longer exist.
 
+## Going down
+
+Dying mid-channel used to keep the Nano-Injector healing, which is the general bug rather than
+a special case: **the dead do not act.** Damage and healing are both refused from a downed
+source, channels drop the moment their caster falls, and the server will not start a new one for
+a corpse. A `null` source is the world — a hazard, the floor — and the world is never dead, so
+environmental damage still lands.
+
+Being dead with no explanation is the worst state a game can leave you in: you cannot tell a
+death from a freeze, or whether you are waiting for something or the run is over. So:
+
+- **You are down.** The screen says so, says how many of the squad are still standing, and says
+  what happens if the last of them falls. Your reticle goes away and your kit greys out.
+- **The last one falls** and it is a wipe: the Centurion resets to full and walks back to its
+  corner, the floor is cleared of hazards, and the squad is put back at the entrance at full
+  health with their loadouts still fitted.
+
+Losing costs the attempt, not the run — the same rule the boss leash already follows. Trash you
+have already cleared stays cleared.
+
 ## The HUD
 
 Everything a player needs mid-fight, in a fixed place:

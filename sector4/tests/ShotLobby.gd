@@ -47,6 +47,18 @@ func _ready() -> void:
 			if unit.get("is_bot") == true:
 				unit.health_component.reduce(unit.health_component.max_health * 0.55)
 		await get_tree().create_timer(float(OS.get_environment("SHOT_DELAY")) if OS.get_environment("SHOT_DELAY") != "" else 6.0).timeout
+	elif mode == "downed" or mode == "wipe":
+		Net.start_solo()
+		Net.roster = {1: {"name": "You", "role": "field_medic", "ready": true}}
+		add_child(preload("res://scenes/floor/Floor.tscn").instantiate())
+		await get_tree().create_timer(1.0).timeout
+		var me := PlayerCharacter.local(get_tree())
+		if mode == "wipe":
+			for unit in get_tree().get_nodes_in_group("party"):
+				unit.health_component.kill()
+		else:
+			me.health_component.kill()
+		await get_tree().create_timer(0.6).timeout
 	elif mode == "telegraph":
 		Net.start_solo()
 		Net.roster = {1: {"name": "You", "role": "field_medic", "ready": true}}

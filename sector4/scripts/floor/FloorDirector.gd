@@ -28,7 +28,14 @@ var phase: Phase = Phase.ELEVATOR_BREACH
 var packs: Array[AggroPack] = []
 var boss: IronCenturion = null
 
+## How long the wipe screen holds before the squad is put back. Long
+## enough to read what killed you, short enough not to be a punishment.
+const WIPE_HOLD := 4.0
+
+var wiped: bool = false
+
 var _def: Dictionary = {}
+var _entry_points: Array[Vector3] = []
 var _spawn_root: Node = null
 var _terminal: SecurityTerminal = null
 
@@ -45,6 +52,94 @@ func begin() -> void:
 	_set_phase(Phase.ELEVATOR_BREACH)
 	_spawn_trash()
 	_set_phase(Phase.TRASH)
+	_watch_party()
+
+# ----------------------------------------------------------- going down
+
+## Every operative is watched, so the moment the last one falls is known
+## exactly rather than polled for.
+func _watch_party() -> void:
+	for unit in get_tree().get_nodes_in_group("party"):
+		var health = unit.get("health_component")
+		if health is HealthComponent and not health.died.is_connected(_on_party_death):
+			health.died.connect(_on_party_death)
+
+func _on_party_death() -> void:
+	_announce_downed()
+	if not Net.is_server() or wiped:
+		return
+	if standing_count() > 0:
+		return
+	_wipe()
+
+## How many are still on their feet. A downed player is waiting on this
+## number, so it is worth having in one place.
+func standing_count() -> int:
+	var count := 0
+	for unit in get_tree().get_nodes_in_group("party"):
+		if unit.get("is_dead") != true:
+			count += 1
+	return count
+
+func _announce_downed() -> void:
+	var local := PlayerCharacter.local(get_tree())
+	if local == null:
+		return
+	GameEvents.downed_state_changed.emit(local.is_dead, standing_count())
+
+## The last one falls: hold on the wipe screen, then put the squad back at
+## the entrance with the encounter reset. Losing costs the attempt, not the
+## run -- the same rule the boss leash already follows.
+func _wipe() -> void:
+	wiped = true
+	GameEvents.party_wiped.emit()
+	GameEvents.encounter_ended.emit(false, "Squad down")
+	if multiplayer.has_multiplayer_peer():
+		_replicate_wipe.rpc()
+	await get_tree().create_timer(WIPE_HOLD).timeout
+	if is_instance_valid(self):
+		respawn_party()
+
+@rpc("authority", "call_remote", "reliable")
+func _replicate_wipe() -> void:
+	wiped = true
+	GameEvents.party_wiped.emit()
+	GameEvents.encounter_ended.emit(false, "Squad down")
+
+func respawn_party() -> void:
+	# The boss goes back to its corner at full health, and anything it left
+	# on the floor goes with it.
+	if boss != null and is_instance_valid(boss):
+		boss._reset_home()
+	for hazard in get_tree().get_nodes_in_group("hazards"):
+		hazard.queue_free()
+
+	var slot := 0
+	for unit in get_tree().get_nodes_in_group("party"):
+		var health = unit.get("health_component")
+		if health is HealthComponent:
+			health.revive(1.0)
+		var status = unit.get("status_component")
+		if status is StatusEffectComponent:
+			status.clear_all()
+		if unit is Node3D:
+			(unit as Node3D).global_position = _entry_point(slot)
+		# Equipment survives a wipe; it is fitted, not granted.
+		if unit is PlayerCharacter:
+			Loadout.apply_to(unit, (unit as PlayerCharacter).role_id)
+		slot += 1
+
+	wiped = false
+	GameEvents.party_respawned.emit()
+	_announce_downed()
+
+func _entry_point(slot: int) -> Vector3:
+	if slot < _entry_points.size():
+		return _entry_points[slot]
+	return Vector3(-3.0 + 2.0 * float(slot), 0.4, 4.0)
+
+func register_entry_points(points: Array[Vector3]) -> void:
+	_entry_points = points
 
 # ---------------------------------------------------------------- phases
 

@@ -140,7 +140,11 @@ func set_channel(ability_id: String, active: bool) -> void:
 func _server_channel(ability_id: String, active: bool, payload: Dictionary) -> void:
 	if not Net.is_server():
 		return
-	if not _sender_owns_this(): return
+	if not _sender_owns_this():
+		return
+	# A downed operative may always stop a channel, never start one.
+	if player != null and player.is_dead and active:
+		return
 	channel(ability_id, active, payload)
 
 func _sender_owns_this() -> bool:

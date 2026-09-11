@@ -28,6 +28,8 @@ func _run_all() -> void:
 	await _suite("rocket dash", _test_dash)
 	await _suite("medic can treat themselves", _test_self_heal)
 	await _suite("barriers", _test_barrier)
+	await _suite("the dead do not act", _test_dead_cannot_act)
+	await _suite("wipe and reset", _test_wipe)
 	await _suite("going down", _test_downed)
 	await _suite("threat table", _test_threat)
 	await _suite("ability cooldowns", _test_cooldowns)
@@ -379,6 +381,95 @@ func _test_barrier() -> void:
 	check(not status.has("barrier"), "an empty shield does not linger as a buff")
 
 	target.queue_free()
+
+## Dying mid-channel kept the Nano-Injector healing. A corpse must not be
+## able to do anything at all.
+func _test_dead_cannot_act() -> void:
+	_ground()
+	var medic := _bot("field_medic", Vector3.ZERO)
+	medic.is_bot = false
+	var ally := _bot("enforcer", Vector3(4, 0, 0))
+	for i in 3:
+		await get_tree().process_frame
+
+	var kit: FieldMedicKit = medic.kit
+	ally.health_component.reduce(ally.health_component.max_health * 0.6)
+	kit.channel("nano_injector", true, {"ally": ally.get_path()})
+	check(kit._channel_active, "the beam is running")
+	kit._tick_beam(0.4)
+	var healed_alive: float = ally.health_component.current_health
+
+	# Now the medic goes down mid-channel.
+	medic.health_component.kill()
+	await get_tree().process_frame
+	check(medic.is_dead, "the medic is down")
+	check(not kit._channel_active, "the channel drops with them")
+
+	# Even forced, nothing may land from a corpse.
+	kit._channel_active = true
+	kit._channel_target = ally
+	kit._tick_beam(0.5)
+	check_near(ally.health_component.current_health, healed_alive,
+		"and a dead medic heals nobody")
+	check_near(Combat.apply_heal(medic, ally, 500.0), 0.0, "healing from a corpse is refused")
+	check_near(Combat.apply_damage(medic, ally, 500.0), 0.0, "so is damage from a corpse")
+
+	# The server must refuse to start a new channel for a downed operative.
+	kit._channel_active = false
+	kit._server_channel("nano_injector", true, {"ally": ally.get_path()})
+	check(not kit._channel_active, "and they cannot start another")
+
+	# The world is not a combatant: a hazard with no source still works.
+	check(Combat.apply_damage(null, ally, 50.0) > 0.0, "but the floor can still hurt you")
+
+	medic.queue_free()
+	ally.queue_free()
+	for i in 3:
+		await get_tree().process_frame
+
+## While anyone is standing you wait. When the last one falls the attempt
+## resets rather than the run ending.
+func _test_wipe() -> void:
+	Net.roster = {1: {"name": "You", "role": "field_medic", "ready": true}}
+	var level: FloorLevel = preload("res://scenes/floor/Floor.tscn").instantiate()
+	add_child(level)
+	for i in 5:
+		await get_tree().process_frame
+	var director := level.director
+
+	var party := get_tree().get_nodes_in_group("party")
+	check(party.size() == 4, "a full squad deployed")
+	check(director.standing_count() == 4, "all four standing")
+
+	# One down is not a wipe.
+	party[0].health_component.kill()
+	await get_tree().process_frame
+	check(director.standing_count() == 3, "one down, three up")
+	check(not director.wiped, "and that is not a wipe")
+
+	# The last one is.
+	for unit in party:
+		if unit.get("is_dead") != true:
+			unit.health_component.kill()
+	await get_tree().process_frame
+	check(director.standing_count() == 0, "everyone is down")
+	check(director.wiped, "which is a wipe")
+
+	# And the reset puts them back rather than ending the run.
+	director.respawn_party()
+	await get_tree().process_frame
+	check(director.standing_count() == 4, "the squad is back on its feet")
+	check(not director.wiped, "and the wipe is cleared")
+	for unit in party:
+		check_near(unit.health_component.get_health_percent(), 1.0,
+			"%s respawns at full" % unit.get("role_id"))
+		break
+	check(get_tree().get_nodes_in_group("hazards").is_empty(), "the floor is clean again")
+
+	level.queue_free()
+	Net.roster = {}
+	for i in 3:
+		await get_tree().process_frame
 
 func _test_downed() -> void:
 	var mob: TrashMob = preload("res://scenes/enemies/TrashMob.tscn").instantiate()

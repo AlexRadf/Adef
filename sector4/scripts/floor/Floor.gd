@@ -16,6 +16,7 @@ const PAUSE_SCENE := preload("res://scenes/ui/PauseMenu.tscn")
 @onready var director: FloorDirector = $FloorDirector
 
 var _players: Dictionary = {}
+var _entries: Array[Vector3] = []
 
 func _ready() -> void:
 	# Running this scene on its own (F6 in the editor, or as the main
@@ -35,6 +36,8 @@ func _ready() -> void:
 	add_child(PAUSE_SCENE.instantiate())
 	if Net.is_server():
 		_spawn_players()
+		director.register_entry_points(_entries)
+		director.call_deferred("_watch_party")
 
 func _bounce_to_lobby() -> void:
 	get_tree().change_scene_to_file("res://scenes/Main.tscn")
@@ -72,7 +75,9 @@ func _spawn_player(peer_id: int, role_id: String, slot: int, as_bot: bool) -> vo
 	spawn_root.add_child(player, true)
 	# The elevator mouth: the party arrives together, spread across the
 	# doorway rather than stacked inside one another.
-	player.global_position = Vector3(-3.0 + 2.0 * float(slot), 0.4, 4.0)
+	var entry := Vector3(-3.0 + 2.0 * float(slot), 0.4, 4.0)
+	player.global_position = entry
+	_entries.append(entry)
 	_players[peer_id] = player
 
 # ------------------------------------------------------------- geometry

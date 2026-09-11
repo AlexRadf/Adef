@@ -22,6 +22,10 @@ func apply_damage(source: Node, target: Node, amount: float, opts: Dictionary = 
 		return 0.0
 	if not _is_alive(target) or amount <= 0.0:
 		return 0.0
+	# The dead do not act. Without this a channel, a periodic or a queued
+	# effect keeps resolving from a corpse.
+	if _is_dead_source(source):
+		return 0.0
 
 	var out := amount
 	var is_crit: bool = opts.get("is_crit", false)
@@ -91,6 +95,8 @@ func apply_heal(source: Node, target: Node, amount: float, opts: Dictionary = {}
 	if not _is_authority():
 		return 0.0
 	if not _is_alive(target) or amount <= 0.0:
+		return 0.0
+	if _is_dead_source(source):
 		return 0.0
 
 	var out := amount
@@ -229,6 +235,14 @@ func _threat_of(unit: Node) -> ThreatComponent:
 		return null
 	var node = unit.get("threat_component")
 	return node if node is ThreatComponent else null
+
+## A source of null is the world -- a hazard, the floor, an environmental
+## effect -- and the world is never dead. Only an actual downed combatant
+## is refused.
+func _is_dead_source(source: Node) -> bool:
+	if source == null or not is_instance_valid(source):
+		return false
+	return source.get("is_dead") == true
 
 func _is_alive(unit: Node) -> bool:
 	if unit == null or not is_instance_valid(unit):

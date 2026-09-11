@@ -17,6 +17,13 @@ var _channel_wanted: bool = false
 var _refresh_timer: float = 0.0
 
 func _process(delta: float) -> void:
+	# Going down drops the beam outright. Leaving it running would keep a
+	# corpse healing, and would leave the HUD showing a live channel.
+	if player != null and player.is_dead and (_channel_active or _channel_wanted):
+		_channel_active = false
+		_channel_wanted = false
+		_channel_target = null
+		return
 	if _channel_active and Net.is_server():
 		_tick_beam(delta)
 
@@ -179,6 +186,9 @@ func channel(ability_id: String, active: bool, payload: Dictionary) -> void:
 ## the beam rather than letting it tick for free.
 func _tick_beam(delta: float) -> void:
 	var def: Dictionary = Content.ability("nano_injector")
+	if player.is_dead:
+		_channel_active = false
+		return
 	if not alive(_channel_target) or not in_range(_channel_target, float(def.get("range", 35.0))):
 		_channel_active = false
 		return

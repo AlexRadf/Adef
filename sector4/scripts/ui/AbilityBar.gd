@@ -45,27 +45,30 @@ func _draw() -> void:
 	var total := float(_slots.size()) * SLOT.x + float(_slots.size() - 1) * GAP
 	var origin := Vector2((size.x - total) * 0.5, size.y - SLOT.y - 22.0)
 
+	# Greyed out while down: the kit is still yours, but none of it is
+	# available, and a fully lit bar would suggest otherwise.
+	var down: bool = _player.is_dead
 	for i in _slots.size():
 		var slot: Dictionary = _slots[i]
-		_draw_slot(font, origin + Vector2(float(i) * (SLOT.x + GAP), 0.0), slot)
+		_draw_slot(font, origin + Vector2(float(i) * (SLOT.x + GAP), 0.0), slot, down)
 
-func _draw_slot(font: Font, at: Vector2, slot: Dictionary) -> void:
+func _draw_slot(font: Font, at: Vector2, slot: Dictionary, down: bool = false) -> void:
 	var ability_id: String = slot["ability"]
 	var def: Dictionary = Content.ability(ability_id)
 	var abilities := _player.ability_component
 	var rect := Rect2(at, SLOT)
 
-	var ready := abilities == null or abilities.can_use(ability_id)
+	var ready := not down and (abilities == null or abilities.can_use(ability_id))
 	var cooling: float = abilities.cooldown_fraction(ability_id) if abilities != null else 0.0
 	var affordable := abilities == null or abilities.has_energy(float(def.get("cost", 0.0)))
 
-	draw_rect(rect, Color(0.03, 0.04, 0.06, 0.82))
+	draw_rect(rect, Color(0.03, 0.04, 0.06, 0.55 if down else 0.82))
 	# The cooldown eats the slot from the bottom, so "how long left" is a
 	# height rather than a number to read.
 	if cooling > 0.0:
 		draw_rect(Rect2(rect.position + Vector2(0.0, rect.size.y * (1.0 - cooling)),
 			Vector2(rect.size.x, rect.size.y * cooling)), Color(0.55, 0.62, 0.85, 0.30))
-	var edge := Color(0.35, 0.85, 1.0, 0.9) if ready else Color(0.5, 0.5, 0.55, 0.55)
+	var edge := Color(0.35, 0.85, 1.0, 0.9) if ready else Color(0.5, 0.5, 0.55, 0.20 if down else 0.55)
 	if not affordable and cooling <= 0.0:
 		edge = Color(1.0, 0.55, 0.2, 0.8)
 	draw_rect(rect, edge, false, 1.5)
