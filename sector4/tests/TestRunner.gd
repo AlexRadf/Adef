@@ -19,6 +19,7 @@ func _ready() -> void:
 
 func _run_all() -> void:
 	await _suite("content integrity", _test_content)
+	await _suite("the kit formation", _test_formation)
 	await _suite("status effects", _test_status)
 	await _suite("combat choke point", _test_combat)
 	await _suite("armour and corrosion", _test_armor)
@@ -111,6 +112,46 @@ func _test_content() -> void:
 			if Content.ability(ability_id).has("input"):
 				count += 1
 		check(bindings.size() == count, "%s has no double-bound button" % role_id)
+
+## Every seat is built to the same shape. This is the rule the whole kit
+## design rests on -- a seat is a different answer to the same six
+## questions, not a different set of buttons -- so it is asserted rather
+## than left as an intention.
+func _test_formation() -> void:
+	for role_id in Content.ROLE_ORDER:
+		var seen := {}
+		for ability_id in Content.role(role_id)["abilities"]:
+			var slot: String = Content.slot_of(ability_id)
+			check(slot != "", "%s/%s declares a slot" % [role_id, ability_id])
+			check(not seen.has(slot), "%s fills '%s' exactly once" % [role_id, slot])
+			seen[slot] = ability_id
+
+		# No holes: a missing slot is a seat that cannot answer one of the
+		# six questions.
+		for slot in Content.SLOTS:
+			check(seen.has(slot), "%s has a '%s'" % [role_id, slot])
+
+		# The same job is on the same button on every seat, so muscle
+		# memory survives a swap.
+		for slot in seen:
+			var ability_id: String = seen[slot]
+			check(Content.ability(ability_id).get("input", "") == Content.SLOT_INPUT[slot],
+				"%s/%s sits on the '%s' binding" % [role_id, slot, Content.SLOT_INPUT[slot]])
+
+		check(Content.slot_ability(role_id, "ultimate") != "", "%s has an ultimate" % role_id)
+		check(Content.slot_ability(role_id, "mobility") == "rocket_dash",
+			"%s moves with Rocket Dash" % role_id)
+
+	# Each slot must be filled by a *different* ability per role, or the
+	# seats are not actually distinct.
+	for slot in Content.SLOTS:
+		if slot == "mobility" or slot == "mark":
+			continue  # deliberately shared
+		var fillers := {}
+		for role_id in Content.ROLE_ORDER:
+			fillers[Content.slot_ability(role_id, slot)] = true
+		check(fillers.size() == Content.ROLE_ORDER.size(),
+			"every seat answers '%s' differently" % slot)
 
 func _test_status() -> void:
 	var host := _combatant()

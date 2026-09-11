@@ -17,6 +17,8 @@ func execute(ability_id: String, payload: Dictionary) -> bool:
 	match ability_id:
 		"mono_blade":
 			return _blade(payload)
+		"rupture":
+			return _rupture(payload)
 		"kick":
 			return _kick(payload)
 		"static_snare":
@@ -88,6 +90,26 @@ func _kick(payload: Dictionary) -> bool:
 	if status is StatusEffectComponent:
 		status.apply("interrupt_lockout", player.peer_id, float(def.get("lockout", 5.0)))
 	Combat.apply_damage(player, target, float(def.get("damage", 25.0)), {
+		"school": def.get("school", Content.School.KINETIC),
+		"from_position": player.global_position,
+	})
+	return true
+
+## Melee setup: open the armour, then hit the hole. It is the Striker's
+## reason to commit to one target rather than swinging at whatever is
+## nearest.
+func _rupture(payload: Dictionary) -> bool:
+	var def: Dictionary = Content.ability("rupture")
+	var target := pick_enemy(payload, float(def.get("range", 3.5)))
+	if target == null:
+		target = nearest_enemy(float(def.get("range", 3.5)))
+	if target == null:
+		return false
+	var status = target.get("status_component")
+	if not (status is StatusEffectComponent):
+		return false
+	status.apply(def.get("applies", "ruptured"), player.peer_id)
+	Combat.apply_damage(player, target, float(def.get("damage", 45.0)), {
 		"school": def.get("school", Content.School.KINETIC),
 		"from_position": player.global_position,
 	})

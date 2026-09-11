@@ -26,6 +26,8 @@ func execute(ability_id: String, payload: Dictionary) -> bool:
 			return _dash(payload)
 		"bulwark_slam":
 			return _slam()
+		"aegis_protocol":
+			return _aegis()
 		"focus_marker":
 			return _mark(payload)
 	return false
@@ -95,6 +97,28 @@ func _slam() -> bool:
 		})
 		hit_any = true
 	return hit_any
+
+## The tank's ultimate protects rather than punches. Everyone inside the
+## radius hardens: far less damage taken, plus a shield on top, so it
+## answers a Shockwave landing on a party that is already hurt.
+func _aegis() -> bool:
+	var def: Dictionary = Content.ability("aegis_protocol")
+	var radius: float = float(def.get("radius", 16.0))
+	var granted := false
+	for unit in player.get_tree().get_nodes_in_group("party"):
+		if not alive(unit) or not (unit is Node3D):
+			continue
+		if player.global_position.distance_to((unit as Node3D).global_position) > radius:
+			continue
+		var status = unit.get("status_component")
+		if status is StatusEffectComponent:
+			status.apply(def.get("grants", "aegis"), player.peer_id)
+			granted = true
+	if not granted:
+		return false
+	AbilityFx.impact(player.global_position + Vector3(0, 1.0, 0),
+		Color(0.4, 0.65, 1.0, 0.95), radius)
+	return true
 
 func _mark(payload: Dictionary) -> bool:
 	var target := pick_enemy(payload, float(Content.ability("focus_marker").get("range", 60.0)))

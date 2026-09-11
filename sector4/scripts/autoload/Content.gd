@@ -46,6 +46,31 @@ const STATUS_EFFECTS := {
 		"absorb": 520.0,
 		"modifiers": {},
 	},
+	"ruptured": {
+		"display_name": "Ruptured",
+		"duration": 8.0,
+		"harmful": true,
+		"dispel_type": "",
+		"alert_color": Color(1.0, 0.45, 0.30),
+		"modifiers": {"damage_taken": 1.20},
+	},
+	"overcharged": {
+		"display_name": "Overcharged",
+		"duration": 5.0,
+		"harmful": false,
+		"dispel_type": "",
+		"alert_color": Color(0.95, 0.40, 0.85),
+		"modifiers": {"damage_dealt": 1.35},
+	},
+	"aegis": {
+		"display_name": "Aegis",
+		"duration": 8.0,
+		"harmful": false,
+		"dispel_type": "",
+		"alert_color": Color(0.40, 0.65, 1.0),
+		"absorb": 260.0,
+		"modifiers": {"damage_taken": 0.62},
+	},
 	"overclocked": {
 		"display_name": "Overclock Surge",
 		"duration": 8.0,
@@ -101,6 +126,51 @@ const STATUS_EFFECTS := {
 	},
 }
 
+# ------------------------------------------------------------- the shape
+#
+# Every role is built to the same formation. A seat is not a different set
+# of buttons, it is a different *answer* to the same six questions -- which
+# is what makes the kit learnable across classes, and what gives modules
+# something fixed to modify later. A module changes how your AoE slot
+# behaves; it never hands you a seventh button.
+#
+# The binding for a slot is identical on every role, so muscle memory
+# carries when you swap seats.
+
+const SLOTS := ["primary", "single", "utility", "aoe", "mobility", "ultimate", "mark"]
+
+const SLOT_INPUT := {
+	"primary": "fire_primary",
+	"single": "heal_beam",
+	"utility": "ability_dispel",
+	"aoe": "smart_pulse",
+	"mobility": "ability_dash",
+	"ultimate": "ultimate",
+	"mark": "mark_target",
+}
+
+const SLOT_LABELS := {
+	"primary": "Attack",
+	"single": "Single target",
+	"utility": "Signature",
+	"aoe": "Area",
+	"mobility": "Mobility",
+	"ultimate": "Ultimate",
+	"mark": "Call target",
+}
+
+## What each slot is for, in the armoury and the kit card. Naming the job
+## rather than the ability is what makes the shape visible.
+const SLOT_BLURBS := {
+	"primary": "Your damage. Free, repeatable, always available.",
+	"single": "One target, at range. The seat's core support or setup.",
+	"utility": "The thing only this seat can do.",
+	"aoe": "Everything in an area at once.",
+	"mobility": "Get somewhere, now.",
+	"ultimate": "The long cooldown you hold for the moment that needs it.",
+	"mark": "Call a target for the squad.",
+}
+
 # ------------------------------------------------------------- abilities
 #
 # `input` names the action from the controller table in section 2. An
@@ -111,6 +181,7 @@ const ABILITIES := {
 	"disruptor_pistol": {
 		"display_name": "Disruptor Pistol",
 		"input": "fire_primary",
+		"slot": "primary",
 		"kind": "projectile",
 		"cooldown": 0.30,
 		"cost": 0.0,
@@ -125,6 +196,7 @@ const ABILITIES := {
 	"nano_injector": {
 		"display_name": "Nano-Injector",
 		"input": "heal_beam",
+		"slot": "single",
 		"kind": "channel_beam",
 		"cooldown": 0.0,
 		"cost_per_second": 9.0,
@@ -141,6 +213,7 @@ const ABILITIES := {
 	"system_purge": {
 		"display_name": "System Purge",
 		"input": "ability_dispel",
+		"slot": "utility",
 		"kind": "dispel_projectile",
 		"cooldown": 6.0,
 		"cost": 12.0,
@@ -156,6 +229,7 @@ const ABILITIES := {
 	"rocket_dash": {
 		"display_name": "Rocket Dash",
 		"input": "ability_dash",
+		"slot": "mobility",
 		"kind": "dash",
 		"cooldown": 5.0,
 		"cost": 0.0,
@@ -180,6 +254,7 @@ const ABILITIES := {
 	"smart_nano_pulse": {
 		"display_name": "Smart Nano-Pulse",
 		"input": "smart_pulse",
+		"slot": "aoe",
 		"kind": "aoe_heal",
 		"cooldown": 9.0,
 		"cost": 30.0,
@@ -196,6 +271,7 @@ const ABILITIES := {
 	"overclock_surge": {
 		"display_name": "Overclock Surge",
 		"input": "ultimate",
+		"slot": "ultimate",
 		"kind": "ground_field",
 		"cooldown": 60.0,
 		"cost": 50.0,
@@ -207,6 +283,7 @@ const ABILITIES := {
 	"focus_marker": {
 		"display_name": "Focus Marker",
 		"input": "mark_target",
+		"slot": "mark",
 		"kind": "mark",
 		"cooldown": 1.0,
 		"cost": 0.0,
@@ -218,6 +295,7 @@ const ABILITIES := {
 	"riot_carbine": {
 		"display_name": "Riot Carbine",
 		"input": "fire_primary",
+		"slot": "primary",
 		"kind": "projectile",
 		"cooldown": 0.55,
 		"cost": 0.0,
@@ -229,6 +307,7 @@ const ABILITIES := {
 	"directional_shield": {
 		"display_name": "Directional Shield",
 		"input": "heal_beam",
+		"slot": "single",
 		"kind": "guard",
 		"cooldown": 8.0,
 		"cost": 20.0,
@@ -239,6 +318,7 @@ const ABILITIES := {
 	"dart_pull": {
 		"display_name": "Dart Pull",
 		"input": "ability_dispel",
+		"slot": "utility",
 		"kind": "taunt_projectile",
 		"cooldown": 4.0,
 		"cost": 0.0,
@@ -250,20 +330,37 @@ const ABILITIES := {
 	},
 	"bulwark_slam": {
 		"display_name": "Bulwark Slam",
-		"input": "ultimate",
+		"input": "smart_pulse",
+		"slot": "aoe",
 		"kind": "aoe_taunt",
-		"cooldown": 45.0,
-		"cost": 50.0,
+		"cooldown": 18.0,
+		"cost": 25.0,
 		"radius": 8.0,
 		"damage": 60.0,
 		"school": School.KINETIC,
 		"threat_mult": 8.0,
+		"desc": "Area taunt. Picks the whole pack back up off everyone else.",
+	},
+
+	# The Enforcer's ultimate is the party's panic button, and a tank's
+	# panic button should protect rather than punch.
+	"aegis_protocol": {
+		"display_name": "Aegis Protocol",
+		"slot": "ultimate",
+		"input": "ultimate",
+		"kind": "party_buff",
+		"cooldown": 55.0,
+		"cost": 50.0,
+		"radius": 16.0,
+		"grants": "aegis",
+		"desc": "ULTIMATE. Hardens the whole squad: far less damage taken, and a shield on top.",
 	},
 
 	# -- Kinetic Striker (melee DPS) -----------------------------------
 	"mono_blade": {
 		"display_name": "Mono-Blade",
 		"input": "fire_primary",
+		"slot": "primary",
 		"kind": "melee",
 		"cooldown": 0.45,
 		"cost": 0.0,
@@ -276,6 +373,7 @@ const ABILITIES := {
 	"kick": {
 		"display_name": "Servo Kick",
 		"input": "ability_dispel",
+		"slot": "utility",
 		"kind": "interrupt",
 		"cooldown": 12.0,
 		"cost": 0.0,
@@ -285,9 +383,24 @@ const ABILITIES := {
 		"lockout": 5.0,
 		"desc": "Interrupt. The answer to Core Overcharge.",
 	},
+	# Melee setup: open the armour, then hit the hole.
+	"rupture": {
+		"display_name": "Rupture",
+		"slot": "single",
+		"input": "heal_beam",
+		"kind": "debuff",
+		"cooldown": 9.0,
+		"cost": 20.0,
+		"damage": 45.0,
+		"school": School.KINETIC,
+		"range": 3.5,
+		"applies": "ruptured",
+		"desc": "Tears one target open. Everything hits it harder for 8s.",
+	},
 	"static_snare": {
 		"display_name": "Static Snare",
 		"input": "smart_pulse",
+		"slot": "aoe",
 		"kind": "cc",
 		"cooldown": 18.0,
 		"cost": 25.0,
@@ -298,6 +411,7 @@ const ABILITIES := {
 	"blur_step": {
 		"display_name": "Blur Step",
 		"input": "ultimate",
+		"slot": "ultimate",
 		"kind": "burst_buff",
 		"cooldown": 50.0,
 		"cost": 50.0,
@@ -309,6 +423,7 @@ const ABILITIES := {
 	"railgun": {
 		"display_name": "Railgun",
 		"input": "fire_primary",
+		"slot": "primary",
 		"kind": "hitscan_charge",
 		"cooldown": 1.20,
 		"charge_time": 0.75,
@@ -321,6 +436,7 @@ const ABILITIES := {
 	"concussion_round": {
 		"display_name": "Concussion Round",
 		"input": "ability_dispel",
+		"slot": "utility",
 		"kind": "knockback",
 		"cooldown": 14.0,
 		"cost": 20.0,
@@ -330,9 +446,21 @@ const ABILITIES := {
 		"knockback": 12.0,
 		"desc": "Add knockback and hazard management.",
 	},
+	# The sniper's setup is on themselves: wind up, then spend it.
+	"overcharge_capacitor": {
+		"display_name": "Overcharge Capacitor",
+		"slot": "single",
+		"input": "heal_beam",
+		"kind": "self_buff",
+		"cooldown": 14.0,
+		"cost": 25.0,
+		"grants": "overcharged",
+		"desc": "Dumps the cells into the next few shots. Heavy damage, briefly.",
+	},
 	"seeker_drone": {
 		"display_name": "Seeker Drone",
 		"input": "smart_pulse",
+		"slot": "aoe",
 		"kind": "turret",
 		"cooldown": 25.0,
 		"cost": 30.0,
@@ -342,6 +470,7 @@ const ABILITIES := {
 	"orbital_lance": {
 		"display_name": "Orbital Lance",
 		"input": "ultimate",
+		"slot": "ultimate",
 		"kind": "beam_line",
 		"cooldown": 55.0,
 		"cost": 50.0,
@@ -452,8 +581,8 @@ const ROLES := {
 		"armor": 0.62,
 		"threat_aura": 3.0,
 		"abilities": [
-			"riot_carbine", "directional_shield", "dart_pull", "rocket_dash",
-			"bulwark_slam", "focus_marker",
+			"riot_carbine", "directional_shield", "dart_pull", "bulwark_slam",
+			"rocket_dash", "aegis_protocol", "focus_marker",
 		],
 	},
 	"kinetic_striker": {
@@ -466,8 +595,8 @@ const ROLES := {
 		"move_speed": 7.6,
 		"armor": 0.85,
 		"abilities": [
-			"mono_blade", "kick", "static_snare", "rocket_dash",
-			"blur_step", "focus_marker",
+			"mono_blade", "rupture", "kick", "static_snare",
+			"rocket_dash", "blur_step", "focus_marker",
 		],
 	},
 	"railgun_specialist": {
@@ -480,8 +609,8 @@ const ROLES := {
 		"move_speed": 6.8,
 		"armor": 0.92,
 		"abilities": [
-			"railgun", "concussion_round", "seeker_drone", "rocket_dash",
-			"orbital_lance", "focus_marker",
+			"railgun", "overcharge_capacitor", "concussion_round", "seeker_drone",
+			"rocket_dash", "orbital_lance", "focus_marker",
 		],
 	},
 }
@@ -653,7 +782,7 @@ const INPUT_KEYS := {
 const ABILITY_BAR_ORDER := [
 	"fire_primary", "heal_beam", "ability_dispel",
 	"smart_pulse", "ability_dash", "ultimate", "mark_target",
-]
+]  # == SLOTS in order, resolved through SLOT_INPUT
 
 # ------------------------------------------------------------------ bots
 #
@@ -787,6 +916,17 @@ func boss(id: String) -> Dictionary:
 
 ## Abilities a role can reach, keyed by the input action that fires them.
 ## This is the controller table in section 2, resolved per role.
+## The ability filling a given slot for a role, or "" if the seat has a
+## hole in it -- which a test treats as a failure.
+func slot_ability(role_id: String, slot: String) -> String:
+	for ability_id in role(role_id).get("abilities", []):
+		if ability(ability_id).get("slot", "") == slot:
+			return ability_id
+	return ""
+
+func slot_of(ability_id: String) -> String:
+	return ability(ability_id).get("slot", "")
+
 func bindings_for_role(role_id: String) -> Dictionary:
 	var out := {}
 	var def := role(role_id)

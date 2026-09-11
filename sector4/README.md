@@ -21,6 +21,31 @@ without clearing the room, and you cannot open the door without holding the term
 ELEVATOR BREACH -> TACTICAL TRASH -> SECURITY OVERRIDE -> SECTOR BOSS -> ELEVATOR ASCENT
 ```
 
+## One formation, four answers
+
+Every seat is built to the same shape. A class is not a different set of buttons — it is a
+different **answer to the same six questions**, on the same six bindings, so muscle memory
+carries when you swap seats and a module has something fixed to modify later. A module should
+change how your Area slot behaves; it should never hand you a seventh button.
+
+| Slot | Field Medic | Enforcer | Kinetic Striker | Railgun Specialist |
+|---|---|---|---|---|
+| **Attack** | Disruptor Pistol | Riot Carbine | Mono-Blade | Railgun |
+| **Single target** | Nano-Injector | Directional Shield | Rupture | Overcharge Capacitor |
+| **Signature** | System Purge | Dart Pull | Servo Kick | Concussion Round |
+| **Area** | Smart Nano-Pulse | Bulwark Slam | Static Snare | Seeker Drone |
+| **Mobility** | Rocket Dash | Rocket Dash | Rocket Dash | Rocket Dash |
+| **Ultimate** | Overclock Surge | Aegis Protocol | Blur Step | Orbital Lance |
+| **Call target** | Focus Marker | Focus Marker | Focus Marker | Focus Marker |
+
+The **Signature** slot is the one addition to the five obvious jobs: System Purge, Dart Pull,
+Servo Kick and Concussion Round are the things only that seat can do, and the encounter is
+built around them existing. Mobility and Call Target are deliberately identical on every seat;
+everything else must differ, or the seats are not actually distinct.
+
+The formation is asserted, not intended — a test fails if a seat leaves a slot empty, fills one
+twice, or puts a job on the wrong button.
+
 ## The four seats (§1.1)
 
 Roles are exclusive in the lobby, because a party without a trinity is a party that cannot

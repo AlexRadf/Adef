@@ -7,7 +7,7 @@ class_name AbilityBar
 ## name, whether it is ready, and what it costs -- so a new player can read
 ## their role off the bottom of the screen instead of off the design doc.
 
-const SLOT := Vector2(96.0, 58.0)
+const SLOT := Vector2(96.0, 68.0)
 const GAP := 8.0
 
 var _player: PlayerCharacter = null
@@ -74,6 +74,13 @@ func _draw_slot(font: Font, at: Vector2, slot: Dictionary, down: bool = false) -
 	draw_rect(rect, edge, false, 1.5)
 
 	# Button prompt: pad above, keyboard below, because both are bound.
+	# The slot's job, above its name. Two seats press the same button for
+	# the same kind of thing, and the bar should say so.
+	var job: String = Content.SLOT_LABELS.get(Content.slot_of(ability_id), "")
+	if job != "":
+		draw_string(font, at + Vector2(7.0, SLOT.y - 5.0), job.to_upper(),
+			HORIZONTAL_ALIGNMENT_LEFT, SLOT.x - 14.0, 9, Color(1, 1, 1, 0.30 if down else 0.42))
+
 	var pad: String = Content.INPUT_LABELS.get(slot["action"], "")
 	draw_string(font, at + Vector2(7.0, 16.0), pad, HORIZONTAL_ALIGNMENT_LEFT, -1, 13,
 		Color(1.0, 0.85, 0.3, 0.95))
@@ -87,7 +94,7 @@ func _draw_slot(font: Font, at: Vector2, slot: Dictionary, down: bool = false) -
 
 	var cost: float = float(def.get("cost", def.get("cost_per_second", 0.0)))
 	if cost > 0.0:
-		draw_string(font, at + Vector2(7.0, SLOT.y - 5.0), "%d" % roundi(cost),
+		draw_string(font, at + Vector2(SLOT.x - 24.0, 30.0), "%d" % roundi(cost),
 			HORIZONTAL_ALIGNMENT_LEFT, -1, 11, Color(0.35, 0.8, 1.0, 0.85))
 	if cooling > 0.0 and abilities != null:
 		var remaining := abilities.cooldown_remaining(ability_id)

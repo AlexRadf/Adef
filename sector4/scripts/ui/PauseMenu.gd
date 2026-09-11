@@ -150,6 +150,9 @@ func _draw_kit(panel: Control, font: Font, at: Vector2) -> void:
 			Color(1.0, 0.85, 0.3, 0.9))
 		panel.draw_string(font, at + Vector2(110.0, y), ability.get("display_name", ""),
 			HORIZONTAL_ALIGNMENT_LEFT, -1, 14, Color(1, 1, 1, 0.92))
+		var job: String = Content.SLOT_LABELS.get(Content.slot_of(bindings[action]), "")
+		panel.draw_string(font, at + Vector2(330.0, y), job,
+			HORIZONTAL_ALIGNMENT_LEFT, -1, 11, Color(0.35, 0.85, 1.0, 0.6))
 		var desc: String = ability.get("desc", "")
 		if desc != "":
 			panel.draw_string(font, at + Vector2(110.0, y + 15.0), desc, HORIZONTAL_ALIGNMENT_LEFT, 460, 11,

@@ -41,6 +41,8 @@ func execute(ability_id: String, payload: Dictionary) -> bool:
 	match ability_id:
 		"railgun":
 			return _railgun(payload)
+		"overcharge_capacitor":
+			return _overcharge()
 		"concussion_round":
 			return _concussion(payload)
 		"seeker_drone":
@@ -79,6 +81,16 @@ func _concussion(payload: Dictionary) -> bool:
 		var away: Vector3 = (target as Node3D).global_position - player.global_position
 		away.y = 0.0
 		target.apply_knockback(away.normalized() * float(def.get("knockback", 12.0)))
+	return true
+
+## The sniper's setup points at themselves: wind the cells up, then spend
+## the window. It rewards picking the moment rather than holding the
+## trigger.
+func _overcharge() -> bool:
+	var def: Dictionary = Content.ability("overcharge_capacitor")
+	player.status_component.apply(def.get("grants", "overcharged"), player.peer_id)
+	AbilityFx.impact(player.global_position + Vector3(0, 1.2, 0),
+		Color(0.95, 0.4, 0.85, 0.9), 1.6)
 	return true
 
 func _drone() -> bool:
