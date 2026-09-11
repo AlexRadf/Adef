@@ -11,6 +11,9 @@ const CHANNEL_REFRESH := 0.15
 
 var _channel_target: Node = null
 var _channel_active: bool = false
+## What the player is asking for, as opposed to what the server has
+## granted. The two differ for a frame or two over a network.
+var _channel_wanted: bool = false
 var _refresh_timer: float = 0.0
 
 func _process(delta: float) -> void:
@@ -21,7 +24,15 @@ func _process(delta: float) -> void:
 
 func on_pressed(ability_id: String) -> void:
 	match ability_id:
+		"disruptor_pistol":
+			# One hand on the weapon or one hand on the injector, never
+			# both. Pulling the trigger drops the channel rather than
+			# quietly running the two together.
+			if _channel_active or _channel_wanted:
+				_stop_beam()
+			fire(ability_id)
 		"nano_injector":
+			_channel_wanted = true
 			set_channel(ability_id, true)
 			_refresh_timer = 0.0
 		"rocket_dash":
@@ -35,7 +46,19 @@ func on_pressed(ability_id: String) -> void:
 			fire(ability_id)
 
 func on_held(ability_id: String) -> void:
+	# Firing while the beam is up is the same decision as starting to fire:
+	# the beam loses.
+	if ability_id == "disruptor_pistol":
+		if _channel_wanted:
+			_stop_beam()
+		fire(ability_id)
+		return
 	if ability_id != "nano_injector":
+		return
+	# The trigger wins if it is also held, so a stuck beam can always be
+	# interrupted by shooting.
+	if Input.is_action_pressed("fire_primary"):
+		_stop_beam()
 		return
 	# The beam follows the reticle, so the target has to be resent as the
 	# soft lock moves. Cheap, ordered, and the server still validates it.
@@ -46,13 +69,19 @@ func on_held(ability_id: String) -> void:
 
 func on_released(ability_id: String) -> void:
 	if ability_id == "nano_injector":
-		set_channel(ability_id, false)
+		_stop_beam()
+
+func _stop_beam() -> void:
+	_channel_wanted = false
+	set_channel("nano_injector", false)
 
 func _predict_dash() -> void:
 	if player.ability_component != null and not player.ability_component.can_use("rocket_dash"):
 		return
 	var plan := _dash_plan(_charge_target())
 	player.apply_dash(plan["direction"], plan["impulse"], plan["decay"])
+	if plan.get("leap", false):
+		player.apply_leap(float(Content.ability("rocket_dash").get("leap_up", 6.0)))
 
 ## Who the Medic is charging to: whoever the reticle had, else whoever is
 ## worst off. Both have to be reachable -- a charge that stops halfway is
@@ -69,6 +98,19 @@ func _charge_target() -> Node3D:
 		return lowest
 	return null
 
+## With no ally to charge, the dash is a leap where you are looking --
+## at a wall, over a hazard, onto a ledge. It takes the aim direction
+## rather than the movement stick, so "leap at that" is a thing you can
+## actually express.
+func _leap_plan(impulse: float, decay: float) -> Dictionary:
+	var aim := player.aim_direction()
+	var flat := Vector3(aim.x, 0.0, aim.z)
+	if flat.is_zero_approx():
+		flat = player.move_intent()
+	if flat.is_zero_approx():
+		flat = -player.global_transform.basis.z
+	return {"direction": flat.normalized(), "impulse": impulse, "decay": decay, "leap": true}
+
 func _reachable(target: Node, reach: float) -> bool:
 	return alive(target) and target is Node3D and in_range(target, reach)
 
@@ -80,12 +122,12 @@ func _dash_plan(target: Node3D) -> Dictionary:
 	var decay: float = float(def.get("decay", 24.0))
 	var impulse: float = float(def.get("impulse", 12.0))
 	if target == null:
-		return {"direction": player.move_intent(), "impulse": impulse, "decay": decay}
+		return _leap_plan(impulse, decay)
 	var offset: Vector3 = target.global_position - player.global_position
 	offset.y = 0.0
 	var distance := offset.length()
 	if distance < 0.5:
-		return {"direction": player.move_intent(), "impulse": impulse, "decay": decay}
+		return _leap_plan(impulse, decay)
 	# Stop just short, so the charge does not shove the person being saved.
 	var travel := maxf(0.5, distance - 1.4)
 	var solved := sqrt(2.0 * decay * travel)
@@ -121,8 +163,10 @@ func channel(ability_id: String, active: bool, payload: Dictionary) -> void:
 		_channel_target = null
 		return
 	var target := resolve(payload, "ally")
-	if target == null:
-		target = player  # self-heal when the reticle has nobody
+	# Aiming at nobody treats you as the patient. A medic who cannot treat
+	# themselves is a medic who dies holding a full toolkit.
+	if target == null or not alive(target):
+		target = player
 	var def: Dictionary = Content.ability("nano_injector")
 	if not alive(target) or not in_range(target, float(def.get("range", 35.0))):
 		_channel_active = false
@@ -142,7 +186,21 @@ func _tick_beam(delta: float) -> void:
 	if player.ability_component == null or not player.ability_component.spend(cost):
 		_channel_active = false
 		return
-	Combat.apply_heal(player, _channel_target, float(def.get("heal_per_second", 58.0)) * delta)
+
+	var rate: float = float(def.get("heal_per_second", 58.0))
+	var treating_self: bool = _channel_target == player
+	# Self-treatment is deliberately worse than treating someone else, so
+	# the beam still wants to be pointed outwards.
+	if treating_self:
+		rate *= float(def.get("self_channel_mult", 0.75))
+	var healed := Combat.apply_heal(player, _channel_target, rate * delta)
+
+	# Healing someone else trickles back. It is what stops the Medic being
+	# the one person on the floor with no way to recover.
+	if not treating_self and healed > 0.0:
+		var share: float = float(def.get("self_heal_share", 0.30))
+		if share > 0.0:
+			Combat.apply_heal(player, player, healed * share, {"suppress_threat": true})
 
 # ------------------------------------------------------------- abilities
 
@@ -202,21 +260,48 @@ func _rocket_dash(payload: Dictionary) -> bool:
 	if not player.is_local:
 		var target := resolve(payload, "charge")
 		var plan := _dash_plan(target as Node3D if target is Node3D else null)
-		if target == null:
-			plan["direction"] = payload.get("move", Vector3.ZERO)
 		player.apply_dash(plan["direction"], plan["impulse"], plan["decay"])
+		if plan.get("leap", false):
+			player.apply_leap(float(Content.ability("rocket_dash").get("leap_up", 6.0)))
 	return true
 
+## A burst on everyone nearby, weighted towards whoever is worst off. This
+## is the answer to System Shockwave, which hits the entire room -- a
+## single-target heal was never going to counter a raid-wide.
 func _smart_pulse() -> bool:
 	var def: Dictionary = Content.ability("smart_nano_pulse")
-	var target := player.ally_targeting.lowest_health_ally(float(def.get("range", 40.0)))
-	if target == null:
+	var radius: float = float(def.get("radius", 14.0))
+	var base: float = float(def.get("heal", 190.0))
+	var lowest := player.ally_targeting.lowest_health_ally(radius)
+
+	var caught: Array[Node] = []
+	for unit in player.get_tree().get_nodes_in_group("party"):
+		if not alive(unit) or not (unit is Node3D):
+			continue
+		if player.global_position.distance_to((unit as Node3D).global_position) > radius:
+			continue
+		caught.append(unit)
+	if caught.is_empty():
 		return false
-	# Nobody is hurt: hold the cooldown rather than spending it on a full
-	# health bar.
-	if target.get("health_component").get_health_percent() >= 0.999:
+
+	# Nobody is hurt: hold the cooldown rather than spending it on full
+	# health bars.
+	var anyone_hurt := false
+	for unit in caught:
+		if unit.get("health_component").get_health_percent() < 0.999:
+			anyone_hurt = true
+			break
+	if not anyone_hurt:
 		return false
-	return Combat.apply_heal(player, target, float(def.get("heal", 280.0))) > 0.0
+
+	for unit in caught:
+		var amount := base
+		if unit == lowest:
+			amount *= float(def.get("lowest_bonus", 1.6))
+		Combat.apply_heal(player, unit, amount)
+	AbilityFx.impact(player.global_position + Vector3(0, 1.0, 0),
+		Color(0.4, 0.95, 0.6, 0.9), radius)
+	return true
 
 func _overclock_surge() -> bool:
 	var field: GroundField = preload("res://scenes/abilities/GroundField.tscn").instantiate()

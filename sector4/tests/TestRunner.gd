@@ -26,6 +26,8 @@ func _run_all() -> void:
 	await _suite("facing", _test_facing)
 	await _suite("camera-relative movement", _test_camera_basis)
 	await _suite("rocket dash", _test_dash)
+	await _suite("medic can treat themselves", _test_self_heal)
+	await _suite("barriers", _test_barrier)
 	await _suite("going down", _test_downed)
 	await _suite("threat table", _test_threat)
 	await _suite("ability cooldowns", _test_cooldowns)
@@ -308,6 +310,76 @@ func _test_dash() -> void:
 		await get_tree().process_frame
 
 ## A body that stops upright reads as a freeze rather than a kill.
+## A medic who cannot treat themselves is a medic who dies holding a full
+## toolkit.
+func _test_self_heal() -> void:
+	_ground()
+	var medic := _bot("field_medic", Vector3.ZERO)
+	medic.is_bot = false
+	var ally := _bot("enforcer", Vector3(4, 0, 0))
+	for i in 3:
+		await get_tree().process_frame
+
+	var kit: FieldMedicKit = medic.kit
+	medic.health_component.reduce(medic.health_component.max_health * 0.5)
+	var before: float = medic.health_component.current_health
+
+	# Aiming at nobody treats you as the patient.
+	kit.channel("nano_injector", true, {"ally": NodePath()})
+	check(kit._channel_target == medic, "with no target the beam turns on you")
+	kit._tick_beam(0.5)
+	check(medic.health_component.current_health > before, "and it heals you")
+
+	# Healing someone else feeds a little back, so you are never stranded.
+	ally.health_component.reduce(ally.health_component.max_health * 0.6)
+	medic.health_component.reduce(medic.health_component.max_health * 0.2)
+	var self_before: float = medic.health_component.current_health
+	var ally_before: float = ally.health_component.current_health
+	kit.channel("nano_injector", true, {"ally": ally.get_path()})
+	check(kit._channel_target == ally, "the beam takes an ally when pointed at one")
+	kit._tick_beam(0.5)
+	check(ally.health_component.current_health > ally_before, "healing them works")
+	check(medic.health_component.current_health > self_before, "and some of it comes back to you")
+
+	# Smart Nano-Pulse is a pulse: it catches the whole group, you included.
+	medic.health_component.reduce(medic.health_component.max_health * 0.3)
+	ally.health_component.reduce(ally.health_component.max_health * 0.3)
+	var pulse_self: float = medic.health_component.current_health
+	var pulse_ally: float = ally.health_component.current_health
+	check(kit.execute("smart_nano_pulse", {}), "the pulse goes off")
+	check(medic.health_component.current_health > pulse_self, "it heals you")
+	check(ally.health_component.current_health > pulse_ally, "and everyone near you")
+
+	medic.queue_free()
+	ally.queue_free()
+	for i in 3:
+		await get_tree().process_frame
+
+## Overclock Surge is a shield now, so shields have to be real: soaked
+## before the health bar, spent down, and gone when empty.
+func _test_barrier() -> void:
+	var target := _combatant("party")
+	target.armor = 1.0
+	target.get_node("HealthComponent").setup(1000.0)
+	var status: StatusEffectComponent = target.get_node("StatusEffectComponent")
+	var health: HealthComponent = target.get_node("HealthComponent")
+
+	status.apply("barrier")
+	var pool: float = float(Content.status("barrier")["absorb"])
+	check_near(status.absorb_remaining(), pool, "the barrier starts full")
+
+	Combat.apply_damage(null, target, 200.0)
+	check_near(health.current_health, 1000.0, "the shield soaks it whole")
+	check_near(status.absorb_remaining(), pool - 200.0, "and is spent down by exactly that")
+
+	# A hit bigger than what is left must carry through, not be swallowed.
+	Combat.apply_damage(null, target, pool)
+	check(health.current_health < 1000.0, "an overflowing hit carries through")
+	check_near(status.absorb_remaining(), 0.0, "and the shield is gone")
+	check(not status.has("barrier"), "an empty shield does not linger as a buff")
+
+	target.queue_free()
+
 func _test_downed() -> void:
 	var mob: TrashMob = preload("res://scenes/enemies/TrashMob.tscn").instantiate()
 	mob.mob_type = "sentry_drone"

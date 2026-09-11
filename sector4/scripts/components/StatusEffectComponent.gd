@@ -11,8 +11,11 @@ signal status_applied(status_id: String)
 signal status_removed(status_id: String)
 signal statuses_changed()
 
-## status_id -> {"expires_at": float, "source": int, "stacks": int}
+## status_id -> {"expires_at": float, "source": int, "stacks": int,
+##               "absorb": float}
 var _active: Dictionary = {}
+
+signal absorb_changed(remaining: float, maximum: float)
 
 func _process(_delta: float) -> void:
 	if not _is_authority():
@@ -89,6 +92,41 @@ func time_left(status_id: String) -> float:
 		return INF
 	return maxf(0.0, expires - _now())
 
+# ---------------------------------------------------------------- shields
+
+## Total shielding left across every absorb effect.
+func absorb_remaining() -> float:
+	var total := 0.0
+	for status_id in _active:
+		total += float(_active[status_id].get("absorb", 0.0))
+	return total
+
+## Spend shielding against an incoming hit and return what is left to take
+## off the health bar. Pools are drained in the order they were applied, so
+## the oldest shield breaks first.
+func consume_absorb(amount: float) -> float:
+	var remaining := amount
+	var spent_any := false
+	for status_id in _active.keys():
+		if remaining <= 0.0:
+			break
+		var pool: float = float(_active[status_id].get("absorb", 0.0))
+		if pool <= 0.0:
+			continue
+		var spent: float = minf(pool, remaining)
+		remaining -= spent
+		spent_any = true
+		var left := pool - spent
+		if left <= 0.0001:
+			# A shield that has soaked its last point is gone, and should
+			# say so rather than lingering as an empty buff.
+			remove(status_id)
+		else:
+			_active[status_id]["absorb"] = left
+	if spent_any:
+		absorb_changed.emit(absorb_remaining(), 0.0)
+	return remaining
+
 ## The product of every active modifier for `stat`. Absent means 1.0, so a
 ## unit with no statuses multiplies by one and costs nothing to ask.
 func get_stat(stat: String) -> float:
@@ -122,7 +160,15 @@ func _apply_local(status_id: String, source_peer: int, duration_override: float)
 	var stacks := 1
 	if not is_new:
 		stacks = int(_active[status_id].get("stacks", 1)) + 1
-	_active[status_id] = {"expires_at": expires, "source": source_peer, "stacks": stacks}
+	var entry := {"expires_at": expires, "source": source_peer, "stacks": stacks}
+	# A shield carries its own pool. Re-applying refreshes it rather than
+	# stacking, so two barriers do not silently become one enormous one.
+	var absorb: float = float(def.get("absorb", 0.0))
+	if absorb > 0.0:
+		entry["absorb"] = absorb
+	_active[status_id] = entry
+	if absorb > 0.0:
+		absorb_changed.emit(absorb_remaining(), absorb)
 	if is_new:
 		status_applied.emit(status_id)
 		GameEvents.status_applied.emit(get_parent(), status_id)

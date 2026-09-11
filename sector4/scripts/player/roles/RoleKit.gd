@@ -35,8 +35,11 @@ func bind(owner_body: PlayerCharacter) -> void:
 func on_pressed(ability_id: String) -> void:
 	fire(ability_id)
 
-func on_held(_ability_id: String) -> void:
-	pass
+## Held buttons repeat by default; the cooldown decides the fire rate.
+## A kit that wants a hold to mean something else overrides this.
+func on_held(ability_id: String) -> void:
+	if Content.ability(ability_id).get("input", "") == "fire_primary":
+		fire(ability_id)
 
 func on_released(_ability_id: String) -> void:
 	pass

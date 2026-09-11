@@ -231,6 +231,10 @@ func apply_dash(direction: Vector3, impulse: float, decay: float = 24.0) -> void
 		Color(0.45, 0.85, 1.0, 0.55), 0.12
 	)
 
+## Upward kick, so a leap clears things rather than sliding into them.
+func apply_leap(speed: float) -> void:
+	velocity.y = maxf(velocity.y, speed)
+
 ## The direction the operative is currently asking to move, in world space.
 ## Rocket Dash uses this so a dash goes where you are already going rather
 ## than where the camera happens to look.

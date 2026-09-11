@@ -111,7 +111,11 @@ func _draw_state() -> void:
 		return
 	if not _armed:
 		var progress := clampf(_elapsed / maxf(0.01, _delay), 0.0, 1.0)
-		mat.albedo_color.a = 0.15 + 0.35 * progress
+		# Warns in red and lands in its own colour, so "about to happen"
+		# and "happening" never look the same.
+		mat.albedo_color = Color(1.0, 0.25, 0.2).lerp(Color(0.45, 0.95, 0.25), progress)
+		mat.emission = mat.albedo_color
+		mat.albedo_color.a = 0.18 + 0.38 * progress
 		var scale_factor := 0.35 + 0.65 * progress
 		_decal.scale = Vector3(scale_factor, 1.0, scale_factor)
 	else:

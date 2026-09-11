@@ -173,12 +173,30 @@ func _begin(ability_id: String, target_rule: String) -> void:
 	if def.get("locks_turning", false):
 		_turn_locked = true
 		_face_now(target)
+	_telegraph(ability_id, def)
 	cast_component.begin(
 		ability_id,
 		float(def.get("cast_time", 0.0)),
 		def.get("interruptible", false),
 		func() -> void: _resolve_ability(ability_id, target)
 	)
+
+## Draw the shape the ability will actually resolve against, for exactly
+## as long as the cast runs. A two second cast nobody can see is just
+## delayed damage.
+func _telegraph(ability_id: String, def: Dictionary) -> void:
+	var seconds: float = float(def.get("cast_time", 0.0))
+	if seconds <= 0.05:
+		return
+	var root := _spawn_root()
+	match def.get("kind", ""):
+		"boss_cone":
+			Telegraph.cone(root, self, float(def.get("range", 14.0)),
+				float(def.get("arc_degrees", 90.0)), seconds)
+		"boss_raidwide":
+			# Room-wide: the ring closes inwards, so "there is nowhere to
+			# stand" is legible rather than implied.
+			Telegraph.ring(root, self, 30.0, seconds)
 
 func _resolve_ability(ability_id: String, target: Node3D) -> void:
 	_turn_locked = false

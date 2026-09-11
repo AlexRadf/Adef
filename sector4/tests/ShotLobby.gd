@@ -47,6 +47,21 @@ func _ready() -> void:
 			if unit.get("is_bot") == true:
 				unit.health_component.reduce(unit.health_component.max_health * 0.55)
 		await get_tree().create_timer(float(OS.get_environment("SHOT_DELAY")) if OS.get_environment("SHOT_DELAY") != "" else 6.0).timeout
+	elif mode == "telegraph":
+		Net.start_solo()
+		Net.roster = {1: {"name": "You", "role": "field_medic", "ready": true}}
+		add_child(preload("res://scenes/floor/Floor.tscn").instantiate())
+		await get_tree().create_timer(0.8).timeout
+		# Put a boss right in front of the camera and start a Plasma Sweep,
+		# so the cone is drawn where it can be seen.
+		var boss: IronCenturion = preload("res://scenes/enemies/IronCenturion.tscn").instantiate()
+		get_tree().get_first_node_in_group("spawn_root").add_child(boss)
+		boss.global_position = Vector3(0, 0, -16)
+		await get_tree().process_frame
+		boss.arm()
+		boss.on_pulled_by(PlayerCharacter.local(get_tree()))
+		boss._begin("plasma_sweep", "threat_leader")
+		await get_tree().create_timer(1.4).timeout
 	elif mode == "marker":
 		Net.start_solo()
 		Net.roster = {1: {"name": "You", "role": "field_medic", "ready": true}}

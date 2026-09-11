@@ -203,9 +203,15 @@ func _steer(delta: float) -> void:
 
 	var offset := desired - player.global_position
 	offset.y = 0.0
-	player.ai_move_intent = offset.normalized() if offset.length() > 0.9 else Vector3.ZERO
+	# A dead zone, so a bot holding formation does not jitter on the spot
+	# every time the person it is following shifts a few centimetres.
+	player.ai_move_intent = offset.normalized() if offset.length() > 1.4 else Vector3.ZERO
 	if look_at != null:
 		player.ai_face_target = (look_at as Node3D).global_position
+	elif not player.ai_move_intent.is_zero_approx():
+		# Out of combat, face where you are walking rather than snapping to
+		# whatever the leader happens to be pointed at.
+		player.ai_face_target = player.global_position + player.ai_move_intent * 4.0
 	_avoid_crowding(delta)
 
 ## Where this role wants to stand relative to what it is fighting.
@@ -265,15 +271,13 @@ func _formation_spot() -> Vector3:
 	if leader == null:
 		return _rally_point(player.global_position)
 	var index := maxi(0, Content.ROLE_ORDER.find(player.role_id))
-	var facing := -leader.global_transform.basis.z
-	facing.y = 0.0
-	if facing.is_zero_approx():
-		facing = Vector3.FORWARD
-	var right := facing.cross(Vector3.UP).normalized()
-	# Spread across and slightly behind: a bot should never be the thing
-	# that walks into a pack first.
-	var across := (float(index) - 1.5) * FORMATION_SPREAD
-	var spot: Vector3 = leader.global_position + right * across - facing * 2.2
+	# Anchored in world space, NOT to the leader's facing. Deriving the
+	# slot from where the leader is looking means every camera turn drags
+	# the whole squad around them in a circle, which looks like the bots
+	# are orbiting you rather than walking beside you.
+	var angle := TAU * float(index) / float(Content.ROLE_ORDER.size())
+	var offset := Vector3(cos(angle), 0.0, sin(angle)) * FORMATION_SPREAD
+	var spot: Vector3 = leader.global_position + offset
 	# Too far to be useful: close the gap rather than holding formation.
 	if player.global_position.distance_to(leader.global_position) > REGROUP_DISTANCE:
 		return leader.global_position

@@ -30,7 +30,7 @@ states and no combo strings.
 | | Primary | And |
 |---|---|---|
 | **Enforcer** (tank) | Riot Carbine, 4× threat | **Directional Shield** — only mitigates what it faces · **Dart Pull** — takes one mob out of a pack · Bulwark Slam |
-| **Field Medic** (healer) | Disruptor Pistol — crits refund 10% Nano-Energy | **Nano-Injector** soft-locked beam · **System Purge** · **Smart Nano-Pulse** · **Overclock Surge** |
+| **Field Medic** (healer) | Disruptor Pistol — crits refund 10% Nano-Energy | **Nano-Injector** beam (ally *or* yourself) · **System Purge** · **Smart Nano-Pulse** burst · **Overclock Surge** barrier |
 | **Kinetic Striker** (melee) | Mono-Blade, 1.6× from behind | **Servo Kick** — the interrupt · Static Snare · Blur Step |
 | **Railgun Specialist** (ranged) | Railgun, charged | Concussion Round — knockback · Seeker Drone · Orbital Lance |
 
@@ -140,8 +140,9 @@ a condition, and the interrupt gets a much shorter fuse because a 4 second windo
 forgiving enough for a human-shaped pause. One number, and it is the single biggest reason a
 party of bots reads as people rather than as a machine.
 
-**Bots never start fights.** They form up beside whoever is leading — spread across and slightly
-behind, so a bot is never the thing that walks into a pack first — and they only commit once
+**Bots never start fights.** They form up beside whoever is leading — in **world-anchored** slots,
+not slots derived from the leader's facing, because deriving them from facing means every camera
+turn drags the whole squad around you in a circle — and they only commit once
 something is genuinely engaged. A dormant pack across the room is scenery to them. An ability
 with no target is simply not pressed, which is what stops the fallback attack from firing down
 the bot's facing and pulling whatever happens to be standing there. The decision of when to pull
@@ -229,10 +230,15 @@ and a party that misses it should never be able to say they did not see it.
 
 | Ability | Every | Cast | What it does | Whose problem |
 |---|---|---|---|---|
-| **Plasma Sweep** | 12s | 2.0s | 90° frontal cone, turning locked on cast start | Tank points it away |
+| **Plasma Sweep** | 12s | 2.0s | 90° frontal cone, turning locked on cast start, **drawn on the floor** | Tank points it away |
 | **Corrosive Vent** | 18s | 1.5s delay | Floor grid under a ranged player (**Neural Glitch**) + **System Corroded** on the tank | Dash out; purge the tank |
 | **System Shockwave** | 25s | 1.5s | Unavoidable, 35% of everyone's max HP | Healer triages |
 | **Core Overcharge** | 0:45, 1:30 | 4.0s | Wipes the party | Striker kicks it |
+
+Every cast with a wind-up **telegraphs on the ground**: the cone is the real 90 degrees, anchored
+to the boss and following its locked facing, so what you dodge is exactly what would have hit
+you. The outline shows the full extent from the first frame (how far to run) and the fill sweeps
+out to meet it (how long you have). A two second cast nobody can see is just delayed damage.
 
 Below 50% the **recurring cycle** accelerates by 25% — including timers already counting, so the
 enrage is felt immediately. The **scripted** Core Overcharges deliberately do *not* accelerate:
@@ -298,6 +304,27 @@ four bots clears the first room in about forty seconds, holds the Security Overr
 the boss chamber and fights the Iron Centurion at roughly **385 damage a second** — a ~130
 second kill, which is what the Core Overcharge schedule at 0:45 / 1:30 / 2:15 was written for.
 
+### The Medic's kit, and why it is shaped like this
+
+A medic who cannot treat themselves is a medic who dies holding a full toolkit. The
+**Nano-Injector** takes an ally *or* you — aiming at nobody turns the beam inward — and healing
+someone else trickles 30% back, so you are never stranded at low health with nothing to point
+at. Treating yourself is deliberately weaker than treating someone else, so the beam still wants
+to be pointed outwards.
+
+**Smart Nano-Pulse** is a pulse: a burst on everyone nearby, weighted towards whoever is worst
+off. It is the answer to System Shockwave, and Shockwave hits the whole room — a single-target
+heal was never going to counter a raid-wide.
+
+**Overclock Surge** is a barrier rather than a damage buff. The Medic's emergency button should
+answer "we are all about to die", and a shield that soaks a Shockwave is a far clearer answer
+than attack speed. That needed absorb to be real: shields soak damage before the health bar sees
+any of it, drain oldest-first, carry the overflow through when they break, and disappear rather
+than lingering as an empty buff.
+
+**You cannot shoot and channel at once.** One hand on the weapon or one hand on the injector;
+pulling the trigger drops the beam rather than quietly running both.
+
 ### Rocket Dash
 
 Displacement is `impulse² / (2 × decay)`, so those two numbers together decide both how far it
@@ -308,7 +335,9 @@ The Field Medic's version is not a shove forwards at all — it solves the impul
 distance to an ally and **charges to them**, stopping just short so it does not push the person
 being saved. The healer's emergency is almost always "get to that person", not "get over there".
 It picks the reticle target, else whoever is worst off, and refuses if they are out of range,
-because a charge that falls short is worse than no charge.
+because a charge that falls short is worse than no charge. With nobody to charge it becomes a
+**leap where you are aiming** — at a wall, over a hazard, onto a ledge — taking the aim direction
+rather than the movement stick, so "leap at that" is a thing you can express.
 
 ## Seeing it
 

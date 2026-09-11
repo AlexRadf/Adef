@@ -59,12 +59,20 @@ func apply_damage(source: Node, target: Node, amount: float, opts: Dictionary = 
 	if out <= 0.0:
 		return 0.0
 
+	# 6. shields. A barrier soaks damage before the health bar sees any of
+	#    it, and what it cannot cover carries through -- so a shield that
+	#    breaks mid-hit still does its job for the part it covered.
+	if target_status != null:
+		out = target_status.consume_absorb(out)
+		if out <= 0.0:
+			return 0.0
+
 	var health: HealthComponent = _health_of(target)
 	if health == null:
 		return 0.0
 	var dealt := health.reduce(out)
 
-	# 6. threat, and the lifesteal that Overclock Surge grants
+	# 7. threat, and the lifesteal from buffs
 	if dealt > 0.0:
 		# Hitting something is a pull. Trash packs and the boss share one
 		# rule: what you shoot is what wakes up.

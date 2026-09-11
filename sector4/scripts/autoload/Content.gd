@@ -37,6 +37,15 @@ const STATUS_EFFECTS := {
 		"alert_color": Color(0.55, 0.95, 0.35),
 		"modifiers": {"armor": 0.70},
 	},
+	"barrier": {
+		"display_name": "Barrier",
+		"duration": 10.0,
+		"harmful": false,
+		"dispel_type": "",
+		"alert_color": Color(0.35, 0.85, 1.0),
+		"absorb": 520.0,
+		"modifiers": {},
+	},
 	"overclocked": {
 		"display_name": "Overclock Surge",
 		"duration": 8.0,
@@ -121,7 +130,13 @@ const ABILITIES := {
 		"cost_per_second": 9.0,
 		"heal_per_second": 58.0,
 		"range": 35.0,
-		"desc": "Soft-locked channel beam. Steady HP restoration on the reticle target.",
+		# A medic who cannot treat themselves is a medic who dies holding a
+		# full toolkit. The beam takes an ally or yourself, and healing
+		# someone else trickles back, so you are never stranded at low
+		# health with nothing to point at.
+		"self_heal_share": 0.30,
+		"self_channel_mult": 0.75,
+		"desc": "Channel beam. Heals an ally, or yourself, and feeds a little back either way.",
 	},
 	"system_purge": {
 		"display_name": "System Purge",
@@ -146,6 +161,10 @@ const ABILITIES := {
 		"cost": 0.0,
 		"impulse": 12.0,
 		"decay": 24.0,
+		# With no ally to charge, it is a leap where you are aiming -- at a
+		# wall, over a hazard, onto a ledge -- rather than a shuffle along
+		# the ground.
+		"leap_up": 6.0,
 		"grants": "dash_iframes",
 		# The Field Medic's version is a charge to an ally rather than a
 		# shove forwards: the healer's emergency is almost always "get to
@@ -154,26 +173,36 @@ const ABILITIES := {
 		"max_charge_impulse": 21.0,
 		"desc": "Boost clear of a hazard. The Medic charges to an ally instead.",
 	},
+	# A pulse, so it behaves like one: a burst centred on the medic that
+	# catches everyone standing in it. This is the System Shockwave answer,
+	# and Shockwave hits the whole room -- a single-target heal was never
+	# going to be the counter to a raid-wide.
 	"smart_nano_pulse": {
 		"display_name": "Smart Nano-Pulse",
 		"input": "smart_pulse",
-		"kind": "smart_heal",
+		"kind": "aoe_heal",
 		"cooldown": 9.0,
 		"cost": 30.0,
-		"heal": 280.0,
-		"range": 40.0,
-		"desc": "Auto-targets and heals the lowest-percentage HP ally in the room.",
+		"heal": 190.0,
+		"radius": 14.0,
+		# The one who needs it most still gets the most, which is the
+		# "smart" half of the name.
+		"lowest_bonus": 1.6,
+		"desc": "Burst heal on everyone nearby, weighted towards whoever is worst off.",
 	},
+	# A barrier rather than a damage buff. The Medic's emergency button
+	# should answer "we are all about to die", and a shield that soaks a
+	# System Shockwave is a far clearer answer than attack speed.
 	"overclock_surge": {
 		"display_name": "Overclock Surge",
 		"input": "ultimate",
 		"kind": "ground_field",
 		"cooldown": 60.0,
 		"cost": 50.0,
-		"radius": 7.0,
-		"duration": 8.0,
-		"grants": "overclocked",
-		"desc": "ULTIMATE. Deployed field: team attack speed up, 100% lifesteal on primaries.",
+		"radius": 9.0,
+		"duration": 10.0,
+		"grants": "barrier",
+		"desc": "ULTIMATE. Deployed field: a heavy barrier on everyone standing in it.",
 	},
 	"focus_marker": {
 		"display_name": "Focus Marker",
