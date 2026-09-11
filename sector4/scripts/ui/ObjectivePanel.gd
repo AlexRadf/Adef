@@ -57,14 +57,23 @@ func _detail() -> String:
 	match _director.phase:
 		FloorDirector.Phase.TRASH:
 			var left := _alive("trash")
-			return "%d hostile%s remaining · pull one pack at a time" % [left, "" if left == 1 else "s"]
+			var patrols := _alive("patrols")
+			if left == 0:
+				return "Room clear — head for the security terminal"
+			# The patrol wanders, so it is the one people finish the room
+			# without noticing. It gets called out by name.
+			if left == patrols and patrols > 0:
+				return "%d patrol drone%s still walking the halls" % [patrols, "" if patrols == 1 else "s"]
+			return "%d hostile%s left · follow the marker" % [left, "" if left == 1 else "s"]
 		FloorDirector.Phase.SECURITY_OVERRIDE:
 			var terminal := _terminal()
 			if terminal == null:
 				return "Find the security terminal"
 			if terminal.is_unlocked:
-				return "Override complete — the door is open"
-			return "Stand on it. %d%% · adds incoming" % roundi(terminal.fraction() * 100.0)
+				return "Override complete — the boss chamber is open"
+			if terminal._held_count() > 0:
+				return "Holding — %d%%. Stay on the pad." % roundi(terminal.fraction() * 100.0)
+			return "Stand on the pad to run the override (%d%%)" % roundi(terminal.fraction() * 100.0)
 		FloorDirector.Phase.BOSS:
 			var boss := _director.boss
 			if boss == null or not is_instance_valid(boss):

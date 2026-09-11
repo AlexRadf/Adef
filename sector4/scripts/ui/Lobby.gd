@@ -32,7 +32,28 @@ func _ready() -> void:
 	_refresh()
 	# Without focus, a controller cannot touch the lobby at all: Godot's
 	# ui_* navigation only moves between focused controls.
+	_wire_navigation()
 	_solo_button.grab_focus()
+
+## Godot only moves focus between controls it can find a neighbour for, and
+## across three different containers it cannot. Chaining them by hand makes
+## up and down walk the whole screen in the order you read it.
+func _wire_navigation() -> void:
+	var column: Array[Control] = [_host_button, _address, _join_button, _solo_button]
+	for button in _roles.get_children():
+		column.append(button as Control)
+	column.append(_ready_button)
+	column.append(_start_button)
+
+	for i in column.size():
+		var here := column[i]
+		here.focus_mode = Control.FOCUS_ALL
+		var above := column[(i - 1 + column.size()) % column.size()]
+		var below := column[(i + 1) % column.size()]
+		here.focus_neighbor_top = here.get_path_to(above)
+		here.focus_neighbor_bottom = here.get_path_to(below)
+		here.focus_previous = here.get_path_to(above)
+		here.focus_next = here.get_path_to(below)
 
 func _build_role_buttons() -> void:
 	for role_id in Content.ROLE_ORDER:
@@ -43,6 +64,7 @@ func _build_role_buttons() -> void:
 		button.custom_minimum_size = Vector2(180.0, 64.0)
 		button.pressed.connect(_on_role_picked.bind(role_id))
 		button.set_meta("role_id", role_id)
+		button.focus_mode = Control.FOCUS_ALL
 		_roles.add_child(button)
 
 func _archetype_label(archetype: String) -> String:

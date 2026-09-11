@@ -1,4 +1,4 @@
-[gd_scene load_steps=9 format=3]
+[gd_scene load_steps=10 format=3]
 
 [ext_resource type="Script" path="res://scripts/ui/ReticleArcs.gd" id="1_reticle"]
 [ext_resource type="Script" path="res://scripts/ui/WorldFrames.gd" id="2_frames"]
@@ -8,6 +8,7 @@
 [ext_resource type="Script" path="res://scripts/ui/PartyRoster.gd" id="6_roster"]
 [ext_resource type="Script" path="res://scripts/ui/FloatingNumbers.gd" id="7_numbers"]
 [ext_resource type="Script" path="res://scripts/ui/DownedScreen.gd" id="8_downed"]
+[ext_resource type="Script" path="res://scripts/ui/ObjectiveMarker.gd" id="9_marker"]
 
 [node name="ArenaReticle" type="CanvasLayer"]
 
@@ -52,6 +53,13 @@ anchor_right = 1.0
 anchor_bottom = 1.0
 mouse_filter = 2
 script = ExtResource("4_bar")
+
+[node name="ObjectiveMarker" type="Control" parent="."]
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+mouse_filter = 2
+script = ExtResource("9_marker")
 
 [node name="DownedScreen" type="Control" parent="."]
 anchors_preset = 15

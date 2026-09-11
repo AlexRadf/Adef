@@ -122,8 +122,12 @@ have already cleared stays cleared.
 Everything a player needs mid-fight, in a fixed place:
 
 - **Objective panel** (top left) — the current phase, and the specific countable thing in the
-  way: *"2 hostiles remaining · pull one pack at a time"*, *"Stand on it. 64% · adds incoming"*.
-  Vague objectives are the same as no objective.
+  way. Vague objectives are the same as no objective.
+- **Objective marker** — a diamond on whatever the floor currently wants, an arrow at the screen
+  edge when it is behind you, and a distance either way. Knowing the objective is not the same
+  as knowing *where* it is: "10 hostiles remaining" with a patrol drone wandering two rooms away
+  reads as the game being broken rather than as a task. The wandering patrol is called out by
+  name, because it is the one people finish a room without noticing.
 - **Party roster** — four rows in a stable order, health, role, who is a bot, and any debuff
   they are carrying. The world-space frames tell you about whoever you are looking at; this
   tells the healer about the person behind them.

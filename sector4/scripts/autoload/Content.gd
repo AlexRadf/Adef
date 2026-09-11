@@ -873,7 +873,7 @@ const FLOORS := [
 			{"type": "patrol_drone", "route": [Vector3(-16, 0, -10), Vector3(16, 0, -10), Vector3(16, 0, -34), Vector3(-16, 0, -34)]},
 		],
 		"terminal": Vector3(0, 0, -46),
-		"terminal_unlock_seconds": 12.0,
+		"terminal_unlock_seconds": 8.0,
 		"terminal_waves": 2,
 		"terminal_wave_types": ["sentry_drone", "sentry_drone"],
 		"boss": "unit_01",

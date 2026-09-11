@@ -63,6 +63,19 @@ func _ready() -> void:
 		else:
 			me.health_component.kill()
 		await get_tree().create_timer(0.6).timeout
+	elif mode == "objective":
+		Net.start_solo()
+		Net.roster = {1: {"name": "You", "role": "field_medic", "ready": true}}
+		add_child(preload("res://scenes/floor/Floor.tscn").instantiate())
+		await get_tree().create_timer(1.0).timeout
+		# Clear the room so the objective becomes the terminal, and put the
+		# camera where it can see the beacon.
+		for mob in get_tree().get_nodes_in_group("trash"):
+			mob.health_component.kill()
+		await get_tree().create_timer(1.0).timeout
+		var me := PlayerCharacter.local(get_tree())
+		me.global_position = Vector3(0, 0.4, -28)
+		await get_tree().create_timer(0.8).timeout
 	elif mode == "telegraph":
 		Net.start_solo()
 		Net.roster = {1: {"name": "You", "role": "field_medic", "ready": true}}

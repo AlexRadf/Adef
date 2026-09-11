@@ -326,9 +326,20 @@ func _primary_enemy() -> Node3D:
 		return boss as Node3D
 	return _awake_enemy(80.0)
 
+## Bots hold back for a *person*. With nobody human in the squad there is
+## no one to make the call, so a full-bot party engages on its own --
+## otherwise a headless run stands in the doorway forever.
+func _has_human_lead() -> bool:
+	for unit in player.get_tree().get_nodes_in_group("players"):
+		if unit.get("is_bot") != true and unit.get("is_dead") != true:
+			return true
+	return false
+
 ## Something is awake and has someone on its threat table, or the boss has
 ## been pulled. Until then the squad is walking, not fighting.
 func _squad_in_combat() -> bool:
+	if not _has_human_lead():
+		return true
 	var boss := player.get_tree().get_first_node_in_group("boss")
 	if boss != null and boss.get("is_dead") != true and boss.get("active") == true:
 		return true

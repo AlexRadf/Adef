@@ -8,7 +8,7 @@ extends Node
 ## is enough to tell a party that is clearing the room from a party that is
 ## standing in the doorway.
 
-const SECONDS := 110
+const SECONDS := 120
 
 func _ready() -> void:
 	await get_tree().process_frame

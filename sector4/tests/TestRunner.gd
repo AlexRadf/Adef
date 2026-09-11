@@ -32,6 +32,7 @@ func _run_all() -> void:
 	await _suite("barriers", _test_barrier)
 	await _suite("the dead do not act", _test_dead_cannot_act)
 	await _suite("wipe and reset", _test_wipe)
+	await _suite("finding the objective", _test_objective)
 	await _suite("going down", _test_downed)
 	await _suite("threat table", _test_threat)
 	await _suite("ability cooldowns", _test_cooldowns)
@@ -569,6 +570,56 @@ func _test_wipe() -> void:
 	for i in 3:
 		await get_tree().process_frame
 
+## "The boss is not spawning" turned out to be "I could not find the gate".
+## The floor has to be able to say where to go at every phase.
+func _test_objective() -> void:
+	Net.roster = {1: {"name": "You", "role": "field_medic", "ready": true}}
+	var level: FloorLevel = preload("res://scenes/floor/Floor.tscn").instantiate()
+	add_child(level)
+	for i in 5:
+		await get_tree().process_frame
+	var director := level.director
+
+	var hud := (load("res://scenes/ui/ArenaReticle.tscn") as PackedScene).instantiate()
+	add_child(hud)
+	await get_tree().process_frame
+	var marker: ObjectiveMarker = hud.get_node("ObjectiveMarker")
+	marker._director = director
+
+	# During the clear it points at something to kill.
+	check(director.phase == FloorDirector.Phase.TRASH, "the floor starts on the clear")
+	check(marker._objective_target() != null, "and the marker has a hostile to point at")
+
+	# Clearing the room moves the objective to the terminal.
+	for mob in get_tree().get_nodes_in_group("trash"):
+		(mob as TrashMob).health_component.kill()
+	for i in 8:
+		await get_tree().process_frame
+	check(director.phase == FloorDirector.Phase.SECURITY_OVERRIDE, "clearing opens the override")
+	var terminal := get_tree().get_first_node_in_group("terminals")
+	check(marker._objective_target() == terminal, "and the marker points at the terminal")
+
+	# The unlock has to be reachable in a sane amount of standing still.
+	check((terminal as SecurityTerminal).unlock_seconds <= 10.0,
+		"the override is not a test of patience (%.0fs)" % (terminal as SecurityTerminal).unlock_seconds)
+	check((terminal as SecurityTerminal).wave_count == 0, "and no timed waves arrive during it")
+
+	# Holding it brings the boss, and the marker follows.
+	var me := PlayerCharacter.local(get_tree())
+	(terminal as SecurityTerminal).unlock_seconds = 0.3
+	me.global_position = (terminal as Node3D).global_position + Vector3(0, 0.4, 0)
+	await get_tree().create_timer(1.0).timeout
+	check((terminal as SecurityTerminal).is_unlocked, "standing on it completes the override")
+	check(director.phase == FloorDirector.Phase.BOSS, "which spawns the boss")
+	check(director.boss != null, "the Centurion is in its chamber")
+	check(marker._objective_target() == director.boss, "and the marker points at it")
+
+	hud.queue_free()
+	level.queue_free()
+	Net.roster = {}
+	for i in 3:
+		await get_tree().process_frame
+
 func _test_downed() -> void:
 	var mob: TrashMob = preload("res://scenes/enemies/TrashMob.tscn").instantiate()
 	mob.mob_type = "sentry_drone"
@@ -979,6 +1030,7 @@ func _test_bot_restraint() -> void:
 	check(tank.brain._primary_enemy() == null, "so the bot has nothing to fight")
 	await get_tree().create_timer(1.2).timeout
 	check(not mob.is_awake(), "and it does not go and wake it")
+	check(tank.brain._has_human_lead(), "because there is a person to wait for")
 	check(mob.health_component.get_health_percent() >= 0.999, "nor shoot it from here")
 
 	# It should be forming up on the leader instead of idling on the spot.
@@ -990,7 +1042,14 @@ func _test_bot_restraint() -> void:
 	await get_tree().create_timer(0.6).timeout
 	check(tank.brain._primary_enemy() == mob, "and once it is pulled, the bot engages")
 
+	# With nobody human in the squad there is no one to make the call, so a
+	# full-bot party has to be allowed to start on its own -- otherwise a
+	# headless run stands in the doorway forever.
 	leader.queue_free()
+	await get_tree().process_frame
+	check(not tank.brain._has_human_lead(), "with no person in the squad")
+	check(tank.brain._squad_in_combat(), "bots stop holding back")
+
 	tank.queue_free()
 	mob.queue_free()
 	for i in 3:
