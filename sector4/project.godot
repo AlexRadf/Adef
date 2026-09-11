@@ -1,0 +1,129 @@
+; Project Sector-4: Skyscraper Ascent
+; Godot 4.x, Forward+ renderer.
+
+config_version=5
+
+[application]
+
+config/name="Sector-4: Skyscraper Ascent"
+config/description="4-player co-op tactical sci-fi boss-rush. Ascend the megastructure floor by floor."
+run/main_scene="res://scenes/Main.tscn"
+config/features=PackedStringArray("4.3", "Forward Plus")
+
+[autoload]
+
+Content="*res://scripts/autoload/Content.gd"
+GameEvents="*res://scripts/autoload/GameEvents.gd"
+Combat="*res://scripts/autoload/Combat.gd"
+Loadout="*res://scripts/autoload/Loadout.gd"
+Settings="*res://scripts/autoload/Settings.gd"
+Net="*res://scripts/autoload/Net.gd"
+
+[display]
+
+window/size/viewport_width=1600
+window/size/viewport_height=900
+window/stretch/mode="canvas_items"
+
+[input]
+
+move_forward={
+"deadzone": 0.2,
+"events": [Object(InputEventKey,"device":-1,"physical_keycode":87),Object(InputEventJoypadMotion,"device":-1,"axis":1,"axis_value":-1.0)]
+}
+move_back={
+"deadzone": 0.2,
+"events": [Object(InputEventKey,"device":-1,"physical_keycode":83),Object(InputEventJoypadMotion,"device":-1,"axis":1,"axis_value":1.0)]
+}
+move_left={
+"deadzone": 0.2,
+"events": [Object(InputEventKey,"device":-1,"physical_keycode":65),Object(InputEventJoypadMotion,"device":-1,"axis":0,"axis_value":-1.0)]
+}
+move_right={
+"deadzone": 0.2,
+"events": [Object(InputEventKey,"device":-1,"physical_keycode":68),Object(InputEventJoypadMotion,"device":-1,"axis":0,"axis_value":1.0)]
+}
+fire_primary={
+"deadzone": 0.3,
+"events": [Object(InputEventMouseButton,"device":-1,"button_index":1),Object(InputEventJoypadMotion,"device":-1,"axis":5,"axis_value":1.0)]
+}
+heal_beam={
+"deadzone": 0.2,
+"events": [Object(InputEventMouseButton,"device":-1,"button_index":2),Object(InputEventJoypadButton,"device":-1,"button_index":10)]
+}
+ability_dispel={
+"deadzone": 0.2,
+"events": [Object(InputEventKey,"device":-1,"physical_keycode":81),Object(InputEventJoypadButton,"device":-1,"button_index":9)]
+}
+ability_dash={
+"deadzone": 0.3,
+"events": [Object(InputEventKey,"device":-1,"physical_keycode":4194325),Object(InputEventJoypadMotion,"device":-1,"axis":4,"axis_value":1.0)]
+}
+smart_pulse={
+"deadzone": 0.2,
+"events": [Object(InputEventKey,"device":-1,"physical_keycode":69),Object(InputEventJoypadButton,"device":-1,"button_index":2)]
+}
+ultimate={
+"deadzone": 0.2,
+"events": [Object(InputEventKey,"device":-1,"physical_keycode":82),Object(InputEventJoypadButton,"device":-1,"button_index":3)]
+}
+mark_target={
+"deadzone": 0.2,
+"events": [Object(InputEventKey,"device":-1,"physical_keycode":70),Object(InputEventJoypadButton,"device":-1,"button_index":14)]
+}
+toggle_camera={
+"deadzone": 0.2,
+"events": [Object(InputEventKey,"device":-1,"physical_keycode":86),Object(InputEventJoypadButton,"device":-1,"button_index":8)]
+}
+interact={
+"deadzone": 0.2,
+"events": [Object(InputEventKey,"device":-1,"physical_keycode":71),Object(InputEventJoypadButton,"device":-1,"button_index":0)]
+}
+cycle_ally={
+"deadzone": 0.2,
+"events": [Object(InputEventKey,"device":-1,"physical_keycode":4194306),Object(InputEventJoypadButton,"device":-1,"button_index":13)]
+}
+pause={
+"deadzone": 0.2,
+"events": [Object(InputEventKey,"device":-1,"physical_keycode":4194305),Object(InputEventJoypadButton,"device":-1,"button_index":6)]
+}
+toggle_fullscreen={
+"deadzone": 0.2,
+"events": [Object(InputEventKey,"device":-1,"physical_keycode":4194338)]
+}
+back_out={
+"deadzone": 0.2,
+"events": [Object(InputEventKey,"device":-1,"physical_keycode":4194308),Object(InputEventJoypadButton,"device":-1,"button_index":1)]
+}
+look_left={
+"deadzone": 0.2,
+"events": [Object(InputEventJoypadMotion,"device":-1,"axis":2,"axis_value":-1.0)]
+}
+look_right={
+"deadzone": 0.2,
+"events": [Object(InputEventJoypadMotion,"device":-1,"axis":2,"axis_value":1.0)]
+}
+look_up={
+"deadzone": 0.2,
+"events": [Object(InputEventJoypadMotion,"device":-1,"axis":3,"axis_value":-1.0)]
+}
+look_down={
+"deadzone": 0.2,
+"events": [Object(InputEventJoypadMotion,"device":-1,"axis":3,"axis_value":1.0)]
+}
+
+[layer_names]
+
+3d_physics/layer_1="world"
+3d_physics/layer_2="players"
+3d_physics/layer_3="enemies"
+3d_physics/layer_4="hazards"
+
+[physics]
+
+3d/default_gravity=24.0
+
+[rendering]
+
+renderer/rendering_method="forward_plus"
+anti_aliasing/quality/msaa_3d=2

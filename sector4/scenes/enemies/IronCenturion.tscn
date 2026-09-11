@@ -1,0 +1,41 @@
+[gd_scene load_steps=8 format=3]
+
+[ext_resource type="Script" path="res://scripts/enemies/boss/IronCenturion.gd" id="1_boss"]
+[ext_resource type="Script" path="res://scripts/components/HealthComponent.gd" id="2_health"]
+[ext_resource type="Script" path="res://scripts/components/StatusEffectComponent.gd" id="3_status"]
+[ext_resource type="Script" path="res://scripts/components/ThreatComponent.gd" id="4_threat"]
+[ext_resource type="Script" path="res://scripts/components/CastComponent.gd" id="5_cast"]
+
+[sub_resource type="CapsuleShape3D" id="CapsuleShape3D_boss"]
+radius = 1.6
+height = 5.2
+
+[sub_resource type="CapsuleMesh" id="CapsuleMesh_boss"]
+radius = 1.6
+height = 5.2
+
+[node name="IronCenturion" type="CharacterBody3D"]
+collision_layer = 4
+collision_mask = 1
+script = ExtResource("1_boss")
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 2.6, 0)
+shape = SubResource("CapsuleShape3D_boss")
+
+[node name="BodyMesh" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 2.6, 0)
+mesh = SubResource("CapsuleMesh_boss")
+
+[node name="HealthComponent" type="Node" parent="."]
+script = ExtResource("2_health")
+max_health = 50000.0
+
+[node name="StatusEffectComponent" type="Node" parent="."]
+script = ExtResource("3_status")
+
+[node name="ThreatComponent" type="Node" parent="."]
+script = ExtResource("4_threat")
+
+[node name="CastComponent" type="Node" parent="."]
+script = ExtResource("5_cast")

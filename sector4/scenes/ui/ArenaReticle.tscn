@@ -1,0 +1,76 @@
+[gd_scene load_steps=10 format=3]
+
+[ext_resource type="Script" path="res://scripts/ui/ReticleArcs.gd" id="1_reticle"]
+[ext_resource type="Script" path="res://scripts/ui/WorldFrames.gd" id="2_frames"]
+[ext_resource type="Script" path="res://scripts/ui/EncounterHud.gd" id="3_hud"]
+[ext_resource type="Script" path="res://scripts/ui/AbilityBar.gd" id="4_bar"]
+[ext_resource type="Script" path="res://scripts/ui/ObjectivePanel.gd" id="5_objective"]
+[ext_resource type="Script" path="res://scripts/ui/PartyRoster.gd" id="6_roster"]
+[ext_resource type="Script" path="res://scripts/ui/FloatingNumbers.gd" id="7_numbers"]
+[ext_resource type="Script" path="res://scripts/ui/DownedScreen.gd" id="8_downed"]
+[ext_resource type="Script" path="res://scripts/ui/ObjectiveMarker.gd" id="9_marker"]
+
+[node name="ArenaReticle" type="CanvasLayer"]
+
+[node name="WorldFrames" type="Control" parent="."]
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+mouse_filter = 2
+script = ExtResource("2_frames")
+
+[node name="FloatingNumbers" type="Control" parent="."]
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+mouse_filter = 2
+script = ExtResource("7_numbers")
+
+[node name="EncounterHud" type="Control" parent="."]
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+mouse_filter = 2
+script = ExtResource("3_hud")
+
+[node name="ObjectivePanel" type="Control" parent="."]
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+mouse_filter = 2
+script = ExtResource("5_objective")
+
+[node name="PartyRoster" type="Control" parent="."]
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+mouse_filter = 2
+script = ExtResource("6_roster")
+
+[node name="AbilityBar" type="Control" parent="."]
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+mouse_filter = 2
+script = ExtResource("4_bar")
+
+[node name="ObjectiveMarker" type="Control" parent="."]
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+mouse_filter = 2
+script = ExtResource("9_marker")
+
+[node name="DownedScreen" type="Control" parent="."]
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+mouse_filter = 2
+script = ExtResource("8_downed")
+
+[node name="ReticleArcs" type="Control" parent="."]
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+mouse_filter = 2
+script = ExtResource("1_reticle")

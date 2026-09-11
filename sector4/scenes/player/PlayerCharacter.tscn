@@ -1,0 +1,77 @@
+[gd_scene load_steps=10 format=3]
+
+[ext_resource type="Script" path="res://scripts/player/PlayerCharacter.gd" id="1_player"]
+[ext_resource type="Script" path="res://scripts/components/HealthComponent.gd" id="2_health"]
+[ext_resource type="Script" path="res://scripts/components/StatusEffectComponent.gd" id="3_status"]
+[ext_resource type="Script" path="res://scripts/components/AbilityComponent.gd" id="4_ability"]
+[ext_resource type="Script" path="res://scripts/player/SoftLockTargeting.gd" id="5_softlock"]
+[ext_resource type="Script" path="res://scripts/player/CameraRig.gd" id="6_camera"]
+
+[sub_resource type="CapsuleShape3D" id="CapsuleShape3D_body"]
+radius = 0.42
+height = 1.85
+
+[sub_resource type="CapsuleMesh" id="CapsuleMesh_body"]
+radius = 0.42
+height = 1.85
+
+[sub_resource type="SceneReplicationConfig" id="SceneReplicationConfig_player"]
+properties/0/path = NodePath(".:position")
+properties/0/spawn = true
+properties/0/replication_mode = 1
+properties/1/path = NodePath(".:rotation")
+properties/1/spawn = true
+properties/1/replication_mode = 1
+
+[node name="PlayerCharacter" type="CharacterBody3D"]
+collision_layer = 2
+collision_mask = 5
+script = ExtResource("1_player")
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.925, 0)
+shape = SubResource("CapsuleShape3D_body")
+
+[node name="BodyMesh" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.925, 0)
+mesh = SubResource("CapsuleMesh_body")
+
+[node name="HealthComponent" type="Node" parent="."]
+script = ExtResource("2_health")
+
+[node name="StatusEffectComponent" type="Node" parent="."]
+script = ExtResource("3_status")
+
+[node name="AbilityComponent" type="Node" parent="."]
+script = ExtResource("4_ability")
+
+[node name="AllyTargeting" type="Node" parent="."]
+script = ExtResource("5_softlock")
+target_group = "party"
+include_self = false
+max_cone_angle = 52.0
+fallback_to_neediest = true
+
+[node name="EnemyTargeting" type="Node" parent="."]
+script = ExtResource("5_softlock")
+target_group = "enemies"
+max_distance = 60.0
+max_cone_angle = 22.0
+health_weight = 0.0
+angle_weight = 0.7
+sticky_bonus = 0.25
+
+[node name="CameraRig" type="Node3D" parent="."]
+script = ExtResource("6_camera")
+
+[node name="SpringArm3D" type="SpringArm3D" parent="CameraRig"]
+collision_mask = 1
+spring_length = 2.5
+margin = 0.25
+
+[node name="Camera3D" type="Camera3D" parent="CameraRig/SpringArm3D"]
+current = false
+fov = 78.0
+
+[node name="MultiplayerSynchronizer" type="MultiplayerSynchronizer" parent="."]
+replication_config = SubResource("SceneReplicationConfig_player")

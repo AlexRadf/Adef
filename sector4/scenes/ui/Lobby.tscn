@@ -1,0 +1,97 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/ui/Lobby.gd" id="1_lobby"]
+
+[node name="Lobby" type="Control"]
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+script = ExtResource("1_lobby")
+
+[node name="Background" type="ColorRect" parent="."]
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+color = Color(0.04, 0.05, 0.08, 1)
+
+[node name="Margin" type="MarginContainer" parent="."]
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+theme_override_constants/margin_left = 64
+theme_override_constants/margin_top = 48
+theme_override_constants/margin_right = 64
+theme_override_constants/margin_bottom = 48
+
+[node name="Column" type="VBoxContainer" parent="Margin"]
+theme_override_constants/separation = 14
+
+[node name="Title" type="Label" parent="Margin/Column"]
+text = "SECTOR-4 — SKYSCRAPER ASCENT"
+theme_override_font_sizes/font_size = 34
+
+[node name="Subtitle" type="Label" parent="Margin/Column"]
+text = "Four operatives. One megastructure. Take it a floor at a time."
+theme_override_font_sizes/font_size = 15
+
+[node name="Connection" type="HBoxContainer" parent="Margin/Column"]
+theme_override_constants/separation = 10
+
+[node name="HostButton" type="Button" parent="Margin/Column/Connection"]
+unique_name_in_owner = true
+text = "Host"
+custom_minimum_size = Vector2(120, 40)
+
+[node name="Address" type="LineEdit" parent="Margin/Column/Connection"]
+unique_name_in_owner = true
+placeholder_text = "127.0.0.1"
+custom_minimum_size = Vector2(220, 40)
+
+[node name="JoinButton" type="Button" parent="Margin/Column/Connection"]
+unique_name_in_owner = true
+text = "Join"
+custom_minimum_size = Vector2(120, 40)
+
+[node name="SoloButton" type="Button" parent="Margin/Column/Connection"]
+unique_name_in_owner = true
+text = "Solo run"
+custom_minimum_size = Vector2(140, 40)
+
+[node name="Status" type="Label" parent="Margin/Column"]
+unique_name_in_owner = true
+text = "Host a floor, or join one."
+
+[node name="RolesLabel" type="Label" parent="Margin/Column"]
+text = "SQUAD ROLE"
+theme_override_font_sizes/font_size = 18
+
+[node name="Roles" type="HBoxContainer" parent="Margin/Column"]
+unique_name_in_owner = true
+theme_override_constants/separation = 10
+
+[node name="RosterLabel" type="Label" parent="Margin/Column"]
+text = "SQUAD"
+theme_override_font_sizes/font_size = 18
+
+[node name="Roster" type="VBoxContainer" parent="Margin/Column"]
+unique_name_in_owner = true
+
+[node name="KitLabel" type="Label" parent="Margin/Column"]
+text = "KIT"
+theme_override_font_sizes/font_size = 18
+
+[node name="KitPreview" type="VBoxContainer" parent="Margin/Column"]
+unique_name_in_owner = true
+
+[node name="Controls" type="HBoxContainer" parent="Margin/Column"]
+theme_override_constants/separation = 10
+
+[node name="ReadyButton" type="Button" parent="Margin/Column/Controls"]
+unique_name_in_owner = true
+text = "Ready"
+custom_minimum_size = Vector2(140, 40)
+
+[node name="StartButton" type="Button" parent="Margin/Column/Controls"]
+unique_name_in_owner = true
+text = "Enter hub"
+custom_minimum_size = Vector2(140, 40)
