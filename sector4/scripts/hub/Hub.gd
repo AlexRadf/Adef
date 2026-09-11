@@ -41,6 +41,9 @@ func _ready() -> void:
 	_build_stations()
 	_ui = (load(HUB_UI_PATH) as PackedScene).instantiate()
 	add_child(_ui)
+	# The deck gets the same pause menu as the floor, so Start does the
+	# same thing everywhere rather than only in a fight.
+	add_child(preload("res://scenes/ui/PauseMenu.tscn").instantiate())
 	_spawn_squad()
 	Input.mouse_mode = Input.MOUSE_MODE_CAPTURED
 

@@ -137,10 +137,22 @@ Everything a player needs mid-fight, in a fixed place:
   reporting function, so an effect can never show a shot that did not happen.
 - **Boss bar and cast bar** — Core Overcharge gets the loudest thing on screen.
 
-`Escape` opens the **pause screen**: resume, a kit card spelling out what every button does and
+**`Start` on a pad, `Escape` on a keyboard** opens the **pause screen**: resume, a kit card spelling out what every button does and
 why you would press it, and leave-to-lobby. A solo run genuinely stops the world; a multiplayer
 one deliberately does not, because one client cannot pause a shared simulation — and the menu
 says which of the two you are in rather than quietly behaving differently.
+
+It also carries **Settings** and **Restart attempt**. Settings are a deliberately short list —
+mouse and stick sensitivity, invert look Y, field of view, damage numbers — because those are
+the things that stop someone playing *at all* if they are wrong; they apply live, save to disk,
+and are changed with left/right rather than a slider so a stick works as well as a mouse.
+Restart attempt runs the same reset a wipe does: boss home and full, floor clean, squad at the
+entrance. Useful when a pull has gone wrong but nobody has actually died yet.
+
+Every one of the seven slot bindings is reachable on a controller, and a test fails if one is
+not. Both prompts are shown on the ability bar, but the device you are actually holding is the
+bright one — reading two equally-lit bindings is work. `F11` toggles fullscreen, and the lobby
+grabs focus on open so a pad can navigate it at all.
 
 Enemies **go down** rather than freezing upright: they topple, settle, fade and clear themselves
 away, with collision dropped so a corpse never blocks the room. A downed operative topples too

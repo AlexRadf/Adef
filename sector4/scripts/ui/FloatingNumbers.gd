@@ -64,6 +64,8 @@ func _on_heal(_source_peer: int, target: Node, amount: float) -> void:
 	_push(target as Node3D, "+%d" % roundi(amount), Color(0.35, 0.95, 0.55, 0.92), 16)
 
 func _push(target: Node3D, text: String, colour: Color, text_size: int) -> void:
+	if not bool(Settings.get_value("show_damage_numbers")):
+		return
 	# A busy fight can emit dozens a second; past a point they stop being
 	# information and start being weather.
 	if _pops.size() > 48:

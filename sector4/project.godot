@@ -16,6 +16,7 @@ Content="*res://scripts/autoload/Content.gd"
 GameEvents="*res://scripts/autoload/GameEvents.gd"
 Combat="*res://scripts/autoload/Combat.gd"
 Loadout="*res://scripts/autoload/Loadout.gd"
+Settings="*res://scripts/autoload/Settings.gd"
 Net="*res://scripts/autoload/Net.gd"
 
 [display]
@@ -81,6 +82,14 @@ interact={
 cycle_ally={
 "deadzone": 0.2,
 "events": [Object(InputEventKey,"device":-1,"physical_keycode":4194306),Object(InputEventJoypadButton,"device":-1,"button_index":13)]
+}
+pause={
+"deadzone": 0.2,
+"events": [Object(InputEventKey,"device":-1,"physical_keycode":4194305),Object(InputEventJoypadButton,"device":-1,"button_index":6)]
+}
+toggle_fullscreen={
+"deadzone": 0.2,
+"events": [Object(InputEventKey,"device":-1,"physical_keycode":4194338)]
 }
 back_out={
 "deadzone": 0.2,

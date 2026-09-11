@@ -54,7 +54,18 @@ func _ready() -> void:
 	if body is CollisionObject3D:
 		spring_arm.add_excluded_object(body.get_rid())
 	_collect_owner_meshes(body)
+	Settings.changed.connect(_apply_settings)
+	_apply_settings()
 	_follow_body()
+
+## Sensitivity, inversion and field of view are the settings that stop
+## someone playing at all if they are wrong, so they apply live rather
+## than needing a restart.
+func _apply_settings() -> void:
+	mouse_sensitivity = float(Settings.get_value("mouse_sensitivity"))
+	stick_sensitivity = float(Settings.get_value("stick_sensitivity"))
+	if camera != null:
+		camera.fov = float(Settings.get_value("field_of_view"))
 
 func set_active(active: bool) -> void:
 	camera.current = active
@@ -66,7 +77,10 @@ func set_active(active: bool) -> void:
 func _input(event: InputEvent) -> void:
 	if event is InputEventMouseMotion and Input.mouse_mode == Input.MOUSE_MODE_CAPTURED:
 		yaw -= event.relative.x * mouse_sensitivity
-		pitch = clampf(pitch - event.relative.y * mouse_sensitivity, deg_to_rad(min_pitch_deg), deg_to_rad(max_pitch_deg))
+		var look_y: float = event.relative.y * mouse_sensitivity
+		if bool(Settings.get_value("invert_look_y")):
+			look_y = -look_y
+		pitch = clampf(pitch - look_y, deg_to_rad(min_pitch_deg), deg_to_rad(max_pitch_deg))
 
 func _process(delta: float) -> void:
 	# Right stick. Polled rather than evented so a pad feels the same as
@@ -74,7 +88,10 @@ func _process(delta: float) -> void:
 	var look := Input.get_vector("look_left", "look_right", "look_up", "look_down")
 	if look.length_squared() > 0.0:
 		yaw -= look.x * stick_sensitivity * delta
-		pitch = clampf(pitch - look.y * stick_sensitivity * delta, deg_to_rad(min_pitch_deg), deg_to_rad(max_pitch_deg))
+		var stick_y: float = look.y * stick_sensitivity * delta
+		if bool(Settings.get_value("invert_look_y")):
+			stick_y = -stick_y
+		pitch = clampf(pitch - stick_y, deg_to_rad(min_pitch_deg), deg_to_rad(max_pitch_deg))
 
 	if Input.is_action_just_pressed("toggle_camera"):
 		cycle_preset()

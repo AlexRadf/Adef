@@ -30,6 +30,9 @@ func _ready() -> void:
 	_build_role_buttons()
 	_show_kit(Net.local_role)
 	_refresh()
+	# Without focus, a controller cannot touch the lobby at all: Godot's
+	# ui_* navigation only moves between focused controls.
+	_solo_button.grab_focus()
 
 func _build_role_buttons() -> void:
 	for role_id in Content.ROLE_ORDER:

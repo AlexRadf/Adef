@@ -11,7 +11,11 @@ func _ready() -> void:
 		var menu: PauseMenu = get_tree().get_first_node_in_group("pause") as PauseMenu
 		if menu != null:
 			menu.set_open(true)
-			menu._showing_kit = true
+			if OS.get_environment("PAUSE_PAGE") == "settings":
+				menu._in_settings = true
+				menu._hover = 2
+			else:
+				menu._showing_kit = true
 		await get_tree().create_timer(0.4).timeout
 	elif mode == "hub" or mode == "armoury" or mode == "mission":
 		Net.start_solo()

@@ -81,12 +81,16 @@ func _draw_slot(font: Font, at: Vector2, slot: Dictionary, down: bool = false) -
 		draw_string(font, at + Vector2(7.0, SLOT.y - 5.0), job.to_upper(),
 			HORIZONTAL_ALIGNMENT_LEFT, SLOT.x - 14.0, 9, Color(1, 1, 1, 0.30 if down else 0.42))
 
+	# Both prompts are shown, but the one you are actually holding is the
+	# bright one -- reading two equally-lit bindings is work.
+	var on_pad := Settings.has_gamepad()
 	var pad: String = Content.INPUT_LABELS.get(slot["action"], "")
 	draw_string(font, at + Vector2(7.0, 16.0), pad, HORIZONTAL_ALIGNMENT_LEFT, -1, 13,
-		Color(1.0, 0.85, 0.3, 0.95))
+		Color(1.0, 0.85, 0.3, 0.95) if on_pad else Color(1, 1, 1, 0.32))
 	var key: String = Content.INPUT_KEYS.get(slot["action"], "")
 	draw_string(font, at + Vector2(SLOT.x - 7.0 - font.get_string_size(key, HORIZONTAL_ALIGNMENT_LEFT, -1, 11).x, 16.0),
-		key, HORIZONTAL_ALIGNMENT_LEFT, -1, 11, Color(1, 1, 1, 0.4))
+		key, HORIZONTAL_ALIGNMENT_LEFT, -1, 11,
+		Color(1, 1, 1, 0.32) if on_pad else Color(1.0, 0.85, 0.3, 0.95))
 
 	var label: String = def.get("display_name", ability_id)
 	var text_colour := Color(1, 1, 1, 0.92) if ready else Color(1, 1, 1, 0.45)

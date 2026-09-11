@@ -20,6 +20,7 @@ func _ready() -> void:
 func _run_all() -> void:
 	await _suite("content integrity", _test_content)
 	await _suite("the kit formation", _test_formation)
+	await _suite("settings and bindings", _test_settings)
 	await _suite("status effects", _test_status)
 	await _suite("combat choke point", _test_combat)
 	await _suite("armour and corrosion", _test_armor)
@@ -152,6 +153,62 @@ func _test_formation() -> void:
 			fillers[Content.slot_ability(role_id, slot)] = true
 		check(fillers.size() == Content.ROLE_ORDER.size(),
 			"every seat answers '%s' differently" % slot)
+
+## Settings are the things that stop someone playing at all if they are
+## wrong, so they have to clamp, persist and round-trip.
+func _test_settings() -> void:
+	Settings.reset()
+	check_near(float(Settings.get_value("field_of_view")), 78.0, "defaults load")
+
+	Settings.nudge("field_of_view", 1)
+	check(float(Settings.get_value("field_of_view")) > 78.0, "nudging raises it")
+	for i in 40:
+		Settings.nudge("field_of_view", 1)
+	check_near(float(Settings.get_value("field_of_view")),
+		float(Settings.SPEC["field_of_view"]["max"]), "and it clamps at the top")
+	for i in 60:
+		Settings.nudge("field_of_view", -1)
+	check_near(float(Settings.get_value("field_of_view")),
+		float(Settings.SPEC["field_of_view"]["min"]), "and at the bottom")
+
+	# A toggle flips regardless of direction.
+	var before: bool = bool(Settings.get_value("invert_look_y"))
+	Settings.nudge("invert_look_y", -1)
+	check(bool(Settings.get_value("invert_look_y")) != before, "toggles flip either way")
+	check(Settings.display("invert_look_y") in ["On", "Off"], "and read as words")
+
+	# Every setting in the order list has a spec, or the menu draws a row
+	# it cannot change.
+	for id in Settings.ORDER:
+		check(Settings.SPEC.has(id), "%s has a spec" % id)
+		check(Settings.label_for(id) != id, "%s has a readable label" % id)
+
+	# It has to survive a round trip to disk.
+	Settings.nudge("stick_sensitivity", 1)
+	var saved: float = float(Settings.get_value("stick_sensitivity"))
+	Settings.values["stick_sensitivity"] = 99.0
+	Settings.load_from_disk()
+	check_near(float(Settings.get_value("stick_sensitivity")), saved, "settings survive a reload")
+	Settings.reset()
+
+	# Pause has to be reachable from a pad, which was the whole point.
+	check(InputMap.has_action("pause"), "there is a pause action")
+	var on_pad := false
+	for event in InputMap.action_get_events("pause"):
+		if event is InputEventJoypadButton:
+			on_pad = true
+	check(on_pad, "and it is bound to a controller button")
+
+	# Every slot binding must exist as a real action, or a button does
+	# nothing on a pad no matter what the bar says.
+	for slot in Content.SLOTS:
+		var action: String = Content.SLOT_INPUT[slot]
+		check(InputMap.has_action(action), "%s binding '%s' exists" % [slot, action])
+		var pad_bound := false
+		for event in InputMap.action_get_events(action):
+			if event is InputEventJoypadButton or event is InputEventJoypadMotion:
+				pad_bound = true
+		check(pad_bound, "and '%s' is reachable on a controller" % action)
 
 func _test_status() -> void:
 	var host := _combatant()
