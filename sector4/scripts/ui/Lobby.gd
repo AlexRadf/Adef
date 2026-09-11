@@ -15,6 +15,7 @@ class_name Lobby
 @onready var _solo_button: Button = %SoloButton
 @onready var _ready_button: Button = %ReadyButton
 @onready var _start_button: Button = %StartButton
+@onready var _kit: VBoxContainer = %KitPreview
 
 func _ready() -> void:
 	Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
@@ -27,6 +28,7 @@ func _ready() -> void:
 	_ready_button.pressed.connect(_on_ready_pressed)
 	_start_button.pressed.connect(_on_start)
 	_build_role_buttons()
+	_show_kit(Net.local_role)
 	_refresh()
 
 func _build_role_buttons() -> void:
@@ -50,6 +52,7 @@ func _archetype_label(archetype: String) -> String:
 
 func _on_role_picked(role_id: String) -> void:
 	Net.local_role = role_id
+	_show_kit(role_id)
 	if Net.roster.has(Net.local_id()):
 		if Net.is_server():
 			Net.request_role(role_id)
@@ -90,18 +93,31 @@ func _on_start() -> void:
 	else:
 		Net.start_game()
 
+## Always four rows. An empty squad list reads as "nothing is working";
+## four rows with bots in them reads as "this is what you are about to
+## play", which is the truth.
 func _refresh() -> void:
 	for child in _roster.get_children():
 		child.queue_free()
 	var taken := {}
+	var by_role := {}
 	for peer_id in Net.roster:
 		var entry: Dictionary = Net.roster[peer_id]
 		taken[entry["role"]] = true
+		by_role[entry["role"]] = {"entry": entry, "peer": int(peer_id)}
+
+	for role_id in Content.ROLE_ORDER:
 		var label := Label.new()
-		var role_name: String = Content.role(entry["role"]).get("display_name", entry["role"])
-		var mark := "READY" if entry["ready"] else "..."
-		var you := "  (you)" if int(peer_id) == Net.local_id() else ""
-		label.text = "%s — %s   [%s]%s" % [entry["name"], role_name, mark, you]
+		var role_name: String = Content.role(role_id).get("display_name", role_id)
+		if by_role.has(role_id):
+			var entry: Dictionary = by_role[role_id]["entry"]
+			var mark := "READY" if entry["ready"] else "waiting"
+			var you := "   (you)" if int(by_role[role_id]["peer"]) == Net.local_id() else ""
+			label.text = "%-20s %s   [%s]%s" % [role_name, entry["name"], mark, you]
+			label.modulate = Color(1, 1, 1)
+		else:
+			label.text = "%-20s bot will fill this seat" % role_name
+			label.modulate = Color(1, 1, 1, 0.45)
 		_roster.add_child(label)
 
 	for button in _roles.get_children():
@@ -115,6 +131,34 @@ func _refresh() -> void:
 	_start_button.disabled = not (Net.is_server() and connected and Net.everyone_ready())
 	_host_button.disabled = connected
 	_join_button.disabled = connected
+
+## What the role actually does, before you commit to it. Picking a seat
+## from a name alone is a guess.
+func _show_kit(role_id: String) -> void:
+	for child in _kit.get_children():
+		child.queue_free()
+	var def: Dictionary = Content.role(role_id)
+	if def.is_empty():
+		return
+	var heading := Label.new()
+	heading.text = "%s — %d HP · %s" % [
+		def.get("display_name", role_id), roundi(def.get("max_health", 0.0)),
+		def.get("energy_name", "Energy"),
+	]
+	_kit.add_child(heading)
+	var bindings: Dictionary = Content.bindings_for_role(role_id)
+	for action in Content.ABILITY_BAR_ORDER:
+		if not bindings.has(action):
+			continue
+		var ability: Dictionary = Content.ability(bindings[action])
+		var row := Label.new()
+		row.text = "  %-9s %-22s %s" % [
+			Content.INPUT_LABELS.get(action, ""),
+			ability.get("display_name", ""),
+			ability.get("desc", ""),
+		]
+		row.modulate = Color(1, 1, 1, 0.62)
+		_kit.add_child(row)
 
 func _set_status(text: String, is_error: bool) -> void:
 	_status.text = text

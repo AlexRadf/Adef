@@ -134,15 +134,25 @@ const ABILITIES := {
 		"range": 35.0,
 		"desc": "Strips System Corroded and Neural Glitch from an ally.",
 	},
+	# Distance is impulse^2 / (2 * decay), so these two numbers together
+	# decide both how far it carries and how violent it feels getting
+	# there. A high impulse with a hard decay reads as a teleport; this is
+	# tuned as a boost you can see yourself travelling along.
 	"rocket_dash": {
 		"display_name": "Rocket Dash",
 		"input": "ability_dash",
 		"kind": "dash",
 		"cooldown": 5.0,
 		"cost": 0.0,
-		"impulse": 17.0,
+		"impulse": 12.0,
+		"decay": 24.0,
 		"grants": "dash_iframes",
-		"desc": "Directional impulse. Clears a hazard zone instantly.",
+		# The Field Medic's version is a charge to an ally rather than a
+		# shove forwards: the healer's emergency is almost always "get to
+		# that person", not "get over there".
+		"ally_charge_range": 22.0,
+		"max_charge_impulse": 21.0,
+		"desc": "Boost clear of a hazard. The Medic charges to an ally instead.",
 	},
 	"smart_nano_pulse": {
 		"display_name": "Smart Nano-Pulse",

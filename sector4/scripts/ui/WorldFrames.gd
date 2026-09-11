@@ -70,9 +70,32 @@ func _draw_frame(camera: Camera3D, unit: Node, bar: Vector2, colour: Color,
 			Color(1, 1, 1, 0.92 * fade))
 
 	_draw_status_pips(unit, at + Vector2(0.0, bar.y * 0.5 + 12.0), fade)
+	if _is_marked(unit):
+		# Well above the nameplate. A raid marker is a call across the
+		# room, so it has to clear the head and everything attached to it.
+		_draw_focus_marker(at + Vector2(0.0, -bar.y - 38.0), fade)
 
-## One coloured pip per active effect. Focus Marker gets a caret above the
-## bar instead, because it is a call rather than a condition.
+func _is_marked(unit: Node) -> bool:
+	var status = unit.get("status_component")
+	return status is StatusEffectComponent and status.has(FocusMarker.STATUS)
+
+## A downward chevron, bobbing, in the marker's red. Drawn as geometry
+## rather than a glyph so it stays the same size and shape at any distance.
+func _draw_focus_marker(at: Vector2, fade: float) -> void:
+	var bob := sin(float(Time.get_ticks_msec()) / 220.0) * 3.0
+	var tip := at + Vector2(0.0, bob)
+	var w := 9.0
+	var h := 13.0
+	var colour := Color(1.0, 0.22, 0.22, 0.95 * fade)
+	draw_colored_polygon(PackedVector2Array([
+		tip, tip + Vector2(-w, -h), tip + Vector2(w, -h),
+	]), colour)
+	draw_colored_polygon(PackedVector2Array([
+		tip + Vector2(0.0, -4.0), tip + Vector2(-w * 0.45, -h - 5.0), tip + Vector2(w * 0.45, -h - 5.0),
+	]), Color(0, 0, 0, 0.45 * fade))
+
+## One coloured pip per active effect. The Focus Marker is drawn separately
+## and much higher, because it is a call rather than a condition.
 func _draw_status_pips(unit: Node, at: Vector2, fade: float) -> void:
 	var status = unit.get("status_component")
 	if not (status is StatusEffectComponent):
@@ -83,8 +106,6 @@ func _draw_status_pips(unit: Node, at: Vector2, fade: float) -> void:
 	var x := at.x - float(ids.size()) * 5.0
 	for status_id in ids:
 		if status_id == FocusMarker.STATUS:
-			draw_string(ThemeDB.fallback_font, at + Vector2(-4.0, -22.0), "v",
-				HORIZONTAL_ALIGNMENT_LEFT, -1, 15, Color(1.0, 0.2, 0.2, fade))
 			continue
 		var def: Dictionary = Content.status(status_id)
 		var colour: Color = def.get("alert_color", Color(1, 1, 1))

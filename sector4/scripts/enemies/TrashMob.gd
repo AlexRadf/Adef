@@ -55,6 +55,24 @@ func _configure() -> void:
 	_melee_range = float(def.get("melee_range", 3.0))
 	_abilities = def.get("abilities", [])
 	health_component.setup(float(def.get("max_health", 500.0)))
+	_tint()
+
+## Trash reads better when the thing that casts at you does not look like
+## the thing that punches you.
+func _tint() -> void:
+	var colours := {
+		"sentry_drone": Color(0.62, 0.64, 0.70),
+		"code_disruptor": Color(0.85, 0.45, 0.95),
+		"patrol_drone": Color(0.95, 0.70, 0.30),
+	}
+	var mesh := get_node_or_null("BodyMesh")
+	if not (mesh is MeshInstance3D):
+		return
+	var material := StandardMaterial3D.new()
+	material.albedo_color = colours.get(mob_type, Color(0.7, 0.7, 0.72))
+	material.metallic = 0.4
+	material.roughness = 0.55
+	(mesh as MeshInstance3D).material_override = material
 
 # ------------------------------------------------------------- waking up
 

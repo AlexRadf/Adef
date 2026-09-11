@@ -10,6 +10,7 @@ class_name FloorLevel
 
 const PLAYER_SCENE := preload("res://scenes/player/PlayerCharacter.tscn")
 const HUD_SCENE := preload("res://scenes/ui/ArenaReticle.tscn")
+const PAUSE_SCENE := preload("res://scenes/ui/PauseMenu.tscn")
 
 @onready var spawn_root: Node3D = $SpawnRoot
 @onready var director: FloorDirector = $FloorDirector
@@ -17,12 +18,25 @@ const HUD_SCENE := preload("res://scenes/ui/ArenaReticle.tscn")
 var _players: Dictionary = {}
 
 func _ready() -> void:
+	# Running this scene on its own (F6 in the editor, or as the main
+	# scene) would drop you into a floor with no lobby and no seat picked.
+	# Bounce to the real entry point instead, so the game always starts
+	# where it is meant to. Tools that add a Floor as a child -- the soak
+	# and the screenshot runner -- are unaffected, because for them this is
+	# not the current scene.
+	if get_tree().current_scene == self and Net.roster.is_empty() and not Net.in_game:
+		call_deferred("_bounce_to_lobby")
+		return
 	spawn_root.add_to_group("spawn_root")
 	_build_geometry()
 	_build_lighting()
 	add_child(HUD_SCENE.instantiate())
+	add_child(PAUSE_SCENE.instantiate())
 	if Net.is_server():
 		_spawn_players()
+
+func _bounce_to_lobby() -> void:
+	get_tree().change_scene_to_file("res://scenes/Main.tscn")
 
 # -------------------------------------------------------------- players
 

@@ -25,6 +25,8 @@ func _run_all() -> void:
 	await _suite("directional shield", _test_guard)
 	await _suite("facing", _test_facing)
 	await _suite("camera-relative movement", _test_camera_basis)
+	await _suite("rocket dash", _test_dash)
+	await _suite("going down", _test_downed)
 	await _suite("threat table", _test_threat)
 	await _suite("ability cooldowns", _test_cooldowns)
 	await _suite("soft-lock scoring", _test_softlock)
@@ -256,6 +258,83 @@ func _test_camera_basis() -> void:
 		check(right_drift < 2.0, "yaw %.1f: strafe matches the camera (off by %.1f deg)" % [yaw, right_drift])
 
 	player.queue_free()
+	for i in 3:
+		await get_tree().process_frame
+
+## The Medic's dash is a charge to a person, not a shove forwards.
+func _test_dash() -> void:
+	_ground()
+	var medic := _bot("field_medic", Vector3.ZERO)
+	medic.is_bot = false          # exercise the human path
+	var ally := _bot("enforcer", Vector3(8, 0, 0))
+	ally.health_component.reduce(ally.health_component.max_health * 0.5)
+	for i in 3:
+		await get_tree().process_frame
+
+	var kit: FieldMedicKit = medic.kit
+	var target := kit._charge_target()
+	check(target == ally, "the Medic charges at the hurt ally")
+
+	var plan: Dictionary = kit._dash_plan(ally)
+	var direction: Vector3 = plan["direction"]
+	check(direction.normalized().dot(Vector3.RIGHT) > 0.99, "and aims straight at them")
+
+	# Displacement of a decaying impulse is i^2 / (2 * decay). It must land
+	# just short of the ally rather than through them or half way.
+	var travel: float = plan["impulse"] * plan["impulse"] / (2.0 * float(plan["decay"]))
+	check(travel > 5.5 and travel < 7.5, "landing just short of them (%.1fm of 8m)" % travel)
+
+	var def: Dictionary = Content.ability("rocket_dash")
+	check(plan["impulse"] <= float(def["max_charge_impulse"]) + 0.01, "never faster than the cap")
+
+	# A healthy party and no reticle target: a plain evasive boost.
+	ally.health_component.restore(99999.0)
+	medic.ally_targeting.current_target = null
+	check(kit._charge_target() == null, "with nobody hurt it is just a dodge")
+
+	# Far away is out of reach, and a charge that falls short is worse than
+	# no charge.
+	ally.global_position = Vector3(90, 0, 0)
+	ally.health_component.reduce(ally.health_component.max_health * 0.5)
+	check(kit._charge_target() == null, "and it will not charge at someone out of range")
+
+	medic.queue_free()
+	ally.queue_free()
+	for i in 3:
+		await get_tree().process_frame
+
+## A body that stops upright reads as a freeze rather than a kill.
+func _test_downed() -> void:
+	var mob: TrashMob = preload("res://scenes/enemies/TrashMob.tscn").instantiate()
+	mob.mob_type = "sentry_drone"
+	mob.corpse_seconds = 0.6
+	add_child(mob)
+	mob.global_position = Vector3(0, 0, -4)
+	for i in 3:
+		await get_tree().process_frame
+
+	check(mob.collision_layer != 0, "a live mob collides")
+	mob.health_component.kill()
+	await get_tree().create_timer(0.35).timeout
+	check(mob.is_dead, "it is down")
+	check(mob.collision_layer == 0, "a corpse does not block the room")
+	check(absf(mob.rotation.x) > 0.3, "and it has toppled (%.2f rad)" % mob.rotation.x)
+
+	await get_tree().create_timer(0.8).timeout
+	check(not is_instance_valid(mob), "then clears itself away")
+
+	# A downed operative stays put, because they can still be revived.
+	var fallen := _bot("enforcer", Vector3(0, 0, 6))
+	for i in 3:
+		await get_tree().process_frame
+	fallen.health_component.kill()
+	await get_tree().create_timer(0.9).timeout
+	check(is_instance_valid(fallen), "a downed operative is not swept away")
+	fallen.health_component.revive(0.4)
+	await get_tree().create_timer(0.6).timeout
+	check(not fallen.is_dead, "and can be picked back up")
+	check(absf(fallen.rotation.x) < 0.2, "standing upright again (%.2f rad)" % fallen.rotation.x)
+	fallen.queue_free()
 	for i in 3:
 		await get_tree().process_frame
 

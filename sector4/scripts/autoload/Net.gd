@@ -12,6 +12,7 @@ signal roster_changed()
 signal connection_failed()
 signal server_disconnected()
 signal game_started()
+signal lobby_requested()
 
 ## peer_id -> {"name": String, "role": String, "ready": bool}
 var roster: Dictionary = {}
@@ -71,6 +72,12 @@ func start_solo() -> void:
 ## replication site asks this first.
 func online() -> bool:
 	return multiplayer.has_multiplayer_peer()
+
+## Leave the run and go back to the lobby. Solo has nothing to disconnect
+## from, so the intent is a signal rather than a dropped peer.
+func quit_to_lobby() -> void:
+	leave()
+	lobby_requested.emit()
 
 func is_server() -> bool:
 	return multiplayer.multiplayer_peer == null or multiplayer.is_server()

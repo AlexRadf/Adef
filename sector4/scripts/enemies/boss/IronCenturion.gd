@@ -36,6 +36,7 @@ func _ready() -> void:
 	team = "enemy"
 	super._ready()
 	add_to_group("boss")
+	corpse_seconds = 9.0
 	_def = Content.boss(boss_id)
 	display_name = "%s: %s" % [_def.get("display_name", "Unit-01"), _def.get("title", "")]
 	armor = float(_def.get("armor", 1.0))

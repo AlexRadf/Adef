@@ -17,6 +17,7 @@ const FRICTION := 52.0
 var kit: RoleKit = null
 var brain: BotBrain = null
 var dash_velocity: Vector3 = Vector3.ZERO
+var dash_decay: float = 24.0
 var is_local: bool = false
 ## True for a seat nobody is sitting in. A bot is driven by the server and
 ## has no camera, so it supplies its own movement and facing.
@@ -115,12 +116,6 @@ func _role_material(def: Dictionary) -> StandardMaterial3D:
 # ------------------------------------------------------------- input
 
 func _process(_delta: float) -> void:
-	# Escape has to give the mouse back. Without it the window is a trap,
-	# which is a worse first impression than any missing feature.
-	if Input.is_action_just_pressed("ui_cancel"):
-		Input.mouse_mode = (Input.MOUSE_MODE_VISIBLE
-			if Input.mouse_mode == Input.MOUSE_MODE_CAPTURED
-			else Input.MOUSE_MODE_CAPTURED)
 	if is_dead:
 		return
 	# Mouse-look drives aiming, so abilities stay holstered while the
@@ -178,7 +173,7 @@ func _physics_process(delta: float) -> void:
 	# you out of a Corrosive Vent even if you were standing still.
 	if not dash_velocity.is_zero_approx():
 		velocity += dash_velocity
-		dash_velocity = dash_velocity.move_toward(Vector3.ZERO, 70.0 * delta)
+		dash_velocity = dash_velocity.move_toward(Vector3.ZERO, dash_decay * delta)
 
 	if is_on_floor():
 		velocity.y = 0.0
@@ -214,11 +209,12 @@ func _face_movement(delta: float) -> void:
 func drives_this_body() -> bool:
 	return not Net.online() or is_multiplayer_authority()
 
-func apply_dash(direction: Vector3, impulse: float) -> void:
+func apply_dash(direction: Vector3, impulse: float, decay: float = 24.0) -> void:
 	var dir := direction
 	if dir.is_zero_approx():
-		dir = camera_rig.forward_flat()
+		dir = camera_rig.forward_flat() if is_local else -global_transform.basis.z
 	dash_velocity = dir.normalized() * impulse
+	dash_decay = maxf(1.0, decay)
 
 ## The direction the operative is currently asking to move, in world space.
 ## Rocket Dash uses this so a dash goes where you are already going rather

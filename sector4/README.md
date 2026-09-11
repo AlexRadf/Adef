@@ -51,7 +51,15 @@ Everything a player needs mid-fight, in a fixed place:
   red, healing green. Without these there is no feedback loop at all.
 - **Boss bar and cast bar** — Core Overcharge gets the loudest thing on screen.
 
-`Escape` releases the mouse, and abilities holster while the cursor is free.
+`Escape` opens the **pause screen**: resume, a kit card spelling out what every button does and
+why you would press it, and leave-to-lobby. A solo run genuinely stops the world; a multiplayer
+one deliberately does not, because one client cannot pause a shared simulation — and the menu
+says which of the two you are in rather than quietly behaving differently.
+
+Enemies **go down** rather than freezing upright: they topple, settle, fade and clear themselves
+away, with collision dropped so a corpse never blocks the room. A downed operative topples too
+but stays put and stands back up, because they can still be revived. Trash is tinted by type,
+so the thing that casts at you does not look like the thing that punches you.
 
 ## Bots fill the empty seats
 
@@ -224,6 +232,18 @@ printing the phase, what is alive, everyone's health and what each seat pressed.
 four bots clears the first room in about forty seconds, holds the Security Override, walks into
 the boss chamber and fights the Iron Centurion at roughly **385 damage a second** — a ~130
 second kill, which is what the Core Overcharge schedule at 0:45 / 1:30 / 2:15 was written for.
+
+### Rocket Dash
+
+Displacement is `impulse² / (2 × decay)`, so those two numbers together decide both how far it
+carries and how violent it feels getting there. A high impulse with a hard decay reads as a
+teleport; it is tuned as a boost instead.
+
+The Field Medic's version is not a shove forwards at all — it solves the impulse from the
+distance to an ally and **charges to them**, stopping just short so it does not push the person
+being saved. The healer's emergency is almost always "get to that person", not "get over there".
+It picks the reticle target, else whoever is worst off, and refuses if they are out of range,
+because a charge that falls short is worse than no charge.
 
 ## Seeing it
 

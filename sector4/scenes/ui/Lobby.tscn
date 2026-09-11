@@ -76,6 +76,13 @@ theme_override_font_sizes/font_size = 18
 [node name="Roster" type="VBoxContainer" parent="Margin/Column"]
 unique_name_in_owner = true
 
+[node name="KitLabel" type="Label" parent="Margin/Column"]
+text = "KIT"
+theme_override_font_sizes/font_size = 18
+
+[node name="KitPreview" type="VBoxContainer" parent="Margin/Column"]
+unique_name_in_owner = true
+
 [node name="Controls" type="HBoxContainer" parent="Margin/Column"]
 theme_override_constants/separation = 10
 

@@ -11,7 +11,7 @@ func on_pressed(ability_id: String) -> void:
 	if ability_id == "rocket_dash":
 		var def: Dictionary = Content.ability("rocket_dash")
 		if player.ability_component != null and player.ability_component.can_use("rocket_dash"):
-			player.apply_dash(player.move_intent(), float(def.get("impulse", 17.0)))
+			player.apply_dash(player.move_intent(), float(def.get("impulse", 12.0)), float(def.get("decay", 24.0)))
 	fire(ability_id)
 
 func execute(ability_id: String, payload: Dictionary) -> bool:
@@ -71,7 +71,7 @@ func _dash(payload: Dictionary) -> bool:
 	var def: Dictionary = Content.ability("rocket_dash")
 	player.status_component.apply(def.get("grants", "dash_iframes"), player.peer_id)
 	if not player.is_local:
-		player.apply_dash(payload.get("move", Vector3.ZERO), float(def.get("impulse", 17.0)))
+		player.apply_dash(payload.get("move", Vector3.ZERO), float(def.get("impulse", 12.0)), float(def.get("decay", 24.0)))
 	return true
 
 ## The recovery button: everything nearby, taunted at once. This is what

@@ -26,9 +26,11 @@ func on_pressed(ability_id: String) -> void:
 			_refresh_timer = 0.0
 		"rocket_dash":
 			# Predicted locally: a dash that waits for the server is a dash
-			# that has already failed to clear the hazard.
+			# that has already failed to clear the hazard. The charge target
+			# rides along so the server moves remote copies the same way.
+			var target := _charge_target()
 			_predict_dash()
-			fire(ability_id)
+			fire(ability_id, {"charge": _path_or_empty(target)})
 		_:
 			fire(ability_id)
 
@@ -47,10 +49,51 @@ func on_released(ability_id: String) -> void:
 		set_channel(ability_id, false)
 
 func _predict_dash() -> void:
-	var def: Dictionary = Content.ability("rocket_dash")
 	if player.ability_component != null and not player.ability_component.can_use("rocket_dash"):
 		return
-	player.apply_dash(player.move_intent(), float(def.get("impulse", 17.0)))
+	var plan := _dash_plan(_charge_target())
+	player.apply_dash(plan["direction"], plan["impulse"], plan["decay"])
+
+## Who the Medic is charging to: whoever the reticle had, else whoever is
+## worst off. Both have to be reachable -- a charge that stops halfway is
+## worse than not charging at all.
+func _charge_target() -> Node3D:
+	var def: Dictionary = Content.ability("rocket_dash")
+	var reach: float = float(def.get("ally_charge_range", 22.0))
+	var soft := player.ally_targeting.current_target
+	if _reachable(soft, reach):
+		return soft
+	var lowest := player.ally_targeting.lowest_health_ally(reach)
+	# Nobody hurt and nobody aimed at: this is a plain evasive boost.
+	if _reachable(lowest, reach) and lowest.health_component.get_health_percent() < 0.995:
+		return lowest
+	return null
+
+func _reachable(target: Node, reach: float) -> bool:
+	return alive(target) and target is Node3D and in_range(target, reach)
+
+## Impulse is solved from the distance -- displacement is i^2 / (2 * decay)
+## -- so the charge lands on the ally rather than short of them or through
+## them, and is clamped so it can never become a launch across the room.
+func _dash_plan(target: Node3D) -> Dictionary:
+	var def: Dictionary = Content.ability("rocket_dash")
+	var decay: float = float(def.get("decay", 24.0))
+	var impulse: float = float(def.get("impulse", 12.0))
+	if target == null:
+		return {"direction": player.move_intent(), "impulse": impulse, "decay": decay}
+	var offset: Vector3 = target.global_position - player.global_position
+	offset.y = 0.0
+	var distance := offset.length()
+	if distance < 0.5:
+		return {"direction": player.move_intent(), "impulse": impulse, "decay": decay}
+	# Stop just short, so the charge does not shove the person being saved.
+	var travel := maxf(0.5, distance - 1.4)
+	var solved := sqrt(2.0 * decay * travel)
+	return {
+		"direction": offset / distance,
+		"impulse": clampf(solved, impulse * 0.6, float(def.get("max_charge_impulse", 21.0))),
+		"decay": decay,
+	}
 
 # ---------------------------------------------------------------- server
 
@@ -151,8 +194,11 @@ func _rocket_dash(payload: Dictionary) -> bool:
 	player.status_component.apply(def.get("grants", "dash_iframes"), player.peer_id)
 	# Remote peers still need to see the movement; the owner already has it.
 	if not player.is_local:
-		var dir: Vector3 = payload.get("move", Vector3.ZERO)
-		player.apply_dash(dir, float(def.get("impulse", 17.0)))
+		var target := resolve(payload, "charge")
+		var plan := _dash_plan(target as Node3D if target is Node3D else null)
+		if target == null:
+			plan["direction"] = payload.get("move", Vector3.ZERO)
+		player.apply_dash(plan["direction"], plan["impulse"], plan["decay"])
 	return true
 
 func _smart_pulse() -> bool:
