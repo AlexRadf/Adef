@@ -145,7 +145,15 @@ func _spawn_boss() -> void:
 
 func _on_boss_died() -> void:
 	_set_phase(Phase.ASCENT)
+	_return_to_hub_shortly()
 	GameEvents.encounter_ended.emit(true, "%s destroyed" % Content.boss(_def.get("boss", "unit_01")).get("title", "Boss"))
+
+## A beat to see the boss go down, then back to the staging deck to spend
+## what the run earned.
+func _return_to_hub_shortly() -> void:
+	await get_tree().create_timer(6.0).timeout
+	if is_instance_valid(self):
+		Net.return_to_hub()
 
 ## Called by the ascent elevator once the party is aboard. The next floor
 ## is the same loop with a harder sheet of numbers, so there is one code

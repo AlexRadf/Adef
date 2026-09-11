@@ -11,7 +11,8 @@ const MAX_PLAYERS := 4
 signal roster_changed()
 signal connection_failed()
 signal server_disconnected()
-signal game_started()
+signal game_started()        ## the squad has reached the hub
+signal deployed()            ## the squad is dropping into a floor
 signal lobby_requested()
 
 ## peer_id -> {"name": String, "role": String, "ready": bool}
@@ -185,6 +186,30 @@ func request_role(role_id: String) -> void:
 @rpc("authority", "call_local", "reliable")
 func start_game() -> void:
 	in_game = true
+	game_started.emit()
+
+## Leave the hub for a floor. The server calls it for everyone, so the
+## squad always drops together rather than one person at a time.
+func deploy() -> void:
+	if Net.online() and not multiplayer.is_server():
+		_request_deploy.rpc_id(1)
+		return
+	if Net.online():
+		_begin_deploy.rpc()
+	else:
+		_begin_deploy()
+
+@rpc("any_peer", "call_local", "reliable")
+func _request_deploy() -> void:
+	if multiplayer.is_server():
+		_begin_deploy.rpc()
+
+@rpc("authority", "call_local", "reliable")
+func _begin_deploy() -> void:
+	deployed.emit()
+
+## Back to the staging deck after a run.
+func return_to_hub() -> void:
 	game_started.emit()
 
 func everyone_ready() -> bool:

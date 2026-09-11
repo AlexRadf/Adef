@@ -525,6 +525,73 @@ const MOB_TYPES := {
 	},
 }
 
+# --------------------------------------------------------------- modules
+#
+# Equipment, and deliberately not a stat stick. Every module is a passive
+# status effect -- the same struct the boss's debuffs use -- so the whole
+# system is content rather than code, and a module can never do something
+# the combat resolver does not already understand.
+#
+# Most carry a cost as well as a benefit. Three slots and eight modules
+# with real downsides is a decision; three slots of pure upside is a menu
+# you click through once and never open again.
+
+const MODULE_SLOTS := 3
+
+const MODULES := {
+	"reinforced_plating": {
+		"display_name": "Reinforced Plating",
+		"blurb": "Ablative layers. Slower, and much harder to put down.",
+		"modifiers": {"armor": 1.35, "move_speed": 0.92},
+		"tint": Color(0.45, 0.62, 0.95),
+	},
+	"servo_actuators": {
+		"display_name": "Servo Actuators",
+		"blurb": "Leg augments. Faster on your feet, thinner plating.",
+		"modifiers": {"move_speed": 1.14, "armor": 0.88},
+		"tint": Color(0.45, 0.92, 0.72),
+	},
+	"nano_capacitor": {
+		"display_name": "Nano-Capacitor",
+		"blurb": "Bigger cells. The bar refills noticeably faster.",
+		"modifiers": {"energy_regen": 1.45},
+		"tint": Color(0.35, 0.80, 1.00),
+	},
+	"overclocked_coils": {
+		"display_name": "Overclocked Coils",
+		"blurb": "Everything cycles faster, and you cook. Glass cannon.",
+		"modifiers": {"attack_speed": 1.20, "damage_taken": 1.15},
+		"tint": Color(1.00, 0.62, 0.25),
+	},
+	"targeting_uplink": {
+		"display_name": "Targeting Uplink",
+		"blurb": "Firing solutions shared from the squad net. Hits harder.",
+		"modifiers": {"damage_dealt": 1.12, "energy_regen": 0.85},
+		"tint": Color(0.95, 0.40, 0.85),
+	},
+	"trauma_protocol": {
+		"display_name": "Trauma Protocol",
+		"blurb": "Triage routines. Your healing lands heavier.",
+		"modifiers": {"healing_done": 1.22, "damage_dealt": 0.90},
+		"tint": Color(0.40, 0.95, 0.55),
+	},
+	"kinetic_dampers": {
+		"display_name": "Kinetic Dampers",
+		"blurb": "Impact bleed-off. Everything hurts a little less.",
+		"modifiers": {"damage_taken": 0.88, "attack_speed": 0.94},
+		"tint": Color(0.70, 0.75, 0.85),
+	},
+	"symbiotic_mesh": {
+		"display_name": "Symbiotic Mesh",
+		"blurb": "Reads incoming nano. Repairs applied to you go further.",
+		"modifiers": {"healing_taken": 1.25, "move_speed": 0.95},
+		"tint": Color(0.85, 0.90, 0.45),
+	},
+}
+
+func module(id: String) -> Dictionary:
+	return MODULES.get(id, {})
+
 ## What to print on the ability bar for each binding. Pad first, because
 ## this is a controller game; the keyboard equivalent is the fallback.
 const INPUT_LABELS := {
@@ -659,8 +726,24 @@ const FLOORS := [
 func ability(id: String) -> Dictionary:
 	return ABILITIES.get(id, {})
 
+## Modules are described once, in MODULES, and surface here as permanent
+## status effects. Synthesising them keeps the armoury and the combat
+## resolver reading from the same entry instead of two that can drift.
 func status(id: String) -> Dictionary:
-	return STATUS_EFFECTS.get(id, {})
+	if STATUS_EFFECTS.has(id):
+		return STATUS_EFFECTS[id]
+	if id.begins_with("module_"):
+		var def: Dictionary = module(id.substr(7))
+		if not def.is_empty():
+			return {
+				"display_name": def.get("display_name", id),
+				"duration": 0.0,
+				"harmful": false,
+				"dispel_type": "",
+				"alert_color": def.get("tint", Color(1, 1, 1)),
+				"modifiers": def.get("modifiers", {}),
+			}
+	return {}
 
 func role(id: String) -> Dictionary:
 	return ROLES.get(id, {})

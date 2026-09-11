@@ -29,9 +29,16 @@ func setup(maximum: float, regen: float) -> void:
 func _process(delta: float) -> void:
 	if energy < max_energy:
 		var before := energy
-		energy = minf(max_energy, energy + energy_regen * delta)
+		energy = minf(max_energy, energy + regen_rate() * delta)
 		if not is_equal_approx(before, energy):
 			energy_changed.emit(energy, max_energy)
+
+## Modules and buffs scale how fast the bar refills, so this is the only
+## place the rate is read from.
+func regen_rate() -> float:
+	if _status == null:
+		return energy_regen
+	return energy_regen * _status.get_stat("energy_regen")
 
 # ------------------------------------------------------------ cooldowns
 

@@ -75,7 +75,7 @@ func _on_join() -> void:
 ## the four-player game takes is the code path a lone tester takes.
 func _on_solo() -> void:
 	Net.start_solo()
-	Net.start_game()
+	Net.start_game()   # -> the staging deck
 
 func _on_ready_pressed() -> void:
 	var mine: Dictionary = Net.roster.get(Net.local_id(), {})

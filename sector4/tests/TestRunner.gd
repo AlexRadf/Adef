@@ -35,6 +35,8 @@ func _run_all() -> void:
 	await _suite("boss cycle", _test_boss)
 	await _suite("floor director", _test_floor)
 	await _suite("a floor, actually running", _test_integration)
+	await _suite("loadout modules", _test_loadout)
+	await _suite("the hub", _test_hub)
 	await _suite("bots fill the empty seats", _test_bots)
 	await _suite("bots do their jobs", _test_bot_jobs)
 
@@ -774,6 +776,96 @@ func _test_bot_jobs() -> void:
 			"under the Medic rather than at the origin")
 		field.queue_free()
 	deployer.queue_free()
+	for i in 3:
+		await get_tree().process_frame
+
+## Equipment has to be real: the same modifier walk as a boss debuff, with
+## slots that actually constrain and downsides that actually bite.
+func _test_loadout() -> void:
+	for module_id in Content.MODULES:
+		var def: Dictionary = Content.MODULES[module_id]
+		check(not def.get("modifiers", {}).is_empty(), "%s does something" % module_id)
+		# A module synthesised as a status is what lets Combat read it.
+		var status: Dictionary = Content.status(Loadout._status_id(module_id))
+		check(not status.is_empty(), "%s surfaces as a status" % module_id)
+		check(status["duration"] == 0.0, "%s is permanent" % module_id)
+
+	Loadout.clear("enforcer")
+	check(Loadout.slots_used("enforcer") == 0, "starts empty after a strip")
+	check(Loadout.toggle("enforcer", "reinforced_plating"), "fits a module")
+	check(Loadout.has_module("enforcer", "reinforced_plating"), "and it is fitted")
+	check(Loadout.toggle("enforcer", "reinforced_plating"), "pressing it again strips it")
+	check(not Loadout.has_module("enforcer", "reinforced_plating"), "and it is gone")
+
+	# Slots must be a real constraint, not a suggestion.
+	var ids: Array = Content.MODULES.keys()
+	for i in Content.MODULE_SLOTS:
+		Loadout.toggle("enforcer", ids[i])
+	check(Loadout.is_full("enforcer"), "three slots fill up")
+	check(not Loadout.toggle("enforcer", ids[Content.MODULE_SLOTS]), "and a fourth is refused")
+
+	# Fitted modules have to reach the combat resolver.
+	Loadout.clear("enforcer")
+	Loadout.toggle("enforcer", "reinforced_plating")
+	var tank := _bot("enforcer", Vector3.ZERO)
+	await get_tree().process_frame
+	check(tank.status_component.has(Loadout._status_id("reinforced_plating")),
+		"the module is fitted to the body on spawn")
+	check_near(tank.status_component.get_stat("armor"), 1.35, "and its armour modifier is live")
+
+	var attacker := _combatant("enemy")
+	tank.health_component.setup(10000.0)
+	var plated := Combat.apply_damage(attacker, tank, 100.0)
+	Loadout.clear("enforcer")
+	var bare := _bot("enforcer", Vector3(0, 0, 12))
+	await get_tree().process_frame
+	bare.health_component.setup(10000.0)
+	var unplated := Combat.apply_damage(attacker, bare, 100.0)
+	check(plated < unplated, "plating actually reduces damage (%.1f vs %.1f)" % [plated, unplated])
+
+	# And the downside has to bite too, or it is not a decision.
+	check_near(Content.module("reinforced_plating")["modifiers"]["move_speed"], 0.92,
+		"and it costs movement")
+
+	tank.queue_free()
+	bare.queue_free()
+	attacker.queue_free()
+	for i in 3:
+		await get_tree().process_frame
+
+func _test_hub() -> void:
+	Net.roster = {1: {"name": "You", "role": "field_medic", "ready": true}}
+	var hub: Hub = preload("res://scenes/hub/Hub.tscn").instantiate()
+	add_child(hub)
+	for i in 4:
+		await get_tree().process_frame
+
+	var stations := get_tree().get_nodes_in_group("hub_stations")
+	check(stations.size() == 3, "the deck has three stations")
+	var ids := {}
+	for station in stations:
+		ids[(station as HubStation).station_id] = true
+	check(ids.has("armoury") and ids.has("roster") and ids.has("mission"),
+		"armoury, roster and mission table")
+
+	# The squad stands on the deck, so you see who you are deploying with.
+	var bodies := get_tree().get_nodes_in_group("players")
+	check(bodies.size() == 4, "the whole squad is on the deck")
+	var humans := 0
+	for body in bodies:
+		if not body.is_bot:
+			humans += 1
+	check(humans == 1, "one of them is you")
+	# Hub bots must not be running a combat brain at an empty room.
+	for body in bodies:
+		if body.is_bot:
+			check(body.brain == null, "hub bots idle rather than fight")
+			break
+
+	check(hub.station_in_reach() == null, "no prompt until you walk onto one")
+
+	hub.queue_free()
+	Net.roster = {}
 	for i in 3:
 		await get_tree().process_frame
 

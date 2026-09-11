@@ -13,6 +13,20 @@ func _ready() -> void:
 			menu.set_open(true)
 			menu._showing_kit = true
 		await get_tree().create_timer(0.4).timeout
+	elif mode == "hub" or mode == "armoury" or mode == "mission":
+		Net.start_solo()
+		Net.roster = {1: {"name": "You", "role": "field_medic", "ready": true}}
+		var hub: Hub = preload("res://scenes/hub/Hub.tscn").instantiate()
+		add_child(hub)
+		await get_tree().create_timer(1.2).timeout
+		if mode != "hub":
+			var ui: HubUI = null
+			for child in hub.get_children():
+				if child is HubUI:
+					ui = child as HubUI
+			if ui != null:
+				ui.open_panel("armoury" if mode == "armoury" else "mission")
+			await get_tree().create_timer(0.4).timeout
 	elif mode == "marker":
 		Net.start_solo()
 		Net.roster = {1: {"name": "You", "role": "field_medic", "ready": true}}

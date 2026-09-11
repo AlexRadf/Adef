@@ -34,6 +34,44 @@ states and no combo strings.
 | **Kinetic Striker** (melee) | Mono-Blade, 1.6× from behind | **Servo Kick** — the interrupt · Static Snare · Blur Step |
 | **Railgun Specialist** (ranged) | Railgun, charged | Concussion Round — knockback · Seeker Drone · Orbital Lance |
 
+## The staging deck
+
+You join into a **hub**, not a menu. The deck is a room you walk around with the same
+character, camera and controls as the fight, so it doubles as somewhere to get used to moving
+before anything is shooting at you — and the rest of the squad is standing on it, so you can
+see who you are about to deploy with.
+
+Three stations, walked up to and used with `G` / `A`:
+
+| | |
+|---|---|
+| **Armoury** | Fit modules. Every module and its trade-off spelled out, plus the net effect of the whole loadout |
+| **Roster** | Change seat. One of each; bots fill whatever nobody takes |
+| **Mission Table** | Pick a floor and deploy. The squad drops together |
+
+A run ends back on the deck rather than at a dead end, and the pause screen can abort to it.
+
+### Equipment that is actually equipment
+
+A module is a **passive status effect** — the same struct the boss's debuffs use. That is the
+whole system: equipment goes through the identical modifier walk as a Corrosive Vent, so there
+is no second set of arithmetic for gear and a module can never modify something the combat
+resolver does not already understand.
+
+Three slots, eight modules, and **most of them cost you something**:
+
+| | |
+|---|---|
+| **Reinforced Plating** | Plating +35%, Movement −8% |
+| **Servo Actuators** | Movement +14%, Plating −12% |
+| **Overclocked Coils** | Attack speed +20%, Damage taken +15% |
+| **Trauma Protocol** | Healing done +22%, Damage dealt −10% |
+
+Three slots of pure upside is a menu you click through once and never open again. The armoury
+shows each module's modifiers and the combined effect of everything fitted, so the trade is
+visible as a total rather than as a pile of separate lines. Loadouts are saved to disk per
+role, and an old save silently drops modules that no longer exist.
+
 ## The HUD
 
 Everything a player needs mid-fight, in a fixed place:

@@ -94,6 +94,9 @@ func _configure_role() -> void:
 	if ability_component != null:
 		ability_component.setup(float(def.get("max_energy", 100.0)), float(def.get("energy_regen", 6.0)))
 	_bindings = Content.bindings_for_role(role_id)
+	# Equipment is fitted before anything else touches the stats, so the
+	# health bar the player sees already accounts for their plating.
+	Loadout.apply_to(self, role_id)
 	kit = RoleKit.make(role_id)
 	kit.name = "Kit"
 	add_child(kit)

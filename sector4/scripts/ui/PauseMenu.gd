@@ -24,6 +24,7 @@ func _ready() -> void:
 	_buttons = [
 		{"label": "Resume", "action": "resume"},
 		{"label": "Your kit", "action": "kit"},
+		{"label": "Abort to hub", "action": "hub"},
 		{"label": "Leave to lobby", "action": "leave"},
 	]
 	$Panel.process_mode = Node.PROCESS_MODE_ALWAYS
@@ -77,6 +78,10 @@ func _activate(action: String) -> void:
 			set_open(false)
 		"kit":
 			_showing_kit = not _showing_kit
+		"hub":
+			set_open(false)
+			get_tree().paused = false
+			Net.return_to_hub()
 		"leave":
 			set_open(false)
 			get_tree().paused = false

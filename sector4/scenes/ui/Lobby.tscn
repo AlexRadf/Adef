@@ -93,5 +93,5 @@ custom_minimum_size = Vector2(140, 40)
 
 [node name="StartButton" type="Button" parent="Margin/Column/Controls"]
 unique_name_in_owner = true
-text = "Breach"
+text = "Enter hub"
 custom_minimum_size = Vector2(140, 40)

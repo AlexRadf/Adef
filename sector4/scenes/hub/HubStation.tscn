@@ -1,0 +1,26 @@
+[gd_scene load_steps=4 format=3]
+
+[ext_resource type="Script" path="res://scripts/hub/HubStation.gd" id="1_station"]
+
+[sub_resource type="BoxMesh" id="BoxMesh_pillar"]
+size = Vector3(0.9, 2.5, 0.9)
+
+[sub_resource type="CylinderMesh" id="CylinderMesh_pad"]
+top_radius = 2.4
+bottom_radius = 2.4
+height = 0.08
+
+[node name="HubStation" type="Area3D"]
+monitoring = true
+monitorable = false
+collision_layer = 0
+collision_mask = 2
+script = ExtResource("1_station")
+
+[node name="Pad" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.04, 0)
+mesh = SubResource("CylinderMesh_pad")
+
+[node name="Pillar" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.25, 0)
+mesh = SubResource("BoxMesh_pillar")
