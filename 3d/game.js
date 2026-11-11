@@ -16,6 +16,13 @@ import { createRig } from './camera.js';
 import { createControls } from './controls.js';
 import { createHud } from './hud.js';
 import { createFloaters } from './floaters.js';
+import { applyAura } from '../engine/auras.js';
+import { toTicks } from '../engine/clock.js';
+import * as THREE from '../vendor/three.module.js';
+import { loadLevel } from './level.js';
+import { createHub } from './hub.js';
+import { createProgress } from './progress.js';
+import { createPanels } from './panels.js';
 
 const TICK_MS = 100;
 const content = await loadContent();
@@ -45,21 +52,75 @@ let drill = '';        // '' is the plain dummy
 let timeScale = 1;     // slow motion is a render-clock thing, never a sim thing
 let screen = null;     // 'practice' | 'kit' | null
 
+// The hub and the raids. A raid run is which raid, which encounter, and
+// whether it is on Heroic; everything else about a pull is as before.
+const progress = createProgress();
+let raidRun = null;
+let hub = null;
+let hubScene = null;
+let npcInRange = null;
+const levels = new Map();
+const levelTitles = {};
+const getLevel = async (id) => {
+  if (!levels.has(id)) levels.set(id, loadLevel(id));
+  const level = await levels.get(id);
+  levelTitles[id] = level.meta.title;
+  return level;
+};
+let launch = { heroic: false };
+
+const panelActions = {
+  close: () => closePanel(),
+  launch: (arg) => launchRaid(launch.raid, Number(arg)),
+  raidHeroic: (arg) => ((launch.heroic = arg === '1'), openPanel('raid', launch.raid)),
+  raidGame: (arg) => ((game = arg), openPanel('raid', launch.raid)),
+  raidRole: (arg) => ((role = arg), hub && hub.setRole(role), openPanel('raid', launch.raid)),
+  equip: (arg) => (progress.equip(Number(arg)), openPanel('character')),
+  scrap: (arg) => (progress.scrap(Number(arg)), openPanel('character')),
+  buy: (arg) => (progress.buy(arg), openPanel('vendor')),
+  claim: (arg) => (progress.claimBounty(arg), openPanel('bounties')),
+  journal: (arg) => openPanel('journal', content.raids[arg]),
+  range: () => {
+    panels.hide();
+    start('lobby');
+  },
+  resetSave: (arg, button) => {
+    if (button.dataset.armed) {
+      progress.reset();
+      openPanel('character');
+    } else {
+      button.dataset.armed = '1';
+      button.textContent = 'Click again to wipe your character';
+    }
+  },
+  nextEncounter: () => {
+    raidRun.index++;
+    enterEncounter();
+  },
+  retryEncounter: () => enterEncounter(),
+  toHub: () => enterHub(),
+};
+const panels = createPanels(document.getElementById('panel'), panelActions);
+
 /* --------------------------------------------------------- controls */
 
 const controls = createControls(canvas, rig, () => view, {
   onPointerLock: (locked) => {
-    document.getElementById('hint').hidden = locked || !!screen;
+    document.getElementById('hint').hidden = locked || !!screen || panels.open;
+    if (scenario === 'hub') return;
     if (!locked && running && !screen) paused = true;
     if (locked) paused = false;
   },
-  fire: (slot) => fireSlot(slot),
-  dash: () => queue.push({ type: 'dash' }),
-  setBlocking: (on) => queue.push({ type: 'block', on }),
-  togglePause: () => (paused = !paused),
-  reset: () => start(scenario),
+  fire: (slot) => {
+    if (scenario === 'hub') return slot === 0 ? hub && hub.jump() : slot === 2 ? interact() : null;
+    fireSlot(slot);
+  },
+  dash: () => scenario !== 'hub' && queue.push({ type: 'dash' }),
+  setBlocking: (on) => scenario !== 'hub' && queue.push({ type: 'block', on }),
+  togglePause: () => (scenario === 'hub' ? hub && hub.jump() : (paused = !paused)),
+  reset: () => scenario !== 'hub' && start(scenario),
   cycleTarget: () => {
-    if (!view) return;
+    if (!view || scenario === 'hub') return;
     const enemies = view.enemies.filter((u) => u.alive);
     if (!enemies.length) return;
     const me = view.party.find((u) => u.id === view.playerId);
@@ -79,12 +140,21 @@ function fireSlot(slot) {
 
 function start(which = 'encounter') {
   scenario = which;
+  if (which === 'lobby') {
+    raidRun = null;
+    world.setLevel(null);
+  }
   const def = content.games[game];
   // A game is its style, its signature ability overrides and its rules,
   // assembled exactly the way the headless runner assembles it.
   active = applyGame(content, def);
 
   let bossId = 'chthon';
+  let modifiers = [];
+  if (scenario === 'encounter' && raidRun) {
+    bossId = raidRun.raid.encounters[raidRun.index].boss;
+    if (raidRun.heroic) modifiers = ['quickening'];
+  }
   if (scenario === 'lobby') {
     // The range is either a dummy that does nothing, or one boss ability
     // on a loop -- so the thing you drill is the thing you will meet.
@@ -100,10 +170,22 @@ function start(which = 'encounter') {
     boss: bossId,
     practice: scenario === 'lobby' ? practice : {},
     hardStopSeconds: scenario === 'lobby' ? 3600 : undefined,
+    modifiers,
   });
+  // Gear is a small permanent aura on you and nobody else -- the only
+  // way progression reaches the sim, and capped so the fights stay tuned.
+  if (scenario === 'encounter') {
+    const def = progress.powerAura();
+    active = { ...active, auras: { ...active.auras, gearPower: { ...def, durationTicks: toTicks(0) } } };
+    const me = state.units.find((u) => u.id === state.activeId);
+    if (me) applyAura(state, active, me.id, me, 'gearPower', { durationTicks: 0 });
+  }
+  document.body.dataset.mode = 'combat';
+  if (hub) hub.show(false);
   // Quake's arena is a resource: put the pickups on the floor.
   for (const pickup of def.pickups || []) spawnPickup(state, pickup, pickup.at);
   lobbyStart = 0;
+  world.clearActors();
   view = snapshot(state, active);
   queue = [];
   hud.reset();
@@ -172,6 +254,21 @@ function frame(now) {
   // read it, and the same deterministic result.
   const dt = real * timeScale;
 
+  if (scenario === 'hub') {
+    if (hub) {
+      const near = hub.update(panels.open ? 0 : real, now / 1000, panels.open ? null : padStick);
+      if (near !== npcInRange) {
+        npcInRange = near;
+        const prompt = document.getElementById('hubPrompt');
+        prompt.hidden = !near;
+        if (near) prompt.innerHTML = `<kbd>E</kbd> ${near.name} — ${near.title}`;
+      }
+      paintHubHud();
+      world.renderer.render(hubScene, world.camera);
+    }
+    return;
+  }
+
   if (running && !paused && !screen) {
     accumulator += dt * 1000;
     while (accumulator >= TICK_MS) {
@@ -233,6 +330,7 @@ function practiceLabel() {
 function finish() {
   running = false;
   document.exitPointerLock();
+  if (raidRun) return finishRaidEncounter();
   const won = state.result === 'kill';
   const player = state.units.find((u) => u.id === state.activeId);
   const seconds = Math.max(1, state.tick / 10);
@@ -385,6 +483,155 @@ document.getElementById('pResume').addEventListener('click', () => showScreen(nu
 document.getElementById('pPull').addEventListener('click', () => start('encounter'));
 document.getElementById('kitClose').addEventListener('click', () => showScreen(null));
 
+/* ------------------------------------------------------------ the hub */
+
+async function enterHub() {
+  running = false;
+  raidRun = null;
+  scenario = 'hub';
+  showScreen(null);
+  panels.hide();
+  for (const id of ['menu', 'over', 'practice', 'kit']) document.getElementById(id).hidden = true;
+  document.body.dataset.mode = 'hub';
+  document.getElementById('crosshair').hidden = true;
+  if (!hub) {
+    document.getElementById('loading').hidden = false;
+    const level = await getLevel('hub');
+    hubScene = new THREE.Scene();
+    hubScene.background = new THREE.Color(0x000000);
+    hubScene.fog = new THREE.Fog(0x05040a, 40, 140);
+    hub = createHub({
+      scene: hubScene,
+      camera: world.camera,
+      rig,
+      controls,
+      level,
+      progress,
+      raids: content.raids,
+      getRole: () => role,
+      onPortal: (portal) => {
+        if (portal.kind === 'raid') openPanel('raid', portal.raid);
+        else if (portal.kind === 'range') openPanel('range');
+        else toast('This slipgate is sealed.');
+      },
+    });
+    document.getElementById('loading').hidden = true;
+    // Warm the raid levels up behind the scenes so a launch is instant.
+    for (const r of Object.values(content.raids)) for (const m of r.maps) getLevel(m).catch(() => {});
+  } else {
+    hub.respawn();
+  }
+  hub.setRole(role);
+  hub.show(true);
+  world.camera.fov = 75;
+  world.camera.updateProjectionMatrix();
+  lock();
+}
+
+function interact() {
+  if (scenario !== 'hub' || !npcInRange || panels.open) return;
+  openPanel(npcInRange.panel);
+}
+
+function openPanel(which, arg) {
+  document.exitPointerLock();
+  const ctx = { progress, content, role, game, levels: levelTitles };
+  if (which === 'raid') {
+    launch.raid = arg;
+    panels.raid({ ...ctx, raid: arg, heroic: launch.heroic });
+  } else if (which === 'journal') panels.journal({ ...ctx, raid: arg });
+  else panels[which](ctx);
+}
+
+function closePanel() {
+  panels.hide();
+  if (scenario === 'hub') {
+    if (hub) hub.stepBack();
+    lock();
+  }
+}
+
+let toastTimer = 0;
+function toast(text) {
+  const el = document.getElementById('toast');
+  el.textContent = text;
+  el.hidden = false;
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => (el.hidden = true), 2600);
+}
+
+function paintHubHud() {
+  const p = progress.data;
+  const set = (id, v) => {
+    const el = document.getElementById(id);
+    if (el.textContent !== String(v)) el.textContent = v;
+  };
+  set('hubRank', `Rank ${p.rank}`);
+  set('hubPower', progress.power());
+  set('hubShards', p.shards);
+  set('hubRole', { tank: 'Vanguard', healer: 'Field Medic', dps: 'Slayer' }[role]);
+  document.getElementById('hubXp').style.width = `${Math.min(100, (p.xp / progress.xpNeeded()) * 100)}%`;
+  const ready = p.bounties.filter((b) => b.done && !b.claimed).length;
+  set('hubBounties', `${p.bounties.filter((b) => b.claimed).length}/${p.bounties.length} bounties${ready ? ` · ${ready} to turn in` : ''}`);
+}
+
+/* -------------------------------------------------------------- raids */
+
+async function launchRaid(raid, index = 0) {
+  raidRun = { raid, index, heroic: launch.heroic };
+  panels.hide();
+  await enterEncounter();
+}
+
+async function enterEncounter() {
+  const enc = raidRun.raid.encounters[raidRun.index];
+  panels.hide();
+  document.getElementById('over').hidden = true;
+  document.getElementById('loading').hidden = false;
+  const level = await getLevel(enc.map);
+  document.getElementById('loading').hidden = true;
+  world.setLevel(level, level.meta.arenas[enc.arena] || level.meta.arenas[0]);
+  start('encounter');
+  const boss = content.bosses[enc.boss];
+  toast(`${raidRun.raid.name} — ${boss.name}, ${boss.title}${raidRun.heroic ? ' (Heroic)' : ''}`);
+}
+
+function finishRaidEncounter() {
+  const won = state.result === 'kill';
+  const me = state.units.find((u) => u.id === state.activeId);
+  const seconds = Math.max(1, state.tick / 10);
+  const damage = state.stats.damageBy[state.activeId] || 0;
+  const healing = state.stats.healBy[state.activeId] || 0;
+  const died = state.stats.deaths.some((d) => d.unit === state.activeId);
+  const outcome = progress.recordEncounter({
+    raid: raidRun.raid,
+    index: raidRun.index,
+    won,
+    role,
+    game,
+    heroic: raidRun.heroic,
+    stats: { damage, healing, interrupts: state.stats.interrupts, died },
+  });
+  const boss = content.bosses[raidRun.raid.encounters[raidRun.index].boss];
+  const mine = state.stats.deaths.find((d) => d.unit === state.activeId);
+  const stats = [
+    won ? `Killed in ${clock(view.seconds)}.` : `The party is dead with ${boss.name} at ${view.boss.hpPct.toFixed(1)}%.`,
+    `<b>${Math.round(damage / seconds).toLocaleString('en-US')}</b> damage per second · <b>${Math.round(healing / seconds).toLocaleString('en-US')}</b> healing per second`,
+    mine ? `You died at ${clock(mine.tick / 10)} to <b>${mine.cause}</b>.` : me && me.alive ? 'You survived.' : 'You died.',
+  ]
+    .map((l) => `<div>${l}</div>`)
+    .join('');
+  panels.result({
+    raid: raidRun.raid,
+    index: raidRun.index,
+    won,
+    outcome,
+    boss,
+    stats,
+    hasNext: raidRun.index + 1 < raidRun.raid.encounters.length,
+  });
+}
+
 /* ----------------------------------------------------------- menu */
 
 const menu = document.getElementById('games');
@@ -419,18 +666,29 @@ roles.addEventListener('click', (e) => {
   role = card.dataset.role;
   [...roles.children].forEach((c) => c.classList.toggle('sel', c.dataset.role === role));
 });
-document.getElementById('play').addEventListener('click', () => start('lobby'));
-document.getElementById('again').addEventListener('click', () => start('lobby'));
+document.getElementById('play').addEventListener('click', () => enterHub());
+document.getElementById('again').addEventListener('click', () => enterHub());
+document.getElementById('pHub').addEventListener('click', () => enterHub());
 document.getElementById('retry').addEventListener('click', () => start('encounter'));
 
 const SPEEDS = [1, 0.5, 0.25];
 window.addEventListener('keydown', (e) => {
   if (e.target.tagName === 'INPUT') return;
   const key = e.key.toLowerCase();
+  if (key === 'escape' && panels.open) return closePanel();
+  if (scenario === 'hub') {
+    if (panels.open) return;
+    if (key === 'e' || key === 'f') return interact();
+    if (key === 'i' || key === 'c') return openPanel('character');
+    if (key === 'j') return openPanel('journal');
+    if (key === 'v') return hub && hub.toggleView();
+    return;
+  }
   if (key === 'escape' && screen) return showScreen(null);
   if (key === 'p' && running) return showScreen(screen === 'practice' ? null : 'practice');
   if (key === 'h' && running) return showScreen(screen === 'kit' ? null : 'kit');
   if (key === 'e' && scenario === 'lobby' && running) return start('encounter');
+  if (key === 'g' && scenario === 'lobby' && running) return enterHub();
   if (!running || scenario !== 'lobby') return;
   // Range switches, reachable without opening anything.
   if (key === 'v' || key === 'b' || key === 'n') {
@@ -446,7 +704,7 @@ window.addEventListener('keydown', (e) => {
 });
 
 document.getElementById('play').disabled = false;
-document.getElementById('play').textContent = 'Enter the pit';
+document.getElementById('play').textContent = 'Enter the hub';
 
 requestAnimationFrame(frame);
-window.__raid3d = { state: () => state, view: () => view, world, rig };
+window.__raid3d = { state: () => state, view: () => view, world, rig, progress, content, hub: () => hub, levels, enterHub, launchRaid, scenario: () => scenario };

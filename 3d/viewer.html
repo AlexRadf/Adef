@@ -1,0 +1,79 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Level Viewer</title>
+<style>
+  html,body { margin:0; height:100%; background:#000; overflow:hidden; color:#c9bda9; font:13px system-ui,sans-serif; }
+  canvas { display:block; width:100%; height:100%; }
+  #info { position:fixed; left:10px; top:10px; background:#000a; padding:6px 9px; pointer-events:none; }
+</style>
+</head>
+<body>
+<canvas id="c"></canvas>
+<div id="info">loading…</div>
+<script type="module">
+// A plain walk-around for any imported level: ?map=hub, ?map=lq_e1m7,
+// ?arena=0 to stand in a raid arena. Click to look, WASD, space jumps,
+// F toggles flying. Useful for checking an import before it is a raid.
+import * as THREE from '../vendor/three.module.js';
+import { loadLevel } from './level.js';
+import { createMover } from './collide.js';
+
+const q = new URLSearchParams(location.search);
+const id = q.get('map') || 'hub';
+const canvas = document.getElementById('c');
+const renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
+renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0x000000);
+const camera = new THREE.PerspectiveCamera(80, 1, 0.05, 400);
+const level = await loadLevel(id);
+scene.add(level.group);
+
+const m = level.meta;
+let start = (m.things.find((t) => t.cls === 'info_player_start') || m.things.find((t) => t.cls.startsWith('info_player')) || { at: [0, 0, 0] }).at;
+let yaw = 0, pitch = 0;
+if (q.has('arena') && m.arenas[+q.get('arena')]) {
+  const a = m.arenas[+q.get('arena')];
+  start = [a.at[0] + 7, a.at[1], a.at[2] + 7];
+  yaw = Math.PI / 4;
+}
+if (q.has('at')) start = q.get('at').split(',').map(Number);
+if (q.has('yaw')) yaw = +q.get('yaw');
+if (q.has('pitch')) pitch = +q.get('pitch');
+const mover = createMover(level.collider, { x: start[0], y: start[1], z: start[2] });
+let fly = q.has('fly');
+const held = new Set();
+addEventListener('keydown', (e) => { held.add(e.key.toLowerCase()); if (e.key === 'f') fly = !fly; });
+addEventListener('keyup', (e) => held.delete(e.key.toLowerCase()));
+canvas.addEventListener('click', () => canvas.requestPointerLock());
+addEventListener('mousemove', (e) => {
+  if (document.pointerLockElement !== canvas) return;
+  yaw -= e.movementX * 0.0022; pitch = Math.max(-1.5, Math.min(1.5, pitch - e.movementY * 0.0022));
+});
+let last = performance.now();
+function frame(now) {
+  requestAnimationFrame(frame);
+  const dt = Math.min(0.05, (now - last) / 1000); last = now;
+  const w = canvas.clientWidth, h = canvas.clientHeight;
+  if (canvas.width !== w * renderer.getPixelRatio()) { renderer.setSize(w, h, false); camera.aspect = w / h; camera.updateProjectionMatrix(); }
+  let x = 0, z = 0;
+  if (held.has('w')) z -= 1; if (held.has('s')) z += 1; if (held.has('a')) x -= 1; if (held.has('d')) x += 1;
+  const s = Math.sin(yaw), c = Math.cos(yaw), speed = 9.5;
+  const wish = { x: (x * c + z * s) * speed, z: (-x * s + z * c) * speed };
+  if (fly) { const b = mover.body.pos; b.x += wish.x * dt; b.z += wish.z * dt; b.y += Math.sin(pitch) * -z * speed * dt; }
+  else mover.move(wish, dt, held.has(' '));
+  const p = mover.body.pos;
+  camera.position.set(p.x, p.y + 1.375, p.z);
+  camera.quaternion.setFromEuler(new THREE.Euler(pitch, yaw, 0, 'YXZ'));
+  level.tick(now / 1000);
+  renderer.render(scene, camera);
+  document.getElementById('info').textContent = `${m.title} · ${p.x.toFixed(1)}, ${p.y.toFixed(1)}, ${p.z.toFixed(1)} · ${fly ? 'fly' : mover.body.onGround ? 'ground' : 'air'}`;
+}
+requestAnimationFrame(frame);
+window.__viewer = { mover, level, camera };
+</script>
+</body>
+</html>

@@ -1,0 +1,661 @@
+{
+ "id": "pyre",
+ "name": "The Pyre of Flesh",
+ "portal": "lq_e2m1",
+ "tier": 2,
+ "power": 20,
+ "tagline": "Two levels, one infection. The corpse army marches; the parasites wait at the end of the slipgate.",
+ "encounters": [
+  {
+   "boss": "pyre_1",
+   "map": "lq_e2m3",
+   "arena": 0,
+   "botsWin": 40,
+   "mechanics": [
+    "Pustule — 5 tiles erupt 1.6s after they light up, every 23s",
+    "Contagion — a dispellable curse every 39s that detonates on everyone nearby if it runs out",
+    "Bile Sweep — hits the tank and anyone next to them every 21s, stacking Necrosis",
+    "Mass Grave — every 27s one tile takes a huge hit split between whoever stands in it",
+    "Fester Pool — every 28s a tile needs two bodies in it or the raid eats the hit"
+   ],
+   "def": {
+    "id": "pyre_1",
+    "name": "The Rot Choir",
+    "title": "Voices of the Pyre",
+    "seed": 2528,
+    "hp": 22400000,
+    "cell": 12,
+    "speed": 1.8,
+    "enrageAtSeconds": 257,
+    "theme": "plague",
+    "phases": [
+     {
+      "name": "Phase 1 — It Notices You",
+      "trigger": {
+       "type": "start"
+      },
+      "timeline": [
+       {
+        "t": 1,
+        "every": 2.2,
+        "ability": "pyre1_melee",
+        "target": "threatLeader"
+       },
+       {
+        "t": 7,
+        "every": 23,
+        "ability": "pyre1_ground",
+        "target": "none",
+        "count": 5,
+        "delay": 1.6
+       },
+       {
+        "t": 16,
+        "every": 39,
+        "ability": "pyre1_mark",
+        "target": "randomPlayer"
+       },
+       {
+        "t": 23,
+        "every": 21,
+        "ability": "pyre1_cleave",
+        "target": "threatLeader"
+       }
+      ]
+     },
+     {
+      "name": "Phase 2 — The Pit Stirs",
+      "trigger": {
+       "type": "hpBelow",
+       "pct": 45
+      },
+      "timeline": [
+       {
+        "t": 1,
+        "every": 2.2,
+        "ability": "pyre1_melee",
+        "target": "threatLeader"
+       },
+       {
+        "t": 6,
+        "every": 19.5,
+        "ability": "pyre1_ground",
+        "target": "none",
+        "count": 5,
+        "delay": 1.6
+       },
+       {
+        "t": 13,
+        "every": 33,
+        "ability": "pyre1_mark",
+        "target": "randomPlayer"
+       },
+       {
+        "t": 22,
+        "every": 17.5,
+        "ability": "pyre1_cleave",
+        "target": "threatLeader"
+       },
+       {
+        "t": 27,
+        "every": 22.5,
+        "ability": "pyre1_stack",
+        "target": "none"
+       },
+       {
+        "t": 34,
+        "every": 23.5,
+        "ability": "pyre1_soak",
+        "target": "none"
+       }
+      ]
+     }
+    ]
+   },
+   "abilities": {
+    "pyre1_melee": {
+     "id": "pyre1_melee",
+     "name": "Rotting Bite",
+     "icon": "☄",
+     "cast": 0,
+     "gcd": 0,
+     "offGcd": true,
+     "cooldown": 0,
+     "cost": 0,
+     "targeting": "enemy",
+     "range": 1,
+     "requiresTargetInRange": true,
+     "onNoTargetText": "The Makron finds nothing in reach and roars — UNOPPOSED!",
+     "onNoTarget": [
+      {
+       "type": "damage",
+       "target": "party",
+       "amount": 35700,
+       "school": "acid",
+       "name": "Unopposed"
+      }
+     ],
+     "effects": [
+      {
+       "type": "damage",
+       "amount": 135150,
+       "school": "acid"
+      }
+     ]
+    },
+    "pyre1_ground": {
+     "id": "pyre1_ground",
+     "cast": 0,
+     "gcd": 0,
+     "offGcd": true,
+     "cooldown": 0,
+     "cost": 0,
+     "name": "Pustule",
+     "icon": "▲",
+     "targeting": "none",
+     "range": 5,
+     "effects": [
+      {
+       "type": "markCells",
+       "count": 5,
+       "delay": 1.6,
+       "damage": 312375,
+       "kind": "blast",
+       "name": "Pustule"
+      }
+     ]
+    },
+    "pyre1_mark": {
+     "id": "pyre1_mark",
+     "cast": 1.5,
+     "gcd": 0,
+     "offGcd": true,
+     "cooldown": 0,
+     "cost": 0,
+     "name": "Contagion",
+     "icon": "◈",
+     "targeting": "enemy",
+     "range": 5,
+     "effects": [
+      {
+       "type": "aura",
+       "aura": "pyre1_mark_aura",
+       "target": "target"
+      }
+     ]
+    },
+    "pyre1_cleave": {
+     "id": "pyre1_cleave",
+     "cast": 1,
+     "gcd": 0,
+     "offGcd": true,
+     "cooldown": 0,
+     "cost": 0,
+     "name": "Bile Sweep",
+     "icon": "⚔",
+     "targeting": "enemy",
+     "range": 2,
+     "effects": [
+      {
+       "type": "damage",
+       "target": "targetAndAdjacent",
+       "amount": 140250,
+       "school": "acid"
+      },
+      {
+       "type": "aura",
+       "aura": "pyre1_debuff",
+       "target": "target"
+      }
+     ]
+    },
+    "pyre1_stack": {
+     "id": "pyre1_stack",
+     "cast": 1,
+     "gcd": 0,
+     "offGcd": true,
+     "cooldown": 0,
+     "cost": 0,
+     "name": "Mass Grave",
+     "icon": "⛓",
+     "targeting": "none",
+     "range": 5,
+     "effects": [
+      {
+       "type": "markRandomArea",
+       "delay": 5.5,
+       "kind": "split",
+       "damage": 357000,
+       "raidDamage": 127500,
+       "name": "Mass Grave"
+      }
+     ]
+    },
+    "pyre1_soak": {
+     "id": "pyre1_soak",
+     "cast": 1,
+     "gcd": 0,
+     "offGcd": true,
+     "cooldown": 0,
+     "cost": 0,
+     "name": "Fester Pool",
+     "icon": "◎",
+     "targeting": "none",
+     "range": 5,
+     "effects": [
+      {
+       "type": "markRandomArea",
+       "delay": 6,
+       "kind": "soak",
+       "minSoakers": 2,
+       "damage": 331500,
+       "raidDamage": 216750,
+       "name": "Fester Pool"
+      }
+     ]
+    }
+   },
+   "auras": {
+    "pyre1_debuff": {
+     "name": "Necrosis",
+     "duration": 31,
+     "harmful": true,
+     "maxStacks": 4,
+     "modifiers": [
+      {
+       "stat": "damageTaken",
+       "op": "mult",
+       "value": 1.1194748606532814,
+       "perStack": true
+      }
+     ]
+    },
+    "pyre1_mark_aura": {
+     "name": "Contagion",
+     "duration": 8,
+     "harmful": true,
+     "dispelType": "magic",
+     "periodic": {
+      "interval": 1,
+      "effect": {
+       "type": "damage",
+       "amount": 24225,
+       "school": "acid"
+      }
+     },
+     "modifiers": [],
+     "onExpire": [
+      {
+       "type": "damage",
+       "target": "target",
+       "amount": 140250,
+       "school": "acid",
+       "name": "Contagion Collapse"
+      },
+      {
+       "type": "damage",
+       "target": "nearTarget",
+       "amount": 261375,
+       "school": "acid",
+       "name": "Contagion Collapse"
+      }
+     ],
+     "onDispel": [
+      {
+       "type": "damage",
+       "target": "target",
+       "amount": 31875,
+       "school": "acid",
+       "name": "Contagion Backlash"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "boss": "pyre_2",
+   "map": "lq_e2m5",
+   "arena": 0,
+   "botsWin": 43,
+   "mechanics": [
+    "Pustule — 7 tiles erupt 1.9s after they light up, every 21s",
+    "Fester Pool — every 27s a tile needs two bodies in it or the raid eats the hit",
+    "Mass Grave — every 22s one tile takes a huge hit split between whoever stands in it",
+    "Summons 2 Scrags every 55s",
+    "Contagion — a dispellable curse every 39s that detonates on everyone nearby if it runs out"
+   ],
+   "def": {
+    "id": "pyre_2",
+    "name": "Mother Maggot",
+    "title": "She Who Feeds the Fire",
+    "seed": 2405,
+    "hp": 19000000,
+    "cell": 12,
+    "speed": 1.8,
+    "enrageAtSeconds": 256,
+    "theme": "plague",
+    "phases": [
+     {
+      "name": "Phase 1 — The Long Dark",
+      "trigger": {
+       "type": "start"
+      },
+      "timeline": [
+       {
+        "t": 1,
+        "every": 2.4,
+        "ability": "pyre2_melee",
+        "target": "threatLeader"
+       },
+       {
+        "t": 9,
+        "every": 21,
+        "ability": "pyre2_ground",
+        "target": "none",
+        "count": 7,
+        "delay": 1.9
+       },
+       {
+        "t": 17,
+        "every": 39,
+        "ability": "pyre2_mark",
+        "target": "randomPlayer"
+       }
+      ]
+     },
+     {
+      "name": "Phase 2 — The Brood Wakes",
+      "trigger": {
+       "type": "hpBelow",
+       "pct": 62
+      },
+      "timeline": [
+       {
+        "t": 1,
+        "every": 2.4,
+        "ability": "pyre2_melee",
+        "target": "threatLeader"
+       },
+       {
+        "t": 6,
+        "every": 17.5,
+        "ability": "pyre2_ground",
+        "target": "none",
+        "count": 7,
+        "delay": 1.9
+       },
+       {
+        "t": 17,
+        "every": 22.5,
+        "ability": "pyre2_soak",
+        "target": "none"
+       },
+       {
+        "t": 23,
+        "every": 18.5,
+        "ability": "pyre2_stack",
+        "target": "none"
+       },
+       {
+        "t": 33,
+        "every": 46,
+        "ability": "pyre2_adds",
+        "target": "none"
+       },
+       {
+        "t": 39,
+        "every": 33,
+        "ability": "pyre2_mark",
+        "target": "randomPlayer"
+       }
+      ]
+     },
+     {
+      "name": "Phase 3 — The Brood Wakes",
+      "trigger": {
+       "type": "hpBelow",
+       "pct": 28
+      },
+      "timeline": [
+       {
+        "t": 1,
+        "every": 2.4,
+        "ability": "pyre2_melee",
+        "target": "threatLeader"
+       },
+       {
+        "t": 5,
+        "every": 14.5,
+        "ability": "pyre2_ground",
+        "target": "none",
+        "count": 7,
+        "delay": 1.9
+       },
+       {
+        "t": 12,
+        "every": 18.5,
+        "ability": "pyre2_soak",
+        "target": "none"
+       },
+       {
+        "t": 21,
+        "every": 15,
+        "ability": "pyre2_stack",
+        "target": "none"
+       },
+       {
+        "t": 29,
+        "every": 37.5,
+        "ability": "pyre2_adds",
+        "target": "none"
+       },
+       {
+        "t": 34,
+        "every": 26.5,
+        "ability": "pyre2_mark",
+        "target": "randomPlayer"
+       }
+      ]
+     }
+    ]
+   },
+   "abilities": {
+    "pyre2_melee": {
+     "id": "pyre2_melee",
+     "name": "Rotting Bite",
+     "icon": "☄",
+     "cast": 0,
+     "gcd": 0,
+     "offGcd": true,
+     "cooldown": 0,
+     "cost": 0,
+     "targeting": "enemy",
+     "range": 1,
+     "requiresTargetInRange": true,
+     "onNoTargetText": "The Ogre Lord finds nothing in reach and roars — UNOPPOSED!",
+     "onNoTarget": [
+      {
+       "type": "damage",
+       "target": "party",
+       "amount": 25412,
+       "school": "acid",
+       "name": "Unopposed"
+      }
+     ],
+     "effects": [
+      {
+       "type": "damage",
+       "amount": 112541,
+       "school": "acid"
+      }
+     ]
+    },
+    "pyre2_ground": {
+     "id": "pyre2_ground",
+     "cast": 0,
+     "gcd": 0,
+     "offGcd": true,
+     "cooldown": 0,
+     "cost": 0,
+     "name": "Pustule",
+     "icon": "▲",
+     "targeting": "none",
+     "range": 5,
+     "effects": [
+      {
+       "type": "markCells",
+       "count": 7,
+       "delay": 1.9,
+       "damage": 410231,
+       "kind": "blast",
+       "name": "Pustule"
+      }
+     ]
+    },
+    "pyre2_soak": {
+     "id": "pyre2_soak",
+     "cast": 1,
+     "gcd": 0,
+     "offGcd": true,
+     "cooldown": 0,
+     "cost": 0,
+     "name": "Fester Pool",
+     "icon": "◎",
+     "targeting": "none",
+     "range": 5,
+     "effects": [
+      {
+       "type": "markRandomArea",
+       "delay": 5,
+       "kind": "soak",
+       "minSoakers": 2,
+       "damage": 462443,
+       "raidDamage": 298350,
+       "name": "Fester Pool"
+      }
+     ]
+    },
+    "pyre2_stack": {
+     "id": "pyre2_stack",
+     "cast": 1,
+     "gcd": 0,
+     "offGcd": true,
+     "cooldown": 0,
+     "cost": 0,
+     "name": "Mass Grave",
+     "icon": "⛓",
+     "targeting": "none",
+     "range": 5,
+     "effects": [
+      {
+       "type": "markRandomArea",
+       "delay": 4.5,
+       "kind": "split",
+       "damage": 417690,
+       "raidDamage": 149175,
+       "name": "Mass Grave"
+      }
+     ]
+    },
+    "pyre2_adds": {
+     "id": "pyre2_adds",
+     "cast": 2,
+     "gcd": 0,
+     "offGcd": true,
+     "cooldown": 0,
+     "cost": 0,
+     "name": "Summon",
+     "icon": "☗",
+     "targeting": "none",
+     "range": 5,
+     "effects": [
+      {
+       "type": "summon",
+       "unit": "scrag",
+       "count": 2
+      }
+     ]
+    },
+    "pyre2_mark": {
+     "id": "pyre2_mark",
+     "cast": 1.5,
+     "gcd": 0,
+     "offGcd": true,
+     "cooldown": 0,
+     "cost": 0,
+     "name": "Contagion",
+     "icon": "◈",
+     "targeting": "enemy",
+     "range": 5,
+     "effects": [
+      {
+       "type": "aura",
+       "aura": "pyre2_mark_aura",
+       "target": "target"
+      }
+     ]
+    }
+   },
+   "auras": {
+    "pyre2_debuff": {
+     "name": "Necrosis",
+     "duration": 25,
+     "harmful": true,
+     "maxStacks": 3,
+     "modifiers": [
+      {
+       "stat": "damageTaken",
+       "op": "mult",
+       "value": 1.1266294234781526,
+       "perStack": true
+      }
+     ]
+    },
+    "pyre2_mark_aura": {
+     "name": "Contagion",
+     "duration": 12,
+     "harmful": true,
+     "dispelType": "magic",
+     "periodic": {
+      "interval": 1,
+      "effect": {
+       "type": "damage",
+       "amount": 34310,
+       "school": "acid"
+      }
+     },
+     "modifiers": [],
+     "onExpire": [
+      {
+       "type": "damage",
+       "target": "target",
+       "amount": 201386,
+       "school": "acid",
+       "name": "Contagion Collapse"
+      },
+      {
+       "type": "damage",
+       "target": "nearTarget",
+       "amount": 372938,
+       "school": "acid",
+       "name": "Contagion Collapse"
+      }
+     ],
+     "onDispel": [
+      {
+       "type": "damage",
+       "target": "target",
+       "amount": 44753,
+       "school": "acid",
+       "name": "Contagion Backlash"
+      }
+     ]
+    }
+   }
+  }
+ ],
+ "maps": [
+  "lq_e2m3",
+  "lq_e2m5"
+ ]
+}

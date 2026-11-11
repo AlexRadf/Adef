@@ -1,0 +1,860 @@
+{
+ "id": "end",
+ "name": "At the End of Time",
+ "portal": "lq_end",
+ "tier": 5,
+ "power": 50,
+ "tagline": "Every slipgate leads here eventually. Nothing leaves.",
+ "encounters": [
+  {
+   "boss": "end_1",
+   "map": "lq_end",
+   "arena": 2,
+   "botsWin": 45,
+   "mechanics": [
+    "Tesla Bloom — 7 tiles erupt 2s after they light up, every 23s",
+    "Capacitor — every 35s a tile needs two bodies in it or the raid eats the hit",
+    "Grounding Rod — a dispellable curse every 39s that detonates on everyone nearby if it runs out",
+    "Conduit — every 25s one tile takes a huge hit split between whoever stands in it",
+    "Charge the Core — interruptible cast every 40s; heals Shub-Niggurath for 5% and hits the party if it lands"
+   ],
+   "def": {
+    "id": "end_1",
+    "name": "Warden of Seconds",
+    "title": "Who Counts Down",
+    "seed": 5097,
+    "hp": 19000000,
+    "cell": 12,
+    "speed": 1.8,
+    "enrageAtSeconds": 276,
+    "theme": "shock",
+    "phases": [
+     {
+      "name": "Phase 1 — Nothing Held Back",
+      "trigger": {
+       "type": "start"
+      },
+      "timeline": [
+       {
+        "t": 1,
+        "every": 2.4,
+        "ability": "end1_melee",
+        "target": "threatLeader"
+       },
+       {
+        "t": 4,
+        "every": 23,
+        "ability": "end1_ground",
+        "target": "none",
+        "count": 7,
+        "delay": 2
+       },
+       {
+        "t": 10,
+        "every": 39,
+        "ability": "end1_mark",
+        "target": "randomPlayer"
+       },
+       {
+        "t": 19,
+        "every": 40,
+        "ability": "end1_channel",
+        "target": "self"
+       }
+      ]
+     },
+     {
+      "name": "Phase 2 — It Notices You",
+      "trigger": {
+       "type": "hpBelow",
+       "pct": 45
+      },
+      "timeline": [
+       {
+        "t": 1,
+        "every": 2.4,
+        "ability": "end1_melee",
+        "target": "threatLeader"
+       },
+       {
+        "t": 9,
+        "every": 19.5,
+        "ability": "end1_ground",
+        "target": "none",
+        "count": 7,
+        "delay": 2
+       },
+       {
+        "t": 18,
+        "every": 29.5,
+        "ability": "end1_soak",
+        "target": "none"
+       },
+       {
+        "t": 24,
+        "every": 33,
+        "ability": "end1_mark",
+        "target": "randomPlayer"
+       },
+       {
+        "t": 31,
+        "every": 21,
+        "ability": "end1_stack",
+        "target": "none"
+       },
+       {
+        "t": 37,
+        "every": 33.5,
+        "ability": "end1_channel",
+        "target": "self"
+       }
+      ]
+     }
+    ]
+   },
+   "abilities": {
+    "end1_melee": {
+     "id": "end1_melee",
+     "name": "Arc Lash",
+     "icon": "☄",
+     "cast": 0,
+     "gcd": 0,
+     "offGcd": true,
+     "cooldown": 0,
+     "cost": 0,
+     "targeting": "enemy",
+     "range": 1,
+     "requiresTargetInRange": true,
+     "onNoTargetText": "Shub-Niggurath finds nothing in reach and roars — UNOPPOSED!",
+     "onNoTarget": [
+      {
+       "type": "damage",
+       "target": "party",
+       "amount": 47502,
+       "school": "shock",
+       "name": "Unopposed"
+      }
+     ],
+     "effects": [
+      {
+       "type": "damage",
+       "amount": 215456,
+       "school": "shock"
+      }
+     ]
+    },
+    "end1_ground": {
+     "id": "end1_ground",
+     "cast": 0,
+     "gcd": 0,
+     "offGcd": true,
+     "cooldown": 0,
+     "cost": 0,
+     "name": "Tesla Bloom",
+     "icon": "▲",
+     "targeting": "none",
+     "range": 5,
+     "effects": [
+      {
+       "type": "markCells",
+       "count": 7,
+       "delay": 2,
+       "damage": 347783,
+       "kind": "blast",
+       "name": "Tesla Bloom"
+      }
+     ]
+    },
+    "end1_soak": {
+     "id": "end1_soak",
+     "cast": 1,
+     "gcd": 0,
+     "offGcd": true,
+     "cooldown": 0,
+     "cost": 0,
+     "name": "Capacitor",
+     "icon": "◎",
+     "targeting": "none",
+     "range": 5,
+     "effects": [
+      {
+       "type": "markRandomArea",
+       "delay": 5,
+       "kind": "soak",
+       "minSoakers": 2,
+       "damage": 458055,
+       "raidDamage": 288405,
+       "name": "Capacitor"
+      }
+     ]
+    },
+    "end1_mark": {
+     "id": "end1_mark",
+     "cast": 1.5,
+     "gcd": 0,
+     "offGcd": true,
+     "cooldown": 0,
+     "cost": 0,
+     "name": "Grounding Rod",
+     "icon": "◈",
+     "targeting": "enemy",
+     "range": 5,
+     "effects": [
+      {
+       "type": "aura",
+       "aura": "end1_mark_aura",
+       "target": "target"
+      }
+     ]
+    },
+    "end1_stack": {
+     "id": "end1_stack",
+     "cast": 1,
+     "gcd": 0,
+     "offGcd": true,
+     "cooldown": 0,
+     "cost": 0,
+     "name": "Conduit",
+     "icon": "⛓",
+     "targeting": "none",
+     "range": 5,
+     "effects": [
+      {
+       "type": "markRandomArea",
+       "delay": 5,
+       "kind": "split",
+       "damage": 373230,
+       "raidDamage": 135720,
+       "name": "Conduit"
+      }
+     ]
+    },
+    "end1_channel": {
+     "id": "end1_channel",
+     "cast": 2.6,
+     "gcd": 0,
+     "offGcd": true,
+     "cooldown": 0,
+     "cost": 0,
+     "name": "Charge the Core",
+     "icon": "☠",
+     "targeting": "self",
+     "range": 5,
+     "interruptible": true,
+     "effects": [
+      {
+       "type": "healPct",
+       "pct": 5,
+       "target": "self",
+       "name": "Charge the Core"
+      },
+      {
+       "type": "damage",
+       "target": "party",
+       "amount": 135720,
+       "school": "shock",
+       "name": "Charge the Core"
+      }
+     ]
+    }
+   },
+   "auras": {
+    "end1_debuff": {
+     "name": "Overloaded",
+     "duration": 25,
+     "harmful": true,
+     "maxStacks": 5,
+     "modifiers": [
+      {
+       "stat": "damageTaken",
+       "op": "mult",
+       "value": 1.1035169820999728,
+       "perStack": true
+      }
+     ]
+    },
+    "end1_mark_aura": {
+     "name": "Grounding Rod",
+     "duration": 12,
+     "harmful": true,
+     "dispelType": "magic",
+     "periodic": {
+      "interval": 1,
+      "effect": {
+       "type": "damage",
+       "amount": 27144,
+       "school": "shock"
+      }
+     },
+     "modifiers": [],
+     "onExpire": [
+      {
+       "type": "damage",
+       "target": "target",
+       "amount": 161168,
+       "school": "shock",
+       "name": "Grounding Rod Collapse"
+      },
+      {
+       "type": "damage",
+       "target": "nearTarget",
+       "amount": 288405,
+       "school": "shock",
+       "name": "Grounding Rod Collapse"
+      }
+     ],
+     "onDispel": [
+      {
+       "type": "damage",
+       "target": "target",
+       "amount": 33930,
+       "school": "shock",
+       "name": "Grounding Rod Backlash"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "boss": "end_2",
+   "map": "lq_end",
+   "arena": 1,
+   "botsWin": 30,
+   "mechanics": [
+    "Collapsing Space — 6 tiles erupt 1.3s after they light up, every 18s",
+    "Singularity — every 31s a tile needs two bodies in it or the raid eats the hit",
+    "Summons 3 Scrags every 45s",
+    "Entropy Sweep — hits the tank and anyone next to them every 21s, stacking Unravelled"
+   ],
+   "def": {
+    "id": "end_2",
+    "name": "The Hour Eater",
+    "title": "Hunger Between Moments",
+    "seed": 5416,
+    "hp": 16900000,
+    "cell": 12,
+    "speed": 1.8,
+    "enrageAtSeconds": 275,
+    "theme": "void",
+    "phases": [
+     {
+      "name": "Phase 1 — The Brood Wakes",
+      "trigger": {
+       "type": "start"
+      },
+      "timeline": [
+       {
+        "t": 1,
+        "every": 2.2,
+        "ability": "end2_melee",
+        "target": "threatLeader"
+       },
+       {
+        "t": 7,
+        "every": 18,
+        "ability": "end2_ground",
+        "target": "none",
+        "count": 6,
+        "delay": 1.3
+       },
+       {
+        "t": 13,
+        "every": 21,
+        "ability": "end2_cleave",
+        "target": "threatLeader"
+       }
+      ]
+     },
+     {
+      "name": "Phase 2 — The Long Dark",
+      "trigger": {
+       "type": "hpBelow",
+       "pct": 45
+      },
+      "timeline": [
+       {
+        "t": 1,
+        "every": 2.2,
+        "ability": "end2_melee",
+        "target": "threatLeader"
+       },
+       {
+        "t": 5,
+        "every": 15,
+        "ability": "end2_ground",
+        "target": "none",
+        "count": 6,
+        "delay": 1.3
+       },
+       {
+        "t": 14,
+        "every": 26,
+        "ability": "end2_soak",
+        "target": "none"
+       },
+       {
+        "t": 20,
+        "every": 38,
+        "ability": "end2_adds",
+        "target": "none"
+       },
+       {
+        "t": 31,
+        "every": 17.5,
+        "ability": "end2_cleave",
+        "target": "threatLeader"
+       }
+      ]
+     }
+    ]
+   },
+   "abilities": {
+    "end2_melee": {
+     "id": "end2_melee",
+     "name": "Rift Claw",
+     "icon": "☄",
+     "cast": 0,
+     "gcd": 0,
+     "offGcd": true,
+     "cooldown": 0,
+     "cost": 0,
+     "targeting": "enemy",
+     "range": 1,
+     "requiresTargetInRange": true,
+     "onNoTargetText": "Gorehound finds nothing in reach and roars — UNOPPOSED!",
+     "onNoTarget": [
+      {
+       "type": "damage",
+       "target": "party",
+       "amount": 23975,
+       "school": "void",
+       "name": "Unopposed"
+      }
+     ],
+     "effects": [
+      {
+       "type": "damage",
+       "amount": 95043,
+       "school": "void"
+      }
+     ]
+    },
+    "end2_ground": {
+     "id": "end2_ground",
+     "cast": 0,
+     "gcd": 0,
+     "offGcd": true,
+     "cooldown": 0,
+     "cost": 0,
+     "name": "Collapsing Space",
+     "icon": "▲",
+     "targeting": "none",
+     "range": 5,
+     "effects": [
+      {
+       "type": "markCells",
+       "count": 6,
+       "delay": 1.3,
+       "damage": 344807,
+       "kind": "blast",
+       "name": "Collapsing Space"
+      }
+     ]
+    },
+    "end2_soak": {
+     "id": "end2_soak",
+     "cast": 1,
+     "gcd": 0,
+     "offGcd": true,
+     "cooldown": 0,
+     "cost": 0,
+     "name": "Singularity",
+     "icon": "◎",
+     "targeting": "none",
+     "range": 5,
+     "effects": [
+      {
+       "type": "markRandomArea",
+       "delay": 6.5,
+       "kind": "soak",
+       "minSoakers": 2,
+       "damage": 506655,
+       "raidDamage": 323696,
+       "name": "Singularity"
+      }
+     ]
+    },
+    "end2_adds": {
+     "id": "end2_adds",
+     "cast": 2,
+     "gcd": 0,
+     "offGcd": true,
+     "cooldown": 0,
+     "cost": 0,
+     "name": "Summon",
+     "icon": "☗",
+     "targeting": "none",
+     "range": 5,
+     "effects": [
+      {
+       "type": "summon",
+       "unit": "scrag",
+       "count": 3
+      }
+     ]
+    },
+    "end2_cleave": {
+     "id": "end2_cleave",
+     "cast": 1,
+     "gcd": 0,
+     "offGcd": true,
+     "cooldown": 0,
+     "cost": 0,
+     "name": "Entropy Sweep",
+     "icon": "⚔",
+     "targeting": "enemy",
+     "range": 2,
+     "effects": [
+      {
+       "type": "damage",
+       "target": "targetAndAdjacent",
+       "amount": 195625,
+       "school": "void"
+      },
+      {
+       "type": "aura",
+       "aura": "end2_debuff",
+       "target": "target"
+      }
+     ]
+    }
+   },
+   "auras": {
+    "end2_debuff": {
+     "name": "Unravelled",
+     "duration": 20,
+     "harmful": true,
+     "maxStacks": 5,
+     "modifiers": [
+      {
+       "stat": "damageTaken",
+       "op": "mult",
+       "value": 1.1272643891046756,
+       "perStack": true
+      }
+     ]
+    }
+   }
+  },
+  {
+   "boss": "end_3",
+   "map": "lq_end",
+   "arena": 0,
+   "botsWin": 43,
+   "mechanics": [
+    "Collapsing Space — 6 tiles erupt 1.4s after they light up, every 21s",
+    "Entropy Sweep — hits the tank and anyone next to them every 24s, stacking Unravelled",
+    "Gravity Well — every 25s one tile takes a huge hit split between whoever stands in it",
+    "Singularity — every 30s a tile needs two bodies in it or the raid eats the hit",
+    "Summons 3 Scrags every 43s"
+   ],
+   "def": {
+    "id": "end_3",
+    "name": "The Last Slipgate",
+    "title": "Door Without a Far Side",
+    "seed": 5506,
+    "hp": 17200000,
+    "cell": 12,
+    "speed": 1.8,
+    "enrageAtSeconds": 284,
+    "theme": "void",
+    "phases": [
+     {
+      "name": "Phase 1 — The Brood Wakes",
+      "trigger": {
+       "type": "start"
+      },
+      "timeline": [
+       {
+        "t": 1,
+        "every": 2,
+        "ability": "end3_melee",
+        "target": "threatLeader"
+       },
+       {
+        "t": 9,
+        "every": 21,
+        "ability": "end3_ground",
+        "target": "none",
+        "count": 6,
+        "delay": 1.4
+       },
+       {
+        "t": 19,
+        "every": 24,
+        "ability": "end3_cleave",
+        "target": "threatLeader"
+       }
+      ]
+     },
+     {
+      "name": "Phase 2 — The Long Dark",
+      "trigger": {
+       "type": "hpBelow",
+       "pct": 62
+      },
+      "timeline": [
+       {
+        "t": 1,
+        "every": 2,
+        "ability": "end3_melee",
+        "target": "threatLeader"
+       },
+       {
+        "t": 8,
+        "every": 17.5,
+        "ability": "end3_ground",
+        "target": "none",
+        "count": 6,
+        "delay": 1.4
+       },
+       {
+        "t": 15,
+        "every": 20,
+        "ability": "end3_cleave",
+        "target": "threatLeader"
+       },
+       {
+        "t": 21,
+        "every": 21,
+        "ability": "end3_stack",
+        "target": "none"
+       },
+       {
+        "t": 29,
+        "every": 25,
+        "ability": "end3_soak",
+        "target": "none"
+       },
+       {
+        "t": 34,
+        "every": 36,
+        "ability": "end3_adds",
+        "target": "none"
+       }
+      ]
+     },
+     {
+      "name": "Phase 3 — The Long Dark",
+      "trigger": {
+       "type": "hpBelow",
+       "pct": 28
+      },
+      "timeline": [
+       {
+        "t": 1,
+        "every": 2,
+        "ability": "end3_melee",
+        "target": "threatLeader"
+       },
+       {
+        "t": 5,
+        "every": 14.5,
+        "ability": "end3_ground",
+        "target": "none",
+        "count": 6,
+        "delay": 1.4
+       },
+       {
+        "t": 15,
+        "every": 16.5,
+        "ability": "end3_cleave",
+        "target": "threatLeader"
+       },
+       {
+        "t": 24,
+        "every": 17,
+        "ability": "end3_stack",
+        "target": "none"
+       },
+       {
+        "t": 33,
+        "every": 20.5,
+        "ability": "end3_soak",
+        "target": "none"
+       },
+       {
+        "t": 38,
+        "every": 29,
+        "ability": "end3_adds",
+        "target": "none"
+       }
+      ]
+     }
+    ]
+   },
+   "abilities": {
+    "end3_melee": {
+     "id": "end3_melee",
+     "name": "Rift Claw",
+     "icon": "☄",
+     "cast": 0,
+     "gcd": 0,
+     "offGcd": true,
+     "cooldown": 0,
+     "cost": 0,
+     "targeting": "enemy",
+     "range": 1,
+     "requiresTargetInRange": true,
+     "onNoTargetText": "Shub-Niggurath finds nothing in reach and roars — UNOPPOSED!",
+     "onNoTarget": [
+      {
+       "type": "damage",
+       "target": "party",
+       "amount": 17802,
+       "school": "void",
+       "name": "Unopposed"
+      }
+     ],
+     "effects": [
+      {
+       "type": "damage",
+       "amount": 73114,
+       "school": "void"
+      }
+     ]
+    },
+    "end3_ground": {
+     "id": "end3_ground",
+     "cast": 0,
+     "gcd": 0,
+     "offGcd": true,
+     "cooldown": 0,
+     "cost": 0,
+     "name": "Collapsing Space",
+     "icon": "▲",
+     "targeting": "none",
+     "range": 5,
+     "effects": [
+      {
+       "type": "markCells",
+       "count": 6,
+       "delay": 1.4,
+       "damage": 203775,
+       "kind": "blast",
+       "name": "Collapsing Space"
+      }
+     ]
+    },
+    "end3_cleave": {
+     "id": "end3_cleave",
+     "cast": 1,
+     "gcd": 0,
+     "offGcd": true,
+     "cooldown": 0,
+     "cost": 0,
+     "name": "Entropy Sweep",
+     "icon": "⚔",
+     "targeting": "enemy",
+     "range": 2,
+     "effects": [
+      {
+       "type": "damage",
+       "target": "targetAndAdjacent",
+       "amount": 111815,
+       "school": "void"
+      },
+      {
+       "type": "aura",
+       "aura": "end3_debuff",
+       "target": "target"
+      }
+     ]
+    },
+    "end3_stack": {
+     "id": "end3_stack",
+     "cast": 1,
+     "gcd": 0,
+     "offGcd": true,
+     "cooldown": 0,
+     "cost": 0,
+     "name": "Gravity Well",
+     "icon": "⛓",
+     "targeting": "none",
+     "range": 5,
+     "effects": [
+      {
+       "type": "markRandomArea",
+       "delay": 5.5,
+       "kind": "split",
+       "damage": 229900,
+       "raidDamage": 83600,
+       "name": "Gravity Well"
+      }
+     ]
+    },
+    "end3_soak": {
+     "id": "end3_soak",
+     "cast": 1,
+     "gcd": 0,
+     "offGcd": true,
+     "cooldown": 0,
+     "cost": 0,
+     "name": "Singularity",
+     "icon": "◎",
+     "targeting": "none",
+     "range": 5,
+     "effects": [
+      {
+       "type": "markRandomArea",
+       "delay": 5.5,
+       "kind": "soak",
+       "minSoakers": 2,
+       "damage": 250800,
+       "raidDamage": 156750,
+       "name": "Singularity"
+      }
+     ]
+    },
+    "end3_adds": {
+     "id": "end3_adds",
+     "cast": 2,
+     "gcd": 0,
+     "offGcd": true,
+     "cooldown": 0,
+     "cost": 0,
+     "name": "Summon",
+     "icon": "☗",
+     "targeting": "none",
+     "range": 5,
+     "effects": [
+      {
+       "type": "summon",
+       "unit": "scrag",
+       "count": 3
+      }
+     ]
+    }
+   },
+   "auras": {
+    "end3_debuff": {
+     "name": "Unravelled",
+     "duration": 30,
+     "harmful": true,
+     "maxStacks": 3,
+     "modifiers": [
+      {
+       "stat": "damageTaken",
+       "op": "mult",
+       "value": 1.1258940229890868,
+       "perStack": true
+      }
+     ]
+    }
+   }
+  }
+ ],
+ "maps": [
+  "lq_end"
+ ]
+}

@@ -48,9 +48,37 @@ export async function loadContent() {
       content.ai[id] = await readJson(`ai/${id}.json`);
     }),
   ]);
+  await loadRaids(content);
   content.abilities = hydrateAbilities(content.abilities);
   content.auras = hydrateAuras(content.auras);
   return content;
+}
+
+// Raids are LibreQuake levels with a string of bosses in them. Generated
+// bosses carry their own abilities and auras (namespaced per boss by
+// tools/build-raids.mjs), folded in here before seconds become ticks so
+// they go through exactly the same conversion as everything else.
+async function loadRaids(content) {
+  content.raids = {};
+  let index = [];
+  try {
+    index = await readJson('raids/index.json');
+  } catch {
+    return;
+  }
+  const raids = await Promise.all(index.map((id) => readJson(`raids/${id}.json`)));
+  for (const raid of raids) {
+    for (const enc of raid.encounters) {
+      if (!enc.def) continue;
+      Object.assign(content.abilities, enc.abilities);
+      Object.assign(content.auras, enc.auras);
+      content.bosses[enc.boss] = enc.def;
+      delete enc.def;
+      delete enc.abilities;
+      delete enc.auras;
+    }
+    content.raids[raid.id] = raid;
+  }
 }
 
 /* ------------------------------------------------- seconds -> ticks */

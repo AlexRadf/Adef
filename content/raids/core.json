@@ -1,0 +1,263 @@
+{
+ "id": "core",
+ "name": "The Gloomliths",
+ "portal": "lq_e1m1",
+ "tier": 1,
+ "power": 10,
+ "tagline": "Standing stones over a lava wound. Something under them is still awake.",
+ "encounters": [
+  {
+   "boss": "core_1",
+   "map": "lq_e1m5",
+   "arena": 1,
+   "botsWin": 63,
+   "mechanics": [
+    "Lava Geyser — 8 tiles erupt 1.6s after they light up, every 14s",
+    "Magma Cleave — hits the tank and anyone next to them every 23s, stacking Scorched",
+    "Chain of Souls — every 31s one tile takes a huge hit split between whoever stands in it",
+    "Rune of Black Magic — interruptible cast every 41s; heals The Pale Enforcer for 5% and hits the party if it lands"
+   ],
+   "def": {
+    "id": "core_1",
+    "name": "Cindermaw",
+    "title": "Furnace Warden",
+    "seed": 1097,
+    "hp": 19200000,
+    "cell": 12,
+    "speed": 1.8,
+    "enrageAtSeconds": 260,
+    "theme": "lava",
+    "phases": [
+     {
+      "name": "Phase 1 — The Long Dark",
+      "trigger": {
+       "type": "start"
+      },
+      "timeline": [
+       {
+        "t": 1,
+        "every": 2.4,
+        "ability": "core1_melee",
+        "target": "threatLeader"
+       },
+       {
+        "t": 9,
+        "every": 14,
+        "ability": "core1_ground",
+        "target": "none",
+        "count": 8,
+        "delay": 1.6
+       },
+       {
+        "t": 19,
+        "every": 23,
+        "ability": "core1_cleave",
+        "target": "threatLeader"
+       },
+       {
+        "t": 24,
+        "every": 41,
+        "ability": "core1_channel",
+        "target": "self"
+       }
+      ]
+     },
+     {
+      "name": "Phase 2 — Nothing Held Back",
+      "trigger": {
+       "type": "hpBelow",
+       "pct": 45
+      },
+      "timeline": [
+       {
+        "t": 1,
+        "every": 2.4,
+        "ability": "core1_melee",
+        "target": "threatLeader"
+       },
+       {
+        "t": 7,
+        "every": 12,
+        "ability": "core1_ground",
+        "target": "none",
+        "count": 8,
+        "delay": 1.6
+       },
+       {
+        "t": 13,
+        "every": 19.5,
+        "ability": "core1_cleave",
+        "target": "threatLeader"
+       },
+       {
+        "t": 24,
+        "every": 26,
+        "ability": "core1_stack",
+        "target": "none"
+       },
+       {
+        "t": 32,
+        "every": 34.5,
+        "ability": "core1_channel",
+        "target": "self"
+       }
+      ]
+     }
+    ]
+   },
+   "abilities": {
+    "core1_melee": {
+     "id": "core1_melee",
+     "name": "Lava Swipe",
+     "icon": "☄",
+     "cast": 0,
+     "gcd": 0,
+     "offGcd": true,
+     "cooldown": 0,
+     "cost": 0,
+     "targeting": "enemy",
+     "range": 1,
+     "requiresTargetInRange": true,
+     "onNoTargetText": "The Pale Enforcer finds nothing in reach and roars — UNOPPOSED!",
+     "onNoTarget": [
+      {
+       "type": "damage",
+       "target": "party",
+       "amount": 31588,
+       "school": "lava",
+       "name": "Unopposed"
+      }
+     ],
+     "effects": [
+      {
+       "type": "damage",
+       "amount": 137631,
+       "school": "lava"
+      }
+     ]
+    },
+    "core1_ground": {
+     "id": "core1_ground",
+     "cast": 0,
+     "gcd": 0,
+     "offGcd": true,
+     "cooldown": 0,
+     "cost": 0,
+     "name": "Lava Geyser",
+     "icon": "▲",
+     "targeting": "none",
+     "range": 5,
+     "effects": [
+      {
+       "type": "markCells",
+       "count": 8,
+       "delay": 1.6,
+       "damage": 163578,
+       "kind": "blast",
+       "name": "Lava Geyser"
+      }
+     ]
+    },
+    "core1_cleave": {
+     "id": "core1_cleave",
+     "cast": 1,
+     "gcd": 0,
+     "offGcd": true,
+     "cooldown": 0,
+     "cost": 0,
+     "name": "Magma Cleave",
+     "icon": "⚔",
+     "targeting": "enemy",
+     "range": 2,
+     "effects": [
+      {
+       "type": "damage",
+       "target": "targetAndAdjacent",
+       "amount": 131991,
+       "school": "lava"
+      },
+      {
+       "type": "aura",
+       "aura": "core1_debuff",
+       "target": "target"
+      }
+     ]
+    },
+    "core1_stack": {
+     "id": "core1_stack",
+     "cast": 1,
+     "gcd": 0,
+     "offGcd": true,
+     "cooldown": 0,
+     "cost": 0,
+     "name": "Chain of Souls",
+     "icon": "⛓",
+     "targeting": "none",
+     "range": 5,
+     "effects": [
+      {
+       "type": "markRandomArea",
+       "delay": 5.5,
+       "kind": "split",
+       "damage": 361000,
+       "raidDamage": 124094,
+       "name": "Chain of Souls"
+      }
+     ]
+    },
+    "core1_channel": {
+     "id": "core1_channel",
+     "cast": 3.2,
+     "gcd": 0,
+     "offGcd": true,
+     "cooldown": 0,
+     "cost": 0,
+     "name": "Rune of Black Magic",
+     "icon": "☠",
+     "targeting": "self",
+     "range": 5,
+     "interruptible": true,
+     "effects": [
+      {
+       "type": "healPct",
+       "pct": 5,
+       "target": "self",
+       "name": "Rune of Black Magic"
+      },
+      {
+       "type": "damage",
+       "target": "party",
+       "amount": 107172,
+       "school": "lava",
+       "name": "Rune of Black Magic"
+      }
+     ]
+    }
+   },
+   "auras": {
+    "core1_debuff": {
+     "name": "Scorched",
+     "duration": 23,
+     "harmful": true,
+     "maxStacks": 3,
+     "modifiers": [
+      {
+       "stat": "damageTaken",
+       "op": "mult",
+       "value": 1.1437783868634144,
+       "perStack": true
+      }
+     ]
+    }
+   }
+  },
+  {
+   "boss": "chthon",
+   "map": "lq_e1m5",
+   "arena": 0
+  }
+ ],
+ "maps": [
+  "lq_e1m5"
+ ]
+}

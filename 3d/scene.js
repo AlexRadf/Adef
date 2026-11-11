@@ -18,6 +18,9 @@ export function createScene(canvas) {
   renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 
   const scene = new THREE.Scene();
+  // The procedural pit: floor, grout, walls, lava and the light under it.
+  // A raid swaps all of it for a real level (setLevel below).
+  const pitRoom = new THREE.Group();
   scene.background = new THREE.Color(0x0a0806);
   scene.fog = new THREE.Fog(0x1a1109, 34, 88);
 
@@ -38,7 +41,7 @@ export function createScene(canvas) {
   // The pit glows from underneath -- it is why the room is lit at all.
   const pit = new THREE.PointLight(0xff6a10, 40, 30, 2);
   pit.position.set(0, 0.7, 0);
-  scene.add(pit);
+  pitRoom.add(pit);
   // A cool fill from behind, so bodies read against the floor.
   const fill = new THREE.DirectionalLight(0x9fb4d0, 0.5);
   fill.position.set(-12, 9, -10);
@@ -50,7 +53,7 @@ export function createScene(canvas) {
   const floor = new THREE.Mesh(new THREE.BoxGeometry(ARENA, 1, ARENA), floorMat);
   floor.position.y = -0.5;
   floor.receiveShadow = true;
-  scene.add(floor);
+  pitRoom.add(floor);
 
   // Grouting, so a telegraph reads as "that tile" rather than "over there".
   const grout = new THREE.Group();
@@ -65,7 +68,7 @@ export function createScene(canvas) {
       grout.add(line);
     }
   }
-  scene.add(grout);
+  pitRoom.add(grout);
 
   /* ----------------------------------------------------------- walls */
 
@@ -76,7 +79,7 @@ export function createScene(canvas) {
     wall.rotation.y = (i * Math.PI) / 2;
     wall.receiveShadow = true;
     wall.castShadow = true;
-    scene.add(wall);
+    pitRoom.add(wall);
     // A band of lava at the base of each wall, because this is a pit.
     const lava = new THREE.Mesh(
       new THREE.BoxGeometry(ARENA + 4, 0.28, 0.3),
@@ -85,7 +88,65 @@ export function createScene(canvas) {
     lava.position.copy(wall.position).setY(0.1);
     lava.rotation.y = wall.rotation.y;
     lava.translateZ(1.1);
-    scene.add(lava);
+    pitRoom.add(lava);
+  }
+  scene.add(pitRoom);
+
+  /* ---------------------------------------------------- a real level */
+
+  // In a raid the encounter happens inside a LibreQuake level: the level
+  // is moved so the arena it was found in sits on the sim's room, and a
+  // ring of runes marks where the sim's room ends.
+  const barrier = new THREE.Group();
+  {
+    const mat = new THREE.MeshBasicMaterial({ color: 0x7fd8ff, transparent: true, opacity: 0.55, depthWrite: false });
+    const wallMat = new THREE.MeshBasicMaterial({ color: 0x5ab8ff, transparent: true, opacity: 0.07, side: THREE.DoubleSide, depthWrite: false });
+    for (let i = 0; i < 4; i++) {
+      const edge = new THREE.Mesh(new THREE.BoxGeometry(ARENA, 0.06, 0.12), mat);
+      edge.position.set(0, 0.05, -ARENA / 2).applyAxisAngle(new THREE.Vector3(0, 1, 0), (i * Math.PI) / 2);
+      edge.rotation.y = (i * Math.PI) / 2;
+      barrier.add(edge);
+      const sheet = new THREE.Mesh(new THREE.PlaneGeometry(ARENA, 2.4), wallMat);
+      sheet.position.set(0, 1.2, -ARENA / 2).applyAxisAngle(new THREE.Vector3(0, 1, 0), (i * Math.PI) / 2);
+      sheet.rotation.y = (i * Math.PI) / 2;
+      barrier.add(sheet);
+    }
+    for (let i = 0; i < 4; i++) {
+      const rune = new THREE.Mesh(new THREE.OctahedronGeometry(0.25, 0), new THREE.MeshBasicMaterial({ color: 0xbff0ff }));
+      rune.position.set((i & 1 ? 1 : -1) * (ARENA / 2), 1.6, (i & 2 ? 1 : -1) * (ARENA / 2));
+      barrier.add(rune);
+    }
+    barrier.visible = false;
+    scene.add(barrier);
+  }
+  let level = null;
+
+  function setLevel(next, arena) {
+    if (level && level.group.parent === scene) scene.remove(level.group);
+    level = next;
+    pitRoom.visible = !level;
+    barrier.visible = !!level;
+    if (!level) {
+      scene.background.setHex(0x0a0806);
+      scene.fog.color.setHex(0x1a1109);
+      scene.fog.near = 34;
+      scene.fog.far = 88;
+      return;
+    }
+    // Line the arena's floor up with y = 0, measured rather than trusted.
+    const at = arena.at;
+    level.group.position.set(-at[0], -at[1], -at[2]);
+    level.collider.setOffset(level.group.position);
+    const probe = level.collider.trace({ x: 0, y: 2, z: 0 }, { x: 0, y: -2, z: 0 }, [0.2, 0.05, 0.2]);
+    const floor = 2 - 4 * probe.fraction - 0.05;
+    if (probe.fraction < 1) level.group.position.y -= floor;
+    level.group.updateMatrixWorld(true);
+    level.collider.setOffset(level.group.position);
+    scene.add(level.group);
+    scene.background.setHex(0x000000);
+    scene.fog.color.setHex(0x050403);
+    scene.fog.near = 30;
+    scene.fog.far = 150;
   }
 
   /* ---------------------------------------------------------- actors */
@@ -127,6 +188,15 @@ export function createScene(canvas) {
     nose.position.set(0, boss ? height / 2 : height * 0.62, -(radius + (boss ? 0.5 : 0.25)));
     group.add(nose);
 
+    // A blob shadow: the level is lightmapped and does not take real ones.
+    const blob = new THREE.Mesh(
+      new THREE.CircleGeometry(radius * 1.1, 20),
+      new THREE.MeshBasicMaterial({ color: 0x000000, transparent: true, opacity: 0.45, depthWrite: false })
+    );
+    blob.rotation.x = -Math.PI / 2;
+    blob.position.y = 0.03;
+    group.add(blob);
+
     const ring = new THREE.Mesh(
       new THREE.RingGeometry(radius + 0.15, radius + 0.32, 24),
       new THREE.MeshBasicMaterial({ color: 0xe8c46a, side: THREE.DoubleSide, transparent: true, opacity: 0 })
@@ -156,9 +226,10 @@ export function createScene(canvas) {
     if (markPool[i]) return markPool[i];
     const mesh = new THREE.Mesh(
       new THREE.PlaneGeometry(1, 1),
-      new THREE.MeshBasicMaterial({ transparent: true, opacity: 0.75, depthWrite: false })
+      new THREE.MeshBasicMaterial({ transparent: true, opacity: 0.75, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -4 })
     );
     mesh.rotation.x = -Math.PI / 2;
+    mesh.renderOrder = 2;
     marks.add(mesh);
     markPool[i] = mesh;
     return mesh;
@@ -213,7 +284,7 @@ export function createScene(canvas) {
       const size = item.half * 2 * CELL;
       mesh.scale.set(size, size, 1);
       const at = toWorld(item);
-      mesh.position.set(at.x, 0.08, at.z);
+      mesh.position.set(at.x, 0.12, at.z);
       mesh.material.color.setHex(item.colour);
       // Tighter pulse as it gets closer to going off.
       const urgency = item.total ? 1 - Math.max(0, item.remaining) / item.total : 0.5;
@@ -274,6 +345,21 @@ export function createScene(canvas) {
     }
     paintGround(view, time);
     paintPickups(view, time);
+    if (level) {
+      level.tick(time);
+      barrier.children.forEach((c, i) => {
+        if (c.geometry.type === 'OctahedronGeometry') {
+          c.rotation.y = time * 1.5 + i;
+          c.position.y = 1.6 + Math.sin(time * 2 + i) * 0.15;
+        }
+      });
+    }
+  }
+
+  // Everything the sim put in the room, gone -- for a fresh encounter.
+  function clearActors() {
+    for (const actor of actors.values()) actorLayer.remove(actor.group);
+    actors.clear();
   }
 
   // Called once per sim tick so interpolation has somewhere to come from.
@@ -293,7 +379,7 @@ export function createScene(canvas) {
     camera.updateProjectionMatrix();
   }
 
-  return { renderer, scene, camera, paint, commit, resize, actors, actorFor };
+  return { renderer, scene, camera, paint, commit, resize, actors, actorFor, setLevel, clearActors, pitRoom, actorLayer, marks };
 }
 
 // Nameplates are canvas textures: cheap, crisp, and no font loading.

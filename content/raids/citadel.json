@@ -1,0 +1,666 @@
+{
+ "id": "citadel",
+ "name": "The Copper Citadel",
+ "portal": "lq_e4m1",
+ "tier": 4,
+ "power": 40,
+ "tagline": "The machine finished the fortress, then finished the people who ordered it.",
+ "encounters": [
+  {
+   "boss": "citadel_1",
+   "map": "lq_e4m5",
+   "arena": 1,
+   "botsWin": 55,
+   "mechanics": [
+    "Nailbed — 7 tiles erupt 1.4s after they light up, every 18s",
+    "Overclock the Works — interruptible cast every 33s; heals Shub-Niggurath for 5% and hits the party if it lands",
+    "Nail Fan — hits the tank and anyone next to them every 22s, stacking Punctured",
+    "Impaled — a dispellable curse every 40s that detonates on everyone nearby if it runs out"
+   ],
+   "def": {
+    "id": "citadel_1",
+    "name": "Foreman Nine",
+    "title": "Keeper of the Nailworks",
+    "seed": 4120,
+    "hp": 19000000,
+    "cell": 12,
+    "speed": 1.8,
+    "enrageAtSeconds": 271,
+    "theme": "nail",
+    "phases": [
+     {
+      "name": "Phase 1 — The Long Dark",
+      "trigger": {
+       "type": "start"
+      },
+      "timeline": [
+       {
+        "t": 1,
+        "every": 2.6,
+        "ability": "citadel1_melee",
+        "target": "threatLeader"
+       },
+       {
+        "t": 5,
+        "every": 18,
+        "ability": "citadel1_ground",
+        "target": "none",
+        "count": 7,
+        "delay": 1.4
+       },
+       {
+        "t": 11,
+        "every": 33,
+        "ability": "citadel1_channel",
+        "target": "self"
+       },
+       {
+        "t": 18,
+        "every": 22,
+        "ability": "citadel1_cleave",
+        "target": "threatLeader"
+       },
+       {
+        "t": 26,
+        "every": 40,
+        "ability": "citadel1_mark",
+        "target": "randomPlayer"
+       }
+      ]
+     },
+     {
+      "name": "Phase 2 — It Notices You",
+      "trigger": {
+       "type": "hpBelow",
+       "pct": 45
+      },
+      "timeline": [
+       {
+        "t": 1,
+        "every": 2.6,
+        "ability": "citadel1_melee",
+        "target": "threatLeader"
+       },
+       {
+        "t": 8,
+        "every": 15,
+        "ability": "citadel1_ground",
+        "target": "none",
+        "count": 7,
+        "delay": 1.4
+       },
+       {
+        "t": 14,
+        "every": 27.5,
+        "ability": "citadel1_channel",
+        "target": "self"
+       },
+       {
+        "t": 21,
+        "every": 18.5,
+        "ability": "citadel1_cleave",
+        "target": "threatLeader"
+       },
+       {
+        "t": 26,
+        "every": 33.5,
+        "ability": "citadel1_mark",
+        "target": "randomPlayer"
+       }
+      ]
+     }
+    ]
+   },
+   "abilities": {
+    "citadel1_melee": {
+     "id": "citadel1_melee",
+     "name": "Rending Nails",
+     "icon": "☄",
+     "cast": 0,
+     "gcd": 0,
+     "offGcd": true,
+     "cooldown": 0,
+     "cost": 0,
+     "targeting": "enemy",
+     "range": 1,
+     "requiresTargetInRange": true,
+     "onNoTargetText": "Shub-Niggurath finds nothing in reach and roars — UNOPPOSED!",
+     "onNoTarget": [
+      {
+       "type": "damage",
+       "target": "party",
+       "amount": 23985,
+       "school": "nail",
+       "name": "Unopposed"
+      }
+     ],
+     "effects": [
+      {
+       "type": "damage",
+       "amount": 103651,
+       "school": "nail"
+      }
+     ]
+    },
+    "citadel1_ground": {
+     "id": "citadel1_ground",
+     "cast": 0,
+     "gcd": 0,
+     "offGcd": true,
+     "cooldown": 0,
+     "cost": 0,
+     "name": "Nailbed",
+     "icon": "▲",
+     "targeting": "none",
+     "range": 5,
+     "effects": [
+      {
+       "type": "markCells",
+       "count": 7,
+       "delay": 1.4,
+       "damage": 337920,
+       "kind": "blast",
+       "name": "Nailbed"
+      }
+     ]
+    },
+    "citadel1_channel": {
+     "id": "citadel1_channel",
+     "cast": 3.4,
+     "gcd": 0,
+     "offGcd": true,
+     "cooldown": 0,
+     "cost": 0,
+     "name": "Overclock the Works",
+     "icon": "☠",
+     "targeting": "self",
+     "range": 5,
+     "interruptible": true,
+     "effects": [
+      {
+       "type": "healPct",
+       "pct": 5,
+       "target": "self",
+       "name": "Overclock the Works"
+      },
+      {
+       "type": "damage",
+       "target": "party",
+       "amount": 133760,
+       "school": "nail",
+       "name": "Overclock the Works"
+      }
+     ]
+    },
+    "citadel1_cleave": {
+     "id": "citadel1_cleave",
+     "cast": 1,
+     "gcd": 0,
+     "offGcd": true,
+     "cooldown": 0,
+     "cost": 0,
+     "name": "Nail Fan",
+     "icon": "⚔",
+     "targeting": "enemy",
+     "range": 2,
+     "effects": [
+      {
+       "type": "damage",
+       "target": "targetAndAdjacent",
+       "amount": 202752,
+       "school": "nail"
+      },
+      {
+       "type": "aura",
+       "aura": "citadel1_debuff",
+       "target": "target"
+      }
+     ]
+    },
+    "citadel1_mark": {
+     "id": "citadel1_mark",
+     "cast": 1.5,
+     "gcd": 0,
+     "offGcd": true,
+     "cooldown": 0,
+     "cost": 0,
+     "name": "Impaled",
+     "icon": "◈",
+     "targeting": "enemy",
+     "range": 5,
+     "effects": [
+      {
+       "type": "aura",
+       "aura": "citadel1_mark_aura",
+       "target": "target"
+      }
+     ]
+    }
+   },
+   "auras": {
+    "citadel1_debuff": {
+     "name": "Punctured",
+     "duration": 31,
+     "harmful": true,
+     "maxStacks": 3,
+     "modifiers": [
+      {
+       "stat": "damageTaken",
+       "op": "mult",
+       "value": 1.1353050160687417,
+       "perStack": true
+      }
+     ]
+    },
+    "citadel1_mark_aura": {
+     "name": "Impaled",
+     "duration": 9,
+     "harmful": true,
+     "dispelType": "magic",
+     "periodic": {
+      "interval": 1,
+      "effect": {
+       "type": "damage",
+       "amount": 33792,
+       "school": "nail"
+      }
+     },
+     "modifiers": [],
+     "onExpire": [
+      {
+       "type": "damage",
+       "target": "target",
+       "amount": 204160,
+       "school": "nail",
+       "name": "Impaled Collapse"
+      },
+      {
+       "type": "damage",
+       "target": "nearTarget",
+       "amount": 373120,
+       "school": "nail",
+       "name": "Impaled Collapse"
+      }
+     ],
+     "onDispel": [
+      {
+       "type": "damage",
+       "target": "target",
+       "amount": 42240,
+       "school": "nail",
+       "name": "Impaled Backlash"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "boss": "citadel_2",
+   "map": "lq_e4m5",
+   "arena": 0,
+   "botsWin": 33,
+   "mechanics": [
+    "Tesla Bloom — 5 tiles erupt 1.7s after they light up, every 20s",
+    "Chain Lightning — hits the tank and anyone next to them every 24s, stacking Overloaded",
+    "Capacitor — every 35s a tile needs two bodies in it or the raid eats the hit",
+    "Charge the Core — interruptible cast every 40s; heals Sepulchre for 4% and hits the party if it lands",
+    "Grounding Rod — a dispellable curse every 43s that detonates on everyone nearby if it runs out"
+   ],
+   "def": {
+    "id": "citadel_2",
+    "name": "The Copper Regent",
+    "title": "Will of the Machine",
+    "seed": 4408,
+    "hp": 20800000,
+    "cell": 12,
+    "speed": 1.8,
+    "enrageAtSeconds": 276,
+    "theme": "shock",
+    "phases": [
+     {
+      "name": "Phase 1 — Nothing Held Back",
+      "trigger": {
+       "type": "start"
+      },
+      "timeline": [
+       {
+        "t": 1,
+        "every": 1.8,
+        "ability": "citadel2_melee",
+        "target": "threatLeader"
+       },
+       {
+        "t": 5,
+        "every": 20,
+        "ability": "citadel2_ground",
+        "target": "none",
+        "count": 5,
+        "delay": 1.7
+       },
+       {
+        "t": 11,
+        "every": 24,
+        "ability": "citadel2_cleave",
+        "target": "threatLeader"
+       },
+       {
+        "t": 17,
+        "every": 40,
+        "ability": "citadel2_channel",
+        "target": "self"
+       },
+       {
+        "t": 27,
+        "every": 43,
+        "ability": "citadel2_mark",
+        "target": "randomPlayer"
+       }
+      ]
+     },
+     {
+      "name": "Phase 2 — The Pit Stirs",
+      "trigger": {
+       "type": "hpBelow",
+       "pct": 62
+      },
+      "timeline": [
+       {
+        "t": 1,
+        "every": 1.8,
+        "ability": "citadel2_melee",
+        "target": "threatLeader"
+       },
+       {
+        "t": 10,
+        "every": 17,
+        "ability": "citadel2_ground",
+        "target": "none",
+        "count": 5,
+        "delay": 1.7
+       },
+       {
+        "t": 16,
+        "every": 20,
+        "ability": "citadel2_cleave",
+        "target": "threatLeader"
+       },
+       {
+        "t": 26,
+        "every": 29.5,
+        "ability": "citadel2_soak",
+        "target": "none"
+       },
+       {
+        "t": 37,
+        "every": 33.5,
+        "ability": "citadel2_channel",
+        "target": "self"
+       },
+       {
+        "t": 42,
+        "every": 36,
+        "ability": "citadel2_mark",
+        "target": "randomPlayer"
+       }
+      ]
+     },
+     {
+      "name": "Phase 3 — The Long Dark",
+      "trigger": {
+       "type": "hpBelow",
+       "pct": 28
+      },
+      "timeline": [
+       {
+        "t": 1,
+        "every": 1.8,
+        "ability": "citadel2_melee",
+        "target": "threatLeader"
+       },
+       {
+        "t": 9,
+        "every": 13.5,
+        "ability": "citadel2_ground",
+        "target": "none",
+        "count": 5,
+        "delay": 1.7
+       },
+       {
+        "t": 14,
+        "every": 16.5,
+        "ability": "citadel2_cleave",
+        "target": "threatLeader"
+       },
+       {
+        "t": 24,
+        "every": 24,
+        "ability": "citadel2_soak",
+        "target": "none"
+       },
+       {
+        "t": 33,
+        "every": 27,
+        "ability": "citadel2_channel",
+        "target": "self"
+       },
+       {
+        "t": 40,
+        "every": 29,
+        "ability": "citadel2_mark",
+        "target": "randomPlayer"
+       }
+      ]
+     }
+    ]
+   },
+   "abilities": {
+    "citadel2_melee": {
+     "id": "citadel2_melee",
+     "name": "Arc Lash",
+     "icon": "☄",
+     "cast": 0,
+     "gcd": 0,
+     "offGcd": true,
+     "cooldown": 0,
+     "cost": 0,
+     "targeting": "enemy",
+     "range": 1,
+     "requiresTargetInRange": true,
+     "onNoTargetText": "Sepulchre finds nothing in reach and roars — UNOPPOSED!",
+     "onNoTarget": [
+      {
+       "type": "damage",
+       "target": "party",
+       "amount": 40439,
+       "school": "shock",
+       "name": "Unopposed"
+      }
+     ],
+     "effects": [
+      {
+       "type": "damage",
+       "amount": 137204,
+       "school": "shock"
+      }
+     ]
+    },
+    "citadel2_ground": {
+     "id": "citadel2_ground",
+     "cast": 0,
+     "gcd": 0,
+     "offGcd": true,
+     "cooldown": 0,
+     "cost": 0,
+     "name": "Tesla Bloom",
+     "icon": "▲",
+     "targeting": "none",
+     "range": 5,
+     "effects": [
+      {
+       "type": "markCells",
+       "count": 5,
+       "delay": 1.7,
+       "damage": 281629,
+       "kind": "blast",
+       "name": "Tesla Bloom"
+      }
+     ]
+    },
+    "citadel2_cleave": {
+     "id": "citadel2_cleave",
+     "cast": 1,
+     "gcd": 0,
+     "offGcd": true,
+     "cooldown": 0,
+     "cost": 0,
+     "name": "Chain Lightning",
+     "icon": "⚔",
+     "targeting": "enemy",
+     "range": 2,
+     "effects": [
+      {
+       "type": "damage",
+       "target": "targetAndAdjacent",
+       "amount": 164645,
+       "school": "shock"
+      },
+      {
+       "type": "aura",
+       "aura": "citadel2_debuff",
+       "target": "target"
+      }
+     ]
+    },
+    "citadel2_soak": {
+     "id": "citadel2_soak",
+     "cast": 1,
+     "gcd": 0,
+     "offGcd": true,
+     "cooldown": 0,
+     "cost": 0,
+     "name": "Capacitor",
+     "icon": "◎",
+     "targeting": "none",
+     "range": 5,
+     "effects": [
+      {
+       "type": "markRandomArea",
+       "delay": 5,
+       "kind": "soak",
+       "minSoakers": 2,
+       "damage": 433275,
+       "raidDamage": 274408,
+       "name": "Capacitor"
+      }
+     ]
+    },
+    "citadel2_channel": {
+     "id": "citadel2_channel",
+     "cast": 3,
+     "gcd": 0,
+     "offGcd": true,
+     "cooldown": 0,
+     "cost": 0,
+     "name": "Charge the Core",
+     "icon": "☠",
+     "targeting": "self",
+     "range": 5,
+     "interruptible": true,
+     "effects": [
+      {
+       "type": "healPct",
+       "pct": 4,
+       "target": "self",
+       "name": "Charge the Core"
+      },
+      {
+       "type": "damage",
+       "target": "party",
+       "amount": 122761,
+       "school": "shock",
+       "name": "Charge the Core"
+      }
+     ]
+    },
+    "citadel2_mark": {
+     "id": "citadel2_mark",
+     "cast": 1.5,
+     "gcd": 0,
+     "offGcd": true,
+     "cooldown": 0,
+     "cost": 0,
+     "name": "Grounding Rod",
+     "icon": "◈",
+     "targeting": "enemy",
+     "range": 5,
+     "effects": [
+      {
+       "type": "aura",
+       "aura": "citadel2_mark_aura",
+       "target": "target"
+      }
+     ]
+    }
+   },
+   "auras": {
+    "citadel2_debuff": {
+     "name": "Overloaded",
+     "duration": 26,
+     "harmful": true,
+     "maxStacks": 3,
+     "modifiers": [
+      {
+       "stat": "damageTaken",
+       "op": "mult",
+       "value": 1.1492862019804306,
+       "perStack": true
+      }
+     ]
+    },
+    "citadel2_mark_aura": {
+     "name": "Grounding Rod",
+     "duration": 13,
+     "harmful": true,
+     "dispelType": "magic",
+     "periodic": {
+      "interval": 1,
+      "effect": {
+       "type": "damage",
+       "amount": 27441,
+       "school": "shock"
+      }
+     },
+     "modifiers": [],
+     "onExpire": [
+      {
+       "type": "damage",
+       "target": "target",
+       "amount": 158868,
+       "school": "shock",
+       "name": "Grounding Rod Collapse"
+      },
+      {
+       "type": "damage",
+       "target": "nearTarget",
+       "amount": 296071,
+       "school": "shock",
+       "name": "Grounding Rod Collapse"
+      }
+     ],
+     "onDispel": [
+      {
+       "type": "damage",
+       "target": "target",
+       "amount": 36106,
+       "school": "shock",
+       "name": "Grounding Rod Backlash"
+      }
+     ]
+    }
+   }
+  }
+ ],
+ "maps": [
+  "lq_e4m5"
+ ]
+}
