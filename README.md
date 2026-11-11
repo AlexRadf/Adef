@@ -80,7 +80,7 @@ npm run raids        # regenerate and retune every raid (~1 min); deterministic
 node sim.js --boss end_3 --runs 200
 ```
 
-Regenerating overwrites the `rescale.mjs` corrections, which were Cindermaw-free: Foreman Nine
+Regenerating overwrites the `rescale.mjs` corrections, which are: Foreman Nine
 ×1.06, Mother Maggot ×0.97, Warden of Seconds ×0.94 and The Last Slipgate ×1.08 on their damage.
 Win rate falls off a cliff around the right lethality (×1.3 took Foreman Nine from 77% to 2%),
 so nudge in steps of a few percent.
