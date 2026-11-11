@@ -40,6 +40,7 @@ export function createHub({ scene, camera, rig, controls, level, progress, raids
   level.group.position.set(0, 0, 0);
   level.group.updateMatrixWorld(true);
   level.collider.setOffset(level.group.position);
+  level.setBrightness(1.2);
 
   const start = meta.things.find((t) => t.cls === 'info_player_start');
   // Entity origins are the middle of the hull; feet are 24 units lower.

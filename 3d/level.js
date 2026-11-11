@@ -87,7 +87,23 @@ const SKY_FRAG = /* glsl */ `
 const loader = new THREE.TextureLoader();
 const textures = new Map();
 
-function texture(name, { repeat = true, nearest = true } = {}) {
+// A texture the level names but LibreQuake does not ship: draw the
+// classic purple-and-black checker rather than ask the server for it.
+function checker() {
+  const data = new Uint8Array(16 * 16 * 4);
+  for (let i = 0; i < 256; i++) {
+    const on = ((i % 16) >> 3) ^ ((i >> 4) >> 3);
+    data.set(on ? [160, 40, 160, 255] : [20, 10, 20, 255], i * 4);
+  }
+  const t = new THREE.DataTexture(data, 16, 16);
+  t.wrapS = t.wrapT = THREE.RepeatWrapping;
+  t.magFilter = THREE.NearestFilter;
+  t.needsUpdate = true;
+  return t;
+}
+
+function texture(name, { repeat = true, nearest = true, missing = false } = {}) {
+  if (missing) return checker();
   const key = `${name}|${repeat}|${nearest}`;
   if (textures.has(key)) return textures.get(key);
   const t = loader.load(new URL(`textures/${name}.png`, ROOT).href);
@@ -155,7 +171,7 @@ export async function loadLevel(id) {
       material = new THREE.ShaderMaterial({
         uniforms: {
           ...THREE.UniformsUtils.clone(THREE.UniformsLib.fog),
-          map: { value: texture(tex.name) },
+          map: { value: texture(tex.name, { missing: tex.missing }) },
           lightmap: { value: lightmap },
           cutout: { value: tex.kind === 'cutout' ? 1 : 0 },
           brightness: { value: 1 },

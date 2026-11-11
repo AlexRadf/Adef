@@ -34,7 +34,7 @@ export const RAIDS = [
     power: 10,
     tagline: 'Standing stones over a lava wound. Something under them is still awake.',
     encounters: [
-      { name: 'Cindermaw', title: 'Furnace Warden', theme: 'lava', arena: 1, band: [0.48, 0.7] },
+      { name: 'Cindermaw', title: 'Furnace Warden', theme: 'lava', arena: 3, band: [0.48, 0.7] },
       { boss: 'chthon', arena: 0 },
     ],
   },
@@ -53,15 +53,15 @@ export const RAIDS = [
   },
   {
     id: 'corpse',
-    name: 'Holy Bloated Corpse',
-    map: 'lq_e3m6',
+    name: 'The Fleshworks',
+    map: 'lq_e2m5',
     portal: 'lq_e3m1',
     tier: 3,
     power: 30,
-    tagline: 'A cathedral that sank into the earth and kept praying on the way down.',
+    tagline: 'The parasites built a cathedral out of what they ate. It is still digesting.',
     encounters: [
       { name: 'The Drowned Deacon', title: 'Last of the Choir', theme: 'void', arena: 2, band: [0.42, 0.64] },
-      { name: 'Saint Bloat', title: 'The Unburied', theme: 'plague', arena: 0, band: [0.32, 0.52] },
+      { name: 'Saint Bloat', title: 'The Unburied', theme: 'plague', arena: 1, band: [0.32, 0.52] },
     ],
   },
   {
@@ -80,15 +80,15 @@ export const RAIDS = [
   {
     id: 'end',
     name: 'At the End of Time',
-    map: 'lq_end',
+    map: 'lq_e1m5',
     portal: 'lq_end',
     tier: 5,
     power: 50,
-    tagline: 'Every slipgate leads here eventually. Nothing leaves.',
+    tagline: 'Every slipgate leads here eventually: through the rooms of every level they ever opened. Nothing leaves.',
     encounters: [
-      { name: 'Warden of Seconds', title: 'Who Counts Down', theme: 'shock', arena: 2, band: [0.38, 0.6] },
-      { name: 'The Hour Eater', title: 'Hunger Between Moments', theme: 'void', arena: 1, band: [0.32, 0.52] },
-      { name: 'The Last Slipgate', title: 'Door Without a Far Side', theme: 'void', arena: 0, band: [0.26, 0.46] },
+      { name: 'Warden of Seconds', title: 'Who Counts Down', theme: 'shock', arena: 1, band: [0.38, 0.6] },
+      { name: 'The Hour Eater', title: 'Hunger Between Moments', theme: 'void', map: 'lq_e4m5', arena: 2, band: [0.32, 0.52] },
+      { name: 'The Last Slipgate', title: 'Door Without a Far Side', theme: 'void', map: 'lq_e4m3', arena: 0, band: [0.26, 0.46] },
     ],
   },
 ];

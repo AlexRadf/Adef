@@ -4,19 +4,19 @@
  "portal": "lq_end",
  "tier": 5,
  "power": 50,
- "tagline": "Every slipgate leads here eventually. Nothing leaves.",
+ "tagline": "Every slipgate leads here eventually: through the rooms of every level they ever opened. Nothing leaves.",
  "encounters": [
   {
    "boss": "end_1",
-   "map": "lq_end",
-   "arena": 2,
-   "botsWin": 45,
+   "map": "lq_e1m5",
+   "arena": 1,
+   "botsWin": 57,
    "mechanics": [
-    "Tesla Bloom — 7 tiles erupt 2s after they light up, every 23s",
-    "Capacitor — every 35s a tile needs two bodies in it or the raid eats the hit",
-    "Grounding Rod — a dispellable curse every 39s that detonates on everyone nearby if it runs out",
-    "Conduit — every 25s one tile takes a huge hit split between whoever stands in it",
-    "Charge the Core — interruptible cast every 40s; heals Shub-Niggurath for 5% and hits the party if it lands"
+    "Tesla Bloom \u2014 7 tiles erupt 2s after they light up, every 23s",
+    "Capacitor \u2014 every 35s a tile needs two bodies in it or the raid eats the hit",
+    "Grounding Rod \u2014 a dispellable curse every 39s that detonates on everyone nearby if it runs out",
+    "Conduit \u2014 every 25s one tile takes a huge hit split between whoever stands in it",
+    "Charge the Core \u2014 interruptible cast every 40s; heals Shub-Niggurath for 5% and hits the party if it lands"
    ],
    "def": {
     "id": "end_1",
@@ -30,7 +30,7 @@
     "theme": "shock",
     "phases": [
      {
-      "name": "Phase 1 — Nothing Held Back",
+      "name": "Phase 1 \u2014 Nothing Held Back",
       "trigger": {
        "type": "start"
       },
@@ -64,7 +64,7 @@
       ]
      },
      {
-      "name": "Phase 2 — It Notices You",
+      "name": "Phase 2 \u2014 It Notices You",
       "trigger": {
        "type": "hpBelow",
        "pct": 45
@@ -116,7 +116,7 @@
     "end1_melee": {
      "id": "end1_melee",
      "name": "Arc Lash",
-     "icon": "☄",
+     "icon": "\u2604",
      "cast": 0,
      "gcd": 0,
      "offGcd": true,
@@ -125,12 +125,12 @@
      "targeting": "enemy",
      "range": 1,
      "requiresTargetInRange": true,
-     "onNoTargetText": "Shub-Niggurath finds nothing in reach and roars — UNOPPOSED!",
+     "onNoTargetText": "Shub-Niggurath finds nothing in reach and roars \u2014 UNOPPOSED!",
      "onNoTarget": [
       {
        "type": "damage",
        "target": "party",
-       "amount": 47502,
+       "amount": 44657,
        "school": "shock",
        "name": "Unopposed"
       }
@@ -138,7 +138,7 @@
      "effects": [
       {
        "type": "damage",
-       "amount": 215456,
+       "amount": 202551,
        "school": "shock"
       }
      ]
@@ -151,7 +151,7 @@
      "cooldown": 0,
      "cost": 0,
      "name": "Tesla Bloom",
-     "icon": "▲",
+     "icon": "\u25b2",
      "targeting": "none",
      "range": 5,
      "effects": [
@@ -159,7 +159,7 @@
        "type": "markCells",
        "count": 7,
        "delay": 2,
-       "damage": 347783,
+       "damage": 326951,
        "kind": "blast",
        "name": "Tesla Bloom"
       }
@@ -173,7 +173,7 @@
      "cooldown": 0,
      "cost": 0,
      "name": "Capacitor",
-     "icon": "◎",
+     "icon": "\u25ce",
      "targeting": "none",
      "range": 5,
      "effects": [
@@ -182,8 +182,8 @@
        "delay": 5,
        "kind": "soak",
        "minSoakers": 2,
-       "damage": 458055,
-       "raidDamage": 288405,
+       "damage": 430618,
+       "raidDamage": 271129,
        "name": "Capacitor"
       }
      ]
@@ -196,7 +196,7 @@
      "cooldown": 0,
      "cost": 0,
      "name": "Grounding Rod",
-     "icon": "◈",
+     "icon": "\u25c8",
      "targeting": "enemy",
      "range": 5,
      "effects": [
@@ -215,7 +215,7 @@
      "cooldown": 0,
      "cost": 0,
      "name": "Conduit",
-     "icon": "⛓",
+     "icon": "\u26d3",
      "targeting": "none",
      "range": 5,
      "effects": [
@@ -223,8 +223,8 @@
        "type": "markRandomArea",
        "delay": 5,
        "kind": "split",
-       "damage": 373230,
-       "raidDamage": 135720,
+       "damage": 350874,
+       "raidDamage": 127590,
        "name": "Conduit"
       }
      ]
@@ -237,7 +237,7 @@
      "cooldown": 0,
      "cost": 0,
      "name": "Charge the Core",
-     "icon": "☠",
+     "icon": "\u2620",
      "targeting": "self",
      "range": 5,
      "interruptible": true,
@@ -251,7 +251,7 @@
       {
        "type": "damage",
        "target": "party",
-       "amount": 135720,
+       "amount": 127590,
        "school": "shock",
        "name": "Charge the Core"
       }
@@ -282,7 +282,7 @@
       "interval": 1,
       "effect": {
        "type": "damage",
-       "amount": 27144,
+       "amount": 25518,
        "school": "shock"
       }
      },
@@ -291,14 +291,14 @@
       {
        "type": "damage",
        "target": "target",
-       "amount": 161168,
+       "amount": 151514,
        "school": "shock",
        "name": "Grounding Rod Collapse"
       },
       {
        "type": "damage",
        "target": "nearTarget",
-       "amount": 288405,
+       "amount": 271129,
        "school": "shock",
        "name": "Grounding Rod Collapse"
       }
@@ -307,24 +307,25 @@
       {
        "type": "damage",
        "target": "target",
-       "amount": 33930,
+       "amount": 31898,
        "school": "shock",
        "name": "Grounding Rod Backlash"
       }
      ]
     }
-   }
+   },
+   "damageScale": 0.94
   },
   {
    "boss": "end_2",
-   "map": "lq_end",
-   "arena": 1,
-   "botsWin": 30,
+   "map": "lq_e4m5",
+   "arena": 2,
+   "botsWin": 31,
    "mechanics": [
-    "Collapsing Space — 6 tiles erupt 1.3s after they light up, every 18s",
-    "Singularity — every 31s a tile needs two bodies in it or the raid eats the hit",
+    "Collapsing Space \u2014 6 tiles erupt 1.3s after they light up, every 18s",
+    "Singularity \u2014 every 31s a tile needs two bodies in it or the raid eats the hit",
     "Summons 3 Scrags every 45s",
-    "Entropy Sweep — hits the tank and anyone next to them every 21s, stacking Unravelled"
+    "Entropy Sweep \u2014 hits the tank and anyone next to them every 21s, stacking Unravelled"
    ],
    "def": {
     "id": "end_2",
@@ -338,7 +339,7 @@
     "theme": "void",
     "phases": [
      {
-      "name": "Phase 1 — The Brood Wakes",
+      "name": "Phase 1 \u2014 The Brood Wakes",
       "trigger": {
        "type": "start"
       },
@@ -366,7 +367,7 @@
       ]
      },
      {
-      "name": "Phase 2 — The Long Dark",
+      "name": "Phase 2 \u2014 The Long Dark",
       "trigger": {
        "type": "hpBelow",
        "pct": 45
@@ -412,7 +413,7 @@
     "end2_melee": {
      "id": "end2_melee",
      "name": "Rift Claw",
-     "icon": "☄",
+     "icon": "\u2604",
      "cast": 0,
      "gcd": 0,
      "offGcd": true,
@@ -421,7 +422,7 @@
      "targeting": "enemy",
      "range": 1,
      "requiresTargetInRange": true,
-     "onNoTargetText": "Gorehound finds nothing in reach and roars — UNOPPOSED!",
+     "onNoTargetText": "Gorehound finds nothing in reach and roars \u2014 UNOPPOSED!",
      "onNoTarget": [
       {
        "type": "damage",
@@ -447,7 +448,7 @@
      "cooldown": 0,
      "cost": 0,
      "name": "Collapsing Space",
-     "icon": "▲",
+     "icon": "\u25b2",
      "targeting": "none",
      "range": 5,
      "effects": [
@@ -469,7 +470,7 @@
      "cooldown": 0,
      "cost": 0,
      "name": "Singularity",
-     "icon": "◎",
+     "icon": "\u25ce",
      "targeting": "none",
      "range": 5,
      "effects": [
@@ -492,7 +493,7 @@
      "cooldown": 0,
      "cost": 0,
      "name": "Summon",
-     "icon": "☗",
+     "icon": "\u2617",
      "targeting": "none",
      "range": 5,
      "effects": [
@@ -511,7 +512,7 @@
      "cooldown": 0,
      "cost": 0,
      "name": "Entropy Sweep",
-     "icon": "⚔",
+     "icon": "\u2694",
      "targeting": "enemy",
      "range": 2,
      "effects": [
@@ -548,14 +549,14 @@
   },
   {
    "boss": "end_3",
-   "map": "lq_end",
+   "map": "lq_e4m3",
    "arena": 0,
-   "botsWin": 43,
+   "botsWin": 27,
    "mechanics": [
-    "Collapsing Space — 6 tiles erupt 1.4s after they light up, every 21s",
-    "Entropy Sweep — hits the tank and anyone next to them every 24s, stacking Unravelled",
-    "Gravity Well — every 25s one tile takes a huge hit split between whoever stands in it",
-    "Singularity — every 30s a tile needs two bodies in it or the raid eats the hit",
+    "Collapsing Space \u2014 6 tiles erupt 1.4s after they light up, every 21s",
+    "Entropy Sweep \u2014 hits the tank and anyone next to them every 24s, stacking Unravelled",
+    "Gravity Well \u2014 every 25s one tile takes a huge hit split between whoever stands in it",
+    "Singularity \u2014 every 30s a tile needs two bodies in it or the raid eats the hit",
     "Summons 3 Scrags every 43s"
    ],
    "def": {
@@ -570,7 +571,7 @@
     "theme": "void",
     "phases": [
      {
-      "name": "Phase 1 — The Brood Wakes",
+      "name": "Phase 1 \u2014 The Brood Wakes",
       "trigger": {
        "type": "start"
       },
@@ -598,7 +599,7 @@
       ]
      },
      {
-      "name": "Phase 2 — The Long Dark",
+      "name": "Phase 2 \u2014 The Long Dark",
       "trigger": {
        "type": "hpBelow",
        "pct": 62
@@ -645,7 +646,7 @@
       ]
      },
      {
-      "name": "Phase 3 — The Long Dark",
+      "name": "Phase 3 \u2014 The Long Dark",
       "trigger": {
        "type": "hpBelow",
        "pct": 28
@@ -697,7 +698,7 @@
     "end3_melee": {
      "id": "end3_melee",
      "name": "Rift Claw",
-     "icon": "☄",
+     "icon": "\u2604",
      "cast": 0,
      "gcd": 0,
      "offGcd": true,
@@ -706,12 +707,12 @@
      "targeting": "enemy",
      "range": 1,
      "requiresTargetInRange": true,
-     "onNoTargetText": "Shub-Niggurath finds nothing in reach and roars — UNOPPOSED!",
+     "onNoTargetText": "Shub-Niggurath finds nothing in reach and roars \u2014 UNOPPOSED!",
      "onNoTarget": [
       {
        "type": "damage",
        "target": "party",
-       "amount": 17802,
+       "amount": 19227,
        "school": "void",
        "name": "Unopposed"
       }
@@ -719,7 +720,7 @@
      "effects": [
       {
        "type": "damage",
-       "amount": 73114,
+       "amount": 78964,
        "school": "void"
       }
      ]
@@ -732,7 +733,7 @@
      "cooldown": 0,
      "cost": 0,
      "name": "Collapsing Space",
-     "icon": "▲",
+     "icon": "\u25b2",
      "targeting": "none",
      "range": 5,
      "effects": [
@@ -740,7 +741,7 @@
        "type": "markCells",
        "count": 6,
        "delay": 1.4,
-       "damage": 203775,
+       "damage": 220077,
        "kind": "blast",
        "name": "Collapsing Space"
       }
@@ -754,14 +755,14 @@
      "cooldown": 0,
      "cost": 0,
      "name": "Entropy Sweep",
-     "icon": "⚔",
+     "icon": "\u2694",
      "targeting": "enemy",
      "range": 2,
      "effects": [
       {
        "type": "damage",
        "target": "targetAndAdjacent",
-       "amount": 111815,
+       "amount": 120760,
        "school": "void"
       },
       {
@@ -779,7 +780,7 @@
      "cooldown": 0,
      "cost": 0,
      "name": "Gravity Well",
-     "icon": "⛓",
+     "icon": "\u26d3",
      "targeting": "none",
      "range": 5,
      "effects": [
@@ -787,8 +788,8 @@
        "type": "markRandomArea",
        "delay": 5.5,
        "kind": "split",
-       "damage": 229900,
-       "raidDamage": 83600,
+       "damage": 248292,
+       "raidDamage": 90288,
        "name": "Gravity Well"
       }
      ]
@@ -801,7 +802,7 @@
      "cooldown": 0,
      "cost": 0,
      "name": "Singularity",
-     "icon": "◎",
+     "icon": "\u25ce",
      "targeting": "none",
      "range": 5,
      "effects": [
@@ -810,8 +811,8 @@
        "delay": 5.5,
        "kind": "soak",
        "minSoakers": 2,
-       "damage": 250800,
-       "raidDamage": 156750,
+       "damage": 270864,
+       "raidDamage": 169290,
        "name": "Singularity"
       }
      ]
@@ -824,7 +825,7 @@
      "cooldown": 0,
      "cost": 0,
      "name": "Summon",
-     "icon": "☗",
+     "icon": "\u2617",
      "targeting": "none",
      "range": 5,
      "effects": [
@@ -851,10 +852,13 @@
       }
      ]
     }
-   }
+   },
+   "damageScale": 1.08
   }
  ],
  "maps": [
-  "lq_end"
+  "lq_e1m5",
+  "lq_e4m5",
+  "lq_e4m3"
  ]
 }

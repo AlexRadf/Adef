@@ -1,4 +1,122 @@
-# Slipgate Raid — Chthon, Lord of the Lava Pit
+# Slipgate Raid — the Hub and five raids
+
+Version 2 puts the raid encounter inside real Quake levels. It adds a hub world modelled on
+Destiny's Tower and WoW's capital cities, plus five raids behind its slipgates.
+
+```
+python3 -m http.server 8080     # or: npm run serve
+open http://localhost:8080/3d/  # menu -> Enter the hub
+```
+
+## The levels are LibreQuake's
+
+Every level and texture comes from [LibreQuake](https://github.com/lavenderdotpet/LibreQuake), a
+BSD-licensed, open-source replacement for Quake's game data. id Software's original Quake 1/2/3
+levels are not open source (only the engine code is), so they cannot be used here.
+The licence and credits travel with the data in `assets/librequake/`.
+
+LibreQuake ships its levels as TrenchBroom `.map` source rather than compiled BSPs, so
+`tools/import-librequake.mjs` does the half of a map compiler a renderer needs:
+
+| | |
+|---|---|
+| **Brushes → polygons** | each brush's planes clipped against each other; buried faces dropped |
+| **Texturing** | Valve-220 (and standard) texture axes, Quake's nearest-filtered look, liquids warp, two-layer scrolling skies |
+| **Lighting** | a real lightmap atlas at Quake's 16-unit luxels, ray traced against the brushes for shadows, with point lights, sunlight and sky light and Quake's 2× overbright |
+| **Collision** | every solid brush exported as a plane hull; `3d/collide.js` sweeps Quake's 32×56 player box through them (CM_ClipBoxToBrush), with sliding, 18-unit step-up, gravity, jumping and air control |
+| **Arenas** | the sim's fight is a 5×5-cell room, so the importer searches each level for a flat, open floor with headroom that has gameplay entities nearby. Invisible `skip` slabs that seal the level do not count; standing on one meant fighting in the black void under the map |
+
+```
+npm run import -- /path/to/LibreQuake      # re-bake every level (~5 min)
+open http://localhost:8080/3d/viewer.html?map=lq_e1m5&arena=0   # walk any imported level
+```
+
+A sim cell is 3 m when the room allows it and shrinks to 2.4 m when it does not. That is a
+rendering scale only; the sim and every tuned number stay as they were.
+
+## The hub
+
+LibreQuake's own *Episode Select* level, with its hall of slipgates (one per episode), is
+the hub. You walk it in third person (`V` for first person) and talk to the people in it with `E`:
+
+| | |
+|---|---|
+| **Quartermaster Vell** | trade Rune Shards for a guaranteed piece one power above yours, so a bad week of drops is never a wasted week |
+| **Sister Ashgrave** | four weekly bounties (WoW quests by way of Destiny bounties): kill bosses, interrupt casts, kill without dying, kill one in each of the four play styles, clear a raid |
+| **The Archivist** | the raid journal: every boss's health, phases, enrage, mechanics, which level it is fought in and how often bots survive it |
+| **Rangemaster Oduya** | the practice range from v1, unchanged |
+
+Other guardians stand around the hall, hopping as Quake players do while they wait.
+The level's teleporters still teleport. Walk into a slipgate and its raid's launch card opens.
+The card shows the encounters, your weekly checkpoint, Normal or Heroic, which of the four games
+to play it as, and your role.
+
+## Five raids
+
+| Raid | Slipgate | Encounters | Levels |
+|---|---|---|---|
+| **The Gloomliths** | episode 1 | Cindermaw → Chthon | Gloomliths |
+| **The Pyre of Flesh** | episode 2 | The Rot Choir → Mother Maggot | Corpse Army, then Meeting of the Parasites |
+| **The Fleshworks** | episode 3 | The Drowned Deacon → Saint Bloat | Meeting of the Parasites |
+| **The Copper Citadel** | episode 4 | Foreman Nine → The Copper Regent | Copper Citadel |
+| **At the End of Time** | the end gate | Warden of Seconds → The Hour Eater → The Last Slipgate | Gloomliths, Copper Citadel, Will of the Machine |
+
+Bosses are rolled by `engine/generate.js` and held to the theme the raid asks for: lava,
+plague, void, nail or shock. They are renamed, then fitted by `engine/tune.js` to a target band.
+Openers are gentler and finales harder. Chthon, the handcrafted fight, closes the first raid.
+`tools/rescale.mjs` corrects any boss the 40-pull tuner left out of band. Measured over 200
+headless pulls (four bots, raid style):
+
+```
+Gloomliths   Cindermaw 58%  Chthon 39%
+Pyre         Rot Choir 59%  Mother Maggot 43%
+Fleshworks   Deacon 53%     Saint Bloat 42%
+Citadel      Foreman 45%    Copper Regent 31%
+End of Time  Warden 57%     Hour Eater 31%   Last Slipgate 27%       kills 3:21-4:00
+```
+
+```
+npm run raids        # regenerate and retune every raid (~1 min); deterministic
+node sim.js --boss end_3 --runs 200
+```
+
+Regenerating overwrites the `rescale.mjs` corrections, which were Cindermaw-free: Foreman Nine
+×1.06, Mother Maggot ×0.97, Warden of Seconds ×0.94 and The Last Slipgate ×1.08 on their damage.
+Win rate falls off a cliff around the right lethality (×1.3 took Foreman Nine from 77% to 2%),
+so nudge in steps of a few percent.
+
+## Progression
+
+The two halves of the inspiration meet here:
+
+- **Power** (Destiny): the average level of your weapon, armour and sigil. Drops roll their level
+  around your current power, mostly a little under and sometimes over, in four rarities from
+  Common to Exotic. Heroic drops roll higher.
+- **Rank and lockouts** (WoW): an XP bar and ranks. Each boss pays out loot and the big XP once a
+  week, so a launch resumes from your **checkpoint**, the first boss you have not killed this week.
+  Kills after that still earn shards and bounty progress.
+- **Into the fight:** power reaches the sim through exactly one door, a permanent aura on you
+  (up to +15% damage and healing and −5% damage taken, reached around power 50). It softens a
+  fight; it never replaces dodging, and the tuned numbers stay meaningful.
+
+Progress is saved in the browser (`localStorage`); the character screen (`I`) can reset it.
+
+## New files
+
+```
+/tools    mapfile.mjs  import-librequake.mjs  png.mjs   .map parsing, brush compiling, lightmap baking
+          build-raids.mjs  rescale.mjs                  raid generation and tuning
+/3d       level.js     the level renderer (Quake shaders)    collide.js  box traces and the mover
+          hub.js       the hub world                         progress.js power, loot, bounties, lockouts
+          panels.js    every hub screen                      viewer.html a walk-around for any level
+/assets/librequake    baked levels (.json + .bin + lightmap), textures, LibreQuake's COPYING
+/content/raids        one JSON per raid, generated bosses included
+/tests    world.test.mjs   map compiling, collision, raid content, progression
+```
+
+---
+
+# Version 1 — Chthon, Lord of the Lava Pit
 
 A raid encounter wearing Quake's skin: one wipe-able boss, one character you control, three
 bots filling the rest of the trinity. Plain HTML and ES modules — no framework, no bundler,

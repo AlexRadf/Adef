@@ -838,7 +838,8 @@ test('every element the 3D build reaches for exists in its page', async () => {
 });
 
 test('the camera boom shortens at a wall rather than climbing over your head', async () => {
-  const { fitInside, LIMIT } = await import('../3d/camera.js');
+  const { fitInside, limit } = await import('../3d/camera.js');
+  const LIMIT = limit();
   // Middle of the room: the boom gets everything it asked for.
   assert.equal(fitInside({ x: 0, z: 0 }, { x: 0, z: 1 }, 4), 4);
   // Backed into a corner: it gets only what is left before the wall.

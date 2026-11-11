@@ -10,13 +10,13 @@
    "boss": "pyre_1",
    "map": "lq_e2m3",
    "arena": 0,
-   "botsWin": 40,
+   "botsWin": 59,
    "mechanics": [
-    "Pustule — 5 tiles erupt 1.6s after they light up, every 23s",
-    "Contagion — a dispellable curse every 39s that detonates on everyone nearby if it runs out",
-    "Bile Sweep — hits the tank and anyone next to them every 21s, stacking Necrosis",
-    "Mass Grave — every 27s one tile takes a huge hit split between whoever stands in it",
-    "Fester Pool — every 28s a tile needs two bodies in it or the raid eats the hit"
+    "Pustule \u2014 5 tiles erupt 1.6s after they light up, every 23s",
+    "Contagion \u2014 a dispellable curse every 39s that detonates on everyone nearby if it runs out",
+    "Bile Sweep \u2014 hits the tank and anyone next to them every 21s, stacking Necrosis",
+    "Mass Grave \u2014 every 27s one tile takes a huge hit split between whoever stands in it",
+    "Fester Pool \u2014 every 28s a tile needs two bodies in it or the raid eats the hit"
    ],
    "def": {
     "id": "pyre_1",
@@ -30,7 +30,7 @@
     "theme": "plague",
     "phases": [
      {
-      "name": "Phase 1 — It Notices You",
+      "name": "Phase 1 \u2014 It Notices You",
       "trigger": {
        "type": "start"
       },
@@ -64,7 +64,7 @@
       ]
      },
      {
-      "name": "Phase 2 — The Pit Stirs",
+      "name": "Phase 2 \u2014 The Pit Stirs",
       "trigger": {
        "type": "hpBelow",
        "pct": 45
@@ -116,7 +116,7 @@
     "pyre1_melee": {
      "id": "pyre1_melee",
      "name": "Rotting Bite",
-     "icon": "☄",
+     "icon": "\u2604",
      "cast": 0,
      "gcd": 0,
      "offGcd": true,
@@ -125,7 +125,7 @@
      "targeting": "enemy",
      "range": 1,
      "requiresTargetInRange": true,
-     "onNoTargetText": "The Makron finds nothing in reach and roars — UNOPPOSED!",
+     "onNoTargetText": "The Makron finds nothing in reach and roars \u2014 UNOPPOSED!",
      "onNoTarget": [
       {
        "type": "damage",
@@ -151,7 +151,7 @@
      "cooldown": 0,
      "cost": 0,
      "name": "Pustule",
-     "icon": "▲",
+     "icon": "\u25b2",
      "targeting": "none",
      "range": 5,
      "effects": [
@@ -173,7 +173,7 @@
      "cooldown": 0,
      "cost": 0,
      "name": "Contagion",
-     "icon": "◈",
+     "icon": "\u25c8",
      "targeting": "enemy",
      "range": 5,
      "effects": [
@@ -192,7 +192,7 @@
      "cooldown": 0,
      "cost": 0,
      "name": "Bile Sweep",
-     "icon": "⚔",
+     "icon": "\u2694",
      "targeting": "enemy",
      "range": 2,
      "effects": [
@@ -217,7 +217,7 @@
      "cooldown": 0,
      "cost": 0,
      "name": "Mass Grave",
-     "icon": "⛓",
+     "icon": "\u26d3",
      "targeting": "none",
      "range": 5,
      "effects": [
@@ -239,7 +239,7 @@
      "cooldown": 0,
      "cost": 0,
      "name": "Fester Pool",
-     "icon": "◎",
+     "icon": "\u25ce",
      "targeting": "none",
      "range": 5,
      "effects": [
@@ -318,11 +318,11 @@
    "arena": 0,
    "botsWin": 43,
    "mechanics": [
-    "Pustule — 7 tiles erupt 1.9s after they light up, every 21s",
-    "Fester Pool — every 27s a tile needs two bodies in it or the raid eats the hit",
-    "Mass Grave — every 22s one tile takes a huge hit split between whoever stands in it",
+    "Pustule \u2014 7 tiles erupt 1.9s after they light up, every 21s",
+    "Fester Pool \u2014 every 27s a tile needs two bodies in it or the raid eats the hit",
+    "Mass Grave \u2014 every 22s one tile takes a huge hit split between whoever stands in it",
     "Summons 2 Scrags every 55s",
-    "Contagion — a dispellable curse every 39s that detonates on everyone nearby if it runs out"
+    "Contagion \u2014 a dispellable curse every 39s that detonates on everyone nearby if it runs out"
    ],
    "def": {
     "id": "pyre_2",
@@ -336,7 +336,7 @@
     "theme": "plague",
     "phases": [
      {
-      "name": "Phase 1 — The Long Dark",
+      "name": "Phase 1 \u2014 The Long Dark",
       "trigger": {
        "type": "start"
       },
@@ -364,7 +364,7 @@
       ]
      },
      {
-      "name": "Phase 2 — The Brood Wakes",
+      "name": "Phase 2 \u2014 The Brood Wakes",
       "trigger": {
        "type": "hpBelow",
        "pct": 62
@@ -411,7 +411,7 @@
       ]
      },
      {
-      "name": "Phase 3 — The Brood Wakes",
+      "name": "Phase 3 \u2014 The Brood Wakes",
       "trigger": {
        "type": "hpBelow",
        "pct": 28
@@ -463,7 +463,7 @@
     "pyre2_melee": {
      "id": "pyre2_melee",
      "name": "Rotting Bite",
-     "icon": "☄",
+     "icon": "\u2604",
      "cast": 0,
      "gcd": 0,
      "offGcd": true,
@@ -472,12 +472,12 @@
      "targeting": "enemy",
      "range": 1,
      "requiresTargetInRange": true,
-     "onNoTargetText": "The Ogre Lord finds nothing in reach and roars — UNOPPOSED!",
+     "onNoTargetText": "The Ogre Lord finds nothing in reach and roars \u2014 UNOPPOSED!",
      "onNoTarget": [
       {
        "type": "damage",
        "target": "party",
-       "amount": 25412,
+       "amount": 24641,
        "school": "acid",
        "name": "Unopposed"
       }
@@ -485,7 +485,7 @@
      "effects": [
       {
        "type": "damage",
-       "amount": 112541,
+       "amount": 109129,
        "school": "acid"
       }
      ]
@@ -498,7 +498,7 @@
      "cooldown": 0,
      "cost": 0,
      "name": "Pustule",
-     "icon": "▲",
+     "icon": "\u25b2",
      "targeting": "none",
      "range": 5,
      "effects": [
@@ -506,7 +506,7 @@
        "type": "markCells",
        "count": 7,
        "delay": 1.9,
-       "damage": 410231,
+       "damage": 397793,
        "kind": "blast",
        "name": "Pustule"
       }
@@ -520,7 +520,7 @@
      "cooldown": 0,
      "cost": 0,
      "name": "Fester Pool",
-     "icon": "◎",
+     "icon": "\u25ce",
      "targeting": "none",
      "range": 5,
      "effects": [
@@ -529,8 +529,8 @@
        "delay": 5,
        "kind": "soak",
        "minSoakers": 2,
-       "damage": 462443,
-       "raidDamage": 298350,
+       "damage": 448422,
+       "raidDamage": 289304,
        "name": "Fester Pool"
       }
      ]
@@ -543,7 +543,7 @@
      "cooldown": 0,
      "cost": 0,
      "name": "Mass Grave",
-     "icon": "⛓",
+     "icon": "\u26d3",
      "targeting": "none",
      "range": 5,
      "effects": [
@@ -551,8 +551,8 @@
        "type": "markRandomArea",
        "delay": 4.5,
        "kind": "split",
-       "damage": 417690,
-       "raidDamage": 149175,
+       "damage": 405026,
+       "raidDamage": 144652,
        "name": "Mass Grave"
       }
      ]
@@ -565,7 +565,7 @@
      "cooldown": 0,
      "cost": 0,
      "name": "Summon",
-     "icon": "☗",
+     "icon": "\u2617",
      "targeting": "none",
      "range": 5,
      "effects": [
@@ -584,7 +584,7 @@
      "cooldown": 0,
      "cost": 0,
      "name": "Contagion",
-     "icon": "◈",
+     "icon": "\u25c8",
      "targeting": "enemy",
      "range": 5,
      "effects": [
@@ -620,7 +620,7 @@
       "interval": 1,
       "effect": {
        "type": "damage",
-       "amount": 34310,
+       "amount": 33270,
        "school": "acid"
       }
      },
@@ -629,14 +629,14 @@
       {
        "type": "damage",
        "target": "target",
-       "amount": 201386,
+       "amount": 195280,
        "school": "acid",
        "name": "Contagion Collapse"
       },
       {
        "type": "damage",
        "target": "nearTarget",
-       "amount": 372938,
+       "amount": 361631,
        "school": "acid",
        "name": "Contagion Collapse"
       }
@@ -645,13 +645,14 @@
       {
        "type": "damage",
        "target": "target",
-       "amount": 44753,
+       "amount": 43396,
        "school": "acid",
        "name": "Contagion Backlash"
       }
      ]
     }
-   }
+   },
+   "damageScale": 0.97
   }
  ],
  "maps": [

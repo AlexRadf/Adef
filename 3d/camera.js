@@ -6,26 +6,28 @@ import { toWorld, ARENA } from './scene.js';
 
 // The camera has to stay in the room, or it ends up looking at the back
 // of a wall -- which is exactly what it did the first time.
-export const LIMIT = ARENA / 2 - 0.7;
+// A function, because a raid in a tight room shrinks the arena.
+export const limit = () => ARENA / 2 - 0.7;
 
 // ...but clamping the position while keeping the framing is worse than
 // the wall: in a corner the camera ends up a metre behind your head and
 // six metres up, staring at your scalp while the boss sits off screen.
 // So shorten the boom instead. The shot keeps its angle and only loses
 // distance, which is what every third-person camera does at a wall.
-export function fitInside(from, dir, want, limit = LIMIT) {
+export function fitInside(from, dir, want, bound0 = limit()) {
   let t = want;
   for (const axis of ['x', 'z']) {
     if (Math.abs(dir[axis]) < 1e-6) continue;
-    const bound = dir[axis] > 0 ? limit : -limit;
+    const bound = dir[axis] > 0 ? bound0 : -bound0;
     t = Math.min(t, (bound - from[axis]) / dir[axis]);
   }
   return Math.max(0, t);
 }
 
 function keepInside(camera, floor = 1.3) {
-  camera.position.x = Math.max(-LIMIT, Math.min(LIMIT, camera.position.x));
-  camera.position.z = Math.max(-LIMIT, Math.min(LIMIT, camera.position.z));
+  const L = limit();
+  camera.position.x = Math.max(-L, Math.min(L, camera.position.x));
+  camera.position.z = Math.max(-L, Math.min(L, camera.position.z));
   camera.position.y = Math.max(floor, camera.position.y);
 }
 

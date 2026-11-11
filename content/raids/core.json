@@ -9,13 +9,13 @@
   {
    "boss": "core_1",
    "map": "lq_e1m5",
-   "arena": 1,
-   "botsWin": 63,
+   "arena": 3,
+   "botsWin": 58,
    "mechanics": [
-    "Lava Geyser — 8 tiles erupt 1.6s after they light up, every 14s",
-    "Magma Cleave — hits the tank and anyone next to them every 23s, stacking Scorched",
-    "Chain of Souls — every 31s one tile takes a huge hit split between whoever stands in it",
-    "Rune of Black Magic — interruptible cast every 41s; heals The Pale Enforcer for 5% and hits the party if it lands"
+    "Lava Geyser \u2014 8 tiles erupt 1.6s after they light up, every 14s",
+    "Magma Cleave \u2014 hits the tank and anyone next to them every 23s, stacking Scorched",
+    "Chain of Souls \u2014 every 31s one tile takes a huge hit split between whoever stands in it",
+    "Rune of Black Magic \u2014 interruptible cast every 41s; heals The Pale Enforcer for 5% and hits the party if it lands"
    ],
    "def": {
     "id": "core_1",
@@ -29,7 +29,7 @@
     "theme": "lava",
     "phases": [
      {
-      "name": "Phase 1 — The Long Dark",
+      "name": "Phase 1 \u2014 The Long Dark",
       "trigger": {
        "type": "start"
       },
@@ -63,7 +63,7 @@
       ]
      },
      {
-      "name": "Phase 2 — Nothing Held Back",
+      "name": "Phase 2 \u2014 Nothing Held Back",
       "trigger": {
        "type": "hpBelow",
        "pct": 45
@@ -109,7 +109,7 @@
     "core1_melee": {
      "id": "core1_melee",
      "name": "Lava Swipe",
-     "icon": "☄",
+     "icon": "\u2604",
      "cast": 0,
      "gcd": 0,
      "offGcd": true,
@@ -118,7 +118,7 @@
      "targeting": "enemy",
      "range": 1,
      "requiresTargetInRange": true,
-     "onNoTargetText": "The Pale Enforcer finds nothing in reach and roars — UNOPPOSED!",
+     "onNoTargetText": "The Pale Enforcer finds nothing in reach and roars \u2014 UNOPPOSED!",
      "onNoTarget": [
       {
        "type": "damage",
@@ -144,7 +144,7 @@
      "cooldown": 0,
      "cost": 0,
      "name": "Lava Geyser",
-     "icon": "▲",
+     "icon": "\u25b2",
      "targeting": "none",
      "range": 5,
      "effects": [
@@ -166,7 +166,7 @@
      "cooldown": 0,
      "cost": 0,
      "name": "Magma Cleave",
-     "icon": "⚔",
+     "icon": "\u2694",
      "targeting": "enemy",
      "range": 2,
      "effects": [
@@ -191,7 +191,7 @@
      "cooldown": 0,
      "cost": 0,
      "name": "Chain of Souls",
-     "icon": "⛓",
+     "icon": "\u26d3",
      "targeting": "none",
      "range": 5,
      "effects": [
@@ -213,7 +213,7 @@
      "cooldown": 0,
      "cost": 0,
      "name": "Rune of Black Magic",
-     "icon": "☠",
+     "icon": "\u2620",
      "targeting": "self",
      "range": 5,
      "interruptible": true,
@@ -254,7 +254,8 @@
   {
    "boss": "chthon",
    "map": "lq_e1m5",
-   "arena": 0
+   "arena": 0,
+   "botsWin": 39
   }
  ],
  "maps": [

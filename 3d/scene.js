@@ -4,8 +4,15 @@
 
 import * as THREE from '../vendor/three.module.js';
 
-export const CELL = 3;
-export const ARENA = 5 * CELL;
+// Live bindings: a raid in a tight LibreQuake room shrinks the cell
+// (setCellSize), and everything that imports these sees the new scale.
+// The sim never knows -- it still thinks in 5 cells.
+export let CELL = 3;
+export let ARENA = 5 * CELL;
+export function setCellSize(metres) {
+  CELL = metres;
+  ARENA = 5 * CELL;
+}
 export const toWorld = (p) => new THREE.Vector3((p.x - 2.5) * CELL, 0, (p.y - 2.5) * CELL);
 export const toSim = (v) => ({ x: v.x / CELL + 2.5, y: v.z / CELL + 2.5 });
 
@@ -50,7 +57,7 @@ export function createScene(canvas) {
   /* ----------------------------------------------------------- floor */
 
   const floorMat = new THREE.MeshStandardMaterial({ color: 0x5a5044, roughness: 0.95, metalness: 0.05 });
-  const floor = new THREE.Mesh(new THREE.BoxGeometry(ARENA, 1, ARENA), floorMat);
+  const floor = new THREE.Mesh(new THREE.BoxGeometry(ARENA, 1, ARENA), floorMat); // built at 3 m cells
   floor.position.y = -0.5;
   floor.receiveShadow = true;
   pitRoom.add(floor);
@@ -126,6 +133,9 @@ export function createScene(canvas) {
     level = next;
     pitRoom.visible = !level;
     barrier.visible = !!level;
+    // 3 m cells when the room allows, down to 2.4 m when it does not.
+    setCellSize(level ? Math.max(2.4, Math.min(3, (arena.size - 1.2) / 5)) : 3);
+    barrier.scale.setScalar(ARENA / 15);
     if (!level) {
       scene.background.setHex(0x0a0806);
       scene.fog.color.setHex(0x1a1109);
@@ -143,6 +153,8 @@ export function createScene(canvas) {
     level.group.updateMatrixWorld(true);
     level.collider.setOffset(level.group.position);
     scene.add(level.group);
+    // No light bounces in our bake: lift it so a raid is readable.
+    level.setBrightness(1.45);
     scene.background.setHex(0x000000);
     scene.fog.color.setHex(0x050403);
     scene.fog.near = 30;

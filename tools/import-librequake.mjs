@@ -39,9 +39,8 @@ export const MAPS = [
   { id: 'lq_e1m5', src: 'e1/lq_e1m5.map', role: 'raid' },
   { id: 'lq_e2m3', src: 'e2/lq_e2m3.map', role: 'raid' },
   { id: 'lq_e2m5', src: 'e2/lq_e2m5.map', role: 'raid' },
-  { id: 'lq_e3m6', src: 'e3/lq_e3m6.map', role: 'raid' },
   { id: 'lq_e4m5', src: 'e4/lq_e4m5.map', role: 'raid' },
-  { id: 'lq_end', src: 'misc/lq_end.map', role: 'raid' },
+  { id: 'lq_e4m3', src: 'e4/lq_e4m3.map', role: 'raid' },
 ];
 
 /* ---------------------------------------------------- classification */
@@ -388,7 +387,9 @@ function packAtlas(rects) {
 
 /* --------------------------------------------------- arena finding */
 
-const ARENA_UNITS = 15 * UNITS_PER_METRE; // 5 sim cells of 3 m
+// 5 sim cells. They are 3 m each when the room allows, and shrink to
+// 2.4 m when it does not: a cell is a rendering scale, not a sim one.
+const ARENA_UNITS = 12 * UNITS_PER_METRE;
 const COL = 32;
 
 function findArenas(brushes, want = 4, entities = []) {
@@ -397,7 +398,9 @@ function findArenas(brushes, want = 4, entities = []) {
   const markers = entities
     .filter((e) => e.props.origin && /^(monster_|item_|weapon_|info_player|light|info_teleport|ambient_)/.test(e.props.classname || ''))
     .map((e) => vec3(e.props.origin));
-  const solids = brushes.filter((b) => b.solid);
+  // Only floors you can see count. Mappers seal levels with huge skip and
+  // clip slabs, and standing on one is standing in the void under the map.
+  const solids = brushes.filter((b) => b.solid && b.planeTex.some((t) => t && !NODRAW.test(t) && !/skip$/i.test(t) && texKind(t) !== 'sky'));
   const liquids = brushes.filter((b) => b.liquid);
   const mins = [Infinity, Infinity];
   const maxs = [-Infinity, -Infinity];
@@ -742,7 +745,7 @@ function exportMap(root, spec, texIndex, usedTextures) {
     unitsPerMetre: UNITS_PER_METRE,
     fog: world.props._fog || '',
     sky: texList.find((t) => t.kind === 'sky')?.name || '',
-    textures: texList.map(({ name, w, h, kind }) => ({ name, w, h, kind })),
+    textures: texList.map(({ name, w, h, kind, missing }) => (missing ? { name, w, h, kind, missing: true } : { name, w, h, kind })),
     lightmap: { file: `${spec.id}.lm.png`, w: W, h: H },
     layout,
     groups: groupOut,

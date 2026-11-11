@@ -10,12 +10,12 @@
    "boss": "citadel_1",
    "map": "lq_e4m5",
    "arena": 1,
-   "botsWin": 55,
+   "botsWin": 45,
    "mechanics": [
-    "Nailbed — 7 tiles erupt 1.4s after they light up, every 18s",
-    "Overclock the Works — interruptible cast every 33s; heals Shub-Niggurath for 5% and hits the party if it lands",
-    "Nail Fan — hits the tank and anyone next to them every 22s, stacking Punctured",
-    "Impaled — a dispellable curse every 40s that detonates on everyone nearby if it runs out"
+    "Nailbed \u2014 7 tiles erupt 1.4s after they light up, every 18s",
+    "Overclock the Works \u2014 interruptible cast every 33s; heals Shub-Niggurath for 5% and hits the party if it lands",
+    "Nail Fan \u2014 hits the tank and anyone next to them every 22s, stacking Punctured",
+    "Impaled \u2014 a dispellable curse every 40s that detonates on everyone nearby if it runs out"
    ],
    "def": {
     "id": "citadel_1",
@@ -29,7 +29,7 @@
     "theme": "nail",
     "phases": [
      {
-      "name": "Phase 1 — The Long Dark",
+      "name": "Phase 1 \u2014 The Long Dark",
       "trigger": {
        "type": "start"
       },
@@ -69,7 +69,7 @@
       ]
      },
      {
-      "name": "Phase 2 — It Notices You",
+      "name": "Phase 2 \u2014 It Notices You",
       "trigger": {
        "type": "hpBelow",
        "pct": 45
@@ -115,7 +115,7 @@
     "citadel1_melee": {
      "id": "citadel1_melee",
      "name": "Rending Nails",
-     "icon": "☄",
+     "icon": "\u2604",
      "cast": 0,
      "gcd": 0,
      "offGcd": true,
@@ -124,12 +124,12 @@
      "targeting": "enemy",
      "range": 1,
      "requiresTargetInRange": true,
-     "onNoTargetText": "Shub-Niggurath finds nothing in reach and roars — UNOPPOSED!",
+     "onNoTargetText": "Shub-Niggurath finds nothing in reach and roars \u2014 UNOPPOSED!",
      "onNoTarget": [
       {
        "type": "damage",
        "target": "party",
-       "amount": 23985,
+       "amount": 25456,
        "school": "nail",
        "name": "Unopposed"
       }
@@ -137,7 +137,7 @@
      "effects": [
       {
        "type": "damage",
-       "amount": 103651,
+       "amount": 110005,
        "school": "nail"
       }
      ]
@@ -150,7 +150,7 @@
      "cooldown": 0,
      "cost": 0,
      "name": "Nailbed",
-     "icon": "▲",
+     "icon": "\u25b2",
      "targeting": "none",
      "range": 5,
      "effects": [
@@ -158,7 +158,7 @@
        "type": "markCells",
        "count": 7,
        "delay": 1.4,
-       "damage": 337920,
+       "damage": 358636,
        "kind": "blast",
        "name": "Nailbed"
       }
@@ -172,7 +172,7 @@
      "cooldown": 0,
      "cost": 0,
      "name": "Overclock the Works",
-     "icon": "☠",
+     "icon": "\u2620",
      "targeting": "self",
      "range": 5,
      "interruptible": true,
@@ -186,7 +186,7 @@
       {
        "type": "damage",
        "target": "party",
-       "amount": 133760,
+       "amount": 141960,
        "school": "nail",
        "name": "Overclock the Works"
       }
@@ -200,14 +200,14 @@
      "cooldown": 0,
      "cost": 0,
      "name": "Nail Fan",
-     "icon": "⚔",
+     "icon": "\u2694",
      "targeting": "enemy",
      "range": 2,
      "effects": [
       {
        "type": "damage",
        "target": "targetAndAdjacent",
-       "amount": 202752,
+       "amount": 215182,
        "school": "nail"
       },
       {
@@ -225,7 +225,7 @@
      "cooldown": 0,
      "cost": 0,
      "name": "Impaled",
-     "icon": "◈",
+     "icon": "\u25c8",
      "targeting": "enemy",
      "range": 5,
      "effects": [
@@ -261,7 +261,7 @@
       "interval": 1,
       "effect": {
        "type": "damage",
-       "amount": 33792,
+       "amount": 35864,
        "school": "nail"
       }
      },
@@ -270,14 +270,14 @@
       {
        "type": "damage",
        "target": "target",
-       "amount": 204160,
+       "amount": 216676,
        "school": "nail",
        "name": "Impaled Collapse"
       },
       {
        "type": "damage",
        "target": "nearTarget",
-       "amount": 373120,
+       "amount": 395995,
        "school": "nail",
        "name": "Impaled Collapse"
       }
@@ -286,25 +286,26 @@
       {
        "type": "damage",
        "target": "target",
-       "amount": 42240,
+       "amount": 44830,
        "school": "nail",
        "name": "Impaled Backlash"
       }
      ]
     }
-   }
+   },
+   "damageScale": 1.062
   },
   {
    "boss": "citadel_2",
    "map": "lq_e4m5",
    "arena": 0,
-   "botsWin": 33,
+   "botsWin": 31,
    "mechanics": [
-    "Tesla Bloom — 5 tiles erupt 1.7s after they light up, every 20s",
-    "Chain Lightning — hits the tank and anyone next to them every 24s, stacking Overloaded",
-    "Capacitor — every 35s a tile needs two bodies in it or the raid eats the hit",
-    "Charge the Core — interruptible cast every 40s; heals Sepulchre for 4% and hits the party if it lands",
-    "Grounding Rod — a dispellable curse every 43s that detonates on everyone nearby if it runs out"
+    "Tesla Bloom \u2014 5 tiles erupt 1.7s after they light up, every 20s",
+    "Chain Lightning \u2014 hits the tank and anyone next to them every 24s, stacking Overloaded",
+    "Capacitor \u2014 every 35s a tile needs two bodies in it or the raid eats the hit",
+    "Charge the Core \u2014 interruptible cast every 40s; heals Sepulchre for 4% and hits the party if it lands",
+    "Grounding Rod \u2014 a dispellable curse every 43s that detonates on everyone nearby if it runs out"
    ],
    "def": {
     "id": "citadel_2",
@@ -318,7 +319,7 @@
     "theme": "shock",
     "phases": [
      {
-      "name": "Phase 1 — Nothing Held Back",
+      "name": "Phase 1 \u2014 Nothing Held Back",
       "trigger": {
        "type": "start"
       },
@@ -358,7 +359,7 @@
       ]
      },
      {
-      "name": "Phase 2 — The Pit Stirs",
+      "name": "Phase 2 \u2014 The Pit Stirs",
       "trigger": {
        "type": "hpBelow",
        "pct": 62
@@ -405,7 +406,7 @@
       ]
      },
      {
-      "name": "Phase 3 — The Long Dark",
+      "name": "Phase 3 \u2014 The Long Dark",
       "trigger": {
        "type": "hpBelow",
        "pct": 28
@@ -457,7 +458,7 @@
     "citadel2_melee": {
      "id": "citadel2_melee",
      "name": "Arc Lash",
-     "icon": "☄",
+     "icon": "\u2604",
      "cast": 0,
      "gcd": 0,
      "offGcd": true,
@@ -466,7 +467,7 @@
      "targeting": "enemy",
      "range": 1,
      "requiresTargetInRange": true,
-     "onNoTargetText": "Sepulchre finds nothing in reach and roars — UNOPPOSED!",
+     "onNoTargetText": "Sepulchre finds nothing in reach and roars \u2014 UNOPPOSED!",
      "onNoTarget": [
       {
        "type": "damage",
@@ -492,7 +493,7 @@
      "cooldown": 0,
      "cost": 0,
      "name": "Tesla Bloom",
-     "icon": "▲",
+     "icon": "\u25b2",
      "targeting": "none",
      "range": 5,
      "effects": [
@@ -514,7 +515,7 @@
      "cooldown": 0,
      "cost": 0,
      "name": "Chain Lightning",
-     "icon": "⚔",
+     "icon": "\u2694",
      "targeting": "enemy",
      "range": 2,
      "effects": [
@@ -539,7 +540,7 @@
      "cooldown": 0,
      "cost": 0,
      "name": "Capacitor",
-     "icon": "◎",
+     "icon": "\u25ce",
      "targeting": "none",
      "range": 5,
      "effects": [
@@ -562,7 +563,7 @@
      "cooldown": 0,
      "cost": 0,
      "name": "Charge the Core",
-     "icon": "☠",
+     "icon": "\u2620",
      "targeting": "self",
      "range": 5,
      "interruptible": true,
@@ -590,7 +591,7 @@
      "cooldown": 0,
      "cost": 0,
      "name": "Grounding Rod",
-     "icon": "◈",
+     "icon": "\u25c8",
      "targeting": "enemy",
      "range": 5,
      "effects": [

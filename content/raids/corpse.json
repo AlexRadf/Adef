@@ -1,21 +1,21 @@
 {
  "id": "corpse",
- "name": "Holy Bloated Corpse",
+ "name": "The Fleshworks",
  "portal": "lq_e3m1",
  "tier": 3,
  "power": 30,
- "tagline": "A cathedral that sank into the earth and kept praying on the way down.",
+ "tagline": "The parasites built a cathedral out of what they ate. It is still digesting.",
  "encounters": [
   {
    "boss": "corpse_1",
-   "map": "lq_e3m6",
+   "map": "lq_e2m5",
    "arena": 2,
-   "botsWin": 45,
+   "botsWin": 53,
    "mechanics": [
-    "Collapsing Space — 8 tiles erupt 1.6s after they light up, every 23s",
-    "Entropy Sweep — hits the tank and anyone next to them every 21s, stacking Unravelled",
-    "Singularity — every 37s a tile needs two bodies in it or the raid eats the hit",
-    "Gravity Well — every 31s one tile takes a huge hit split between whoever stands in it"
+    "Collapsing Space \u2014 8 tiles erupt 1.6s after they light up, every 23s",
+    "Entropy Sweep \u2014 hits the tank and anyone next to them every 21s, stacking Unravelled",
+    "Singularity \u2014 every 37s a tile needs two bodies in it or the raid eats the hit",
+    "Gravity Well \u2014 every 31s one tile takes a huge hit split between whoever stands in it"
    ],
    "def": {
     "id": "corpse_1",
@@ -29,7 +29,7 @@
     "theme": "void",
     "phases": [
      {
-      "name": "Phase 1 — The Long Dark",
+      "name": "Phase 1 \u2014 The Long Dark",
       "trigger": {
        "type": "start"
       },
@@ -57,7 +57,7 @@
       ]
      },
      {
-      "name": "Phase 2 — Nothing Held Back",
+      "name": "Phase 2 \u2014 Nothing Held Back",
       "trigger": {
        "type": "hpBelow",
        "pct": 45
@@ -103,7 +103,7 @@
     "corpse1_melee": {
      "id": "corpse1_melee",
      "name": "Rift Claw",
-     "icon": "☄",
+     "icon": "\u2604",
      "cast": 0,
      "gcd": 0,
      "offGcd": true,
@@ -112,7 +112,7 @@
      "targeting": "enemy",
      "range": 1,
      "requiresTargetInRange": true,
-     "onNoTargetText": "The Scrag Choir finds nothing in reach and roars — UNOPPOSED!",
+     "onNoTargetText": "The Scrag Choir finds nothing in reach and roars \u2014 UNOPPOSED!",
      "onNoTarget": [
       {
        "type": "damage",
@@ -138,7 +138,7 @@
      "cooldown": 0,
      "cost": 0,
      "name": "Collapsing Space",
-     "icon": "▲",
+     "icon": "\u25b2",
      "targeting": "none",
      "range": 5,
      "effects": [
@@ -160,7 +160,7 @@
      "cooldown": 0,
      "cost": 0,
      "name": "Entropy Sweep",
-     "icon": "⚔",
+     "icon": "\u2694",
      "targeting": "enemy",
      "range": 2,
      "effects": [
@@ -185,7 +185,7 @@
      "cooldown": 0,
      "cost": 0,
      "name": "Singularity",
-     "icon": "◎",
+     "icon": "\u25ce",
      "targeting": "none",
      "range": 5,
      "effects": [
@@ -208,7 +208,7 @@
      "cooldown": 0,
      "cost": 0,
      "name": "Gravity Well",
-     "icon": "⛓",
+     "icon": "\u26d3",
      "targeting": "none",
      "range": 5,
      "effects": [
@@ -242,14 +242,14 @@
   },
   {
    "boss": "corpse_2",
-   "map": "lq_e3m6",
-   "arena": 0,
-   "botsWin": 48,
+   "map": "lq_e2m5",
+   "arena": 1,
+   "botsWin": 42,
    "mechanics": [
-    "Pustule — 6 tiles erupt 1.9s after they light up, every 19s",
-    "Consume the Fallen — interruptible cast every 32s; heals Dread Sentinel for 4% and hits the party if it lands",
-    "Mass Grave — every 23s one tile takes a huge hit split between whoever stands in it",
-    "Contagion — a dispellable curse every 29s that detonates on everyone nearby if it runs out"
+    "Pustule \u2014 6 tiles erupt 1.9s after they light up, every 19s",
+    "Consume the Fallen \u2014 interruptible cast every 32s; heals Dread Sentinel for 4% and hits the party if it lands",
+    "Mass Grave \u2014 every 23s one tile takes a huge hit split between whoever stands in it",
+    "Contagion \u2014 a dispellable curse every 29s that detonates on everyone nearby if it runs out"
    ],
    "def": {
     "id": "corpse_2",
@@ -263,7 +263,7 @@
     "theme": "plague",
     "phases": [
      {
-      "name": "Phase 1 — Nothing Held Back",
+      "name": "Phase 1 \u2014 Nothing Held Back",
       "trigger": {
        "type": "start"
       },
@@ -297,7 +297,7 @@
       ]
      },
      {
-      "name": "Phase 2 — The Long Dark",
+      "name": "Phase 2 \u2014 The Long Dark",
       "trigger": {
        "type": "hpBelow",
        "pct": 62
@@ -338,7 +338,7 @@
       ]
      },
      {
-      "name": "Phase 3 — The Pit Stirs",
+      "name": "Phase 3 \u2014 The Pit Stirs",
       "trigger": {
        "type": "hpBelow",
        "pct": 28
@@ -384,7 +384,7 @@
     "corpse2_melee": {
      "id": "corpse2_melee",
      "name": "Rotting Bite",
-     "icon": "☄",
+     "icon": "\u2604",
      "cast": 0,
      "gcd": 0,
      "offGcd": true,
@@ -393,7 +393,7 @@
      "targeting": "enemy",
      "range": 1,
      "requiresTargetInRange": true,
-     "onNoTargetText": "Dread Sentinel finds nothing in reach and roars — UNOPPOSED!",
+     "onNoTargetText": "Dread Sentinel finds nothing in reach and roars \u2014 UNOPPOSED!",
      "onNoTarget": [
       {
        "type": "damage",
@@ -419,7 +419,7 @@
      "cooldown": 0,
      "cost": 0,
      "name": "Pustule",
-     "icon": "▲",
+     "icon": "\u25b2",
      "targeting": "none",
      "range": 5,
      "effects": [
@@ -441,7 +441,7 @@
      "cooldown": 0,
      "cost": 0,
      "name": "Consume the Fallen",
-     "icon": "☠",
+     "icon": "\u2620",
      "targeting": "self",
      "range": 5,
      "interruptible": true,
@@ -469,7 +469,7 @@
      "cooldown": 0,
      "cost": 0,
      "name": "Mass Grave",
-     "icon": "⛓",
+     "icon": "\u26d3",
      "targeting": "none",
      "range": 5,
      "effects": [
@@ -491,7 +491,7 @@
      "cooldown": 0,
      "cost": 0,
      "name": "Contagion",
-     "icon": "◈",
+     "icon": "\u25c8",
      "targeting": "enemy",
      "range": 5,
      "effects": [
@@ -562,6 +562,6 @@
   }
  ],
  "maps": [
-  "lq_e3m6"
+  "lq_e2m5"
  ]
 }
